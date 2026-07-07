@@ -1,0 +1,6 @@
+@Kolia.Thumbnail.API_HostAddress = http://localhost:5173
+
+GET {{Kolia.Thumbnail.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

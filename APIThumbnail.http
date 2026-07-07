@@ -1,0 +1,46 @@
+@KoliaThumbnail_API_HostAddress = https://localhost:7001
+
+
+### Get AI Providers Paging - Default
+GET {{KoliaThumbnail_API_HostAddress}}/api/v1/ai-providers/paging
+Accept: application/json
+
+
+### Get AI Providers Paging - Page 1, size 10
+GET {{KoliaThumbnail_API_HostAddress}}/api/v1/ai-providers/paging?pageNumber=1&pageSize=10
+Accept: application/json
+
+
+### Get AI Providers Paging - Include total count false
+GET {{KoliaThumbnail_API_HostAddress}}/api/v1/ai-providers/paging?pageNumber=1&pageSize=20&includeTotalCount=false
+Accept: application/json
+
+
+### Search AI Providers
+GET {{KoliaThumbnail_API_HostAddress}}/api/v1/ai-providers/paging?searchText=openai&pageNumber=1&pageSize=10
+Accept: application/json
+
+
+### Filter AI Providers
+GET {{KoliaThumbnail_API_HostAddress}}/api/v1/ai-providers/paging?filters[0].field=name&filters[0].operator=6&filters[0].values[0]=OpenAI
+Accept: application/json
+
+
+### Sort AI Providers
+GET {{KoliaThumbnail_API_HostAddress}}/api/v1/ai-providers/paging?sorts[0].field=name&sorts[0].direction=0
+Accept: application/json
+
+
+### Full Query Example
+GET {{KoliaThumbnail_API_HostAddress}}/api/v1/ai-providers/paging?
+    pageNumber=1&
+    pageSize=10&
+    includeTotalCount=true&
+    includeItems=true&
+    searchText=gpt&
+    filters[0].field=isEnabled&
+    filters[0].operator=0&
+    filters[0].values[0]=true&
+    sorts[0].field=creationTime&
+    sorts[0].direction=1
+Accept: application/json

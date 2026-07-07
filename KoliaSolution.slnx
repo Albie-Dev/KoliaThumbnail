@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/services/" />
+  <Folder Name="/src/services/crawlers/">
+    <Project Path="src/services/crawlers/Kolia.Crawler.API/Kolia.Crawler.API.csproj" />
+  </Folder>
+  <Folder Name="/src/services/thumbnails/">
+    <Project Path="src/services/thumbnails/Kolia.Thumbnail.API/Kolia.Thumbnail.API.csproj" />
+  </Folder>
+</Solution>
