@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 import { DataTableEmptyState } from './data-table-empty-state'
 import { DataTableErrorState } from './data-table-error-state'
 import { DataTablePagination } from './data-table-pagination'
 import { DataTableSkeleton } from './data-table-skeleton'
+import { cn } from '../../lib/utils'
 
 interface DataTableProps<T> {
   columns: Array<{
     key: string
     header: string
+    sortable?: boolean
     render?: (item: T) => ReactNode
   }>
   data: T[]
@@ -22,6 +25,9 @@ interface DataTableProps<T> {
   totalCount?: number
   onPageChange?: (page: number) => void
   onPageSizeChange?: (size: number) => void
+  onSort?: (column: string) => void
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc' | null
 }
 
 export function DataTable<T>({
@@ -38,6 +44,9 @@ export function DataTable<T>({
   totalCount,
   onPageChange,
   onPageSizeChange,
+  onSort,
+  sortBy,
+  sortOrder,
 }: DataTableProps<T>) {
   if (isLoading) {
     return <DataTableSkeleton title={title} />
@@ -64,8 +73,24 @@ export function DataTable<T>({
               <thead>
                 <tr className="bg-slate-50 text-left text-sm font-semibold text-slate-700">
                   {columns.map((column) => (
-                    <th key={column.key} className="px-4 py-3">
-                      {column.header}
+                    <th
+                      key={column.key}
+                      className={cn(
+                        'px-4 py-3',
+                        column.sortable && 'cursor-pointer hover:bg-slate-100 transition-colors'
+                      )}
+                      onClick={() => column.sortable && onSort?.(column.key)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{column.header}</span>
+                        {column.sortable && sortBy === column.key && (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="h-4 w-4 text-blue-600" />
+                          ) : (
+                            <ArrowDown className="h-4 w-4 text-blue-600" />
+                          )
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>

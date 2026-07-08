@@ -10,13 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.5",
     "nuqs": "^2.9.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "sonner": "^2.0.7"
+    "react-hook-form": "^7.81.0",
+    "sonner": "^2.0.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@radix-ui/react-slot": "^1.3.0",
