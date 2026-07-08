@@ -22,7 +22,7 @@ namespace Kolia.Thumbnail.API.AIs
         /// <param name="aIProviderCreateDto"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task<AIProviderEntity?> CreateAIProviderAsync(AIProviderCreateDto aIProviderCreateDto,
+        Task<AIProviderEntity?> CreateAsync(AIProviderCreateDto aIProviderCreateDto,
             CancellationToken cancellationToken = default);
     }
 }

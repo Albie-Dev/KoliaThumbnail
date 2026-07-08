@@ -49,7 +49,7 @@ namespace Kolia.Thumbnail.API.AIs
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         /// <exception cref="BusinessException"></exception>
-        public async Task<AIProviderEntity?> CreateAIProviderAsync(AIProviderCreateDto aIProviderCreateDto,
+        public async Task<AIProviderEntity?> CreateAsync(AIProviderCreateDto aIProviderCreateDto,
             CancellationToken cancellationToken = default)
         {
             var existingProvider = await _dbContext.AIProviders.AsNoTracking()
