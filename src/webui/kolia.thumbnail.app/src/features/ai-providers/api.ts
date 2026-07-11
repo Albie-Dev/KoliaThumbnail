@@ -8,6 +8,7 @@ export interface ThumbnailItem {
   name: string
   shortName: string
   imageUrl?: string | null
+  isDeleted: boolean
   creationTime?: string | null
   lastModificationTime?: string | null
 }
