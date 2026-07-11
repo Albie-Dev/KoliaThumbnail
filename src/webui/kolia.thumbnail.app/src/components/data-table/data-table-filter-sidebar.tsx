@@ -48,7 +48,7 @@ export function DataTableFilterSidebar({
       </SidebarBody>
 
       <SidebarFooter>
-        <Button variant="ghost" size="sm" onClick={handleReset}>
+        <Button variant="outline" size="sm" onClick={handleReset}>
           Reset
         </Button>
         <Button variant="outline" size="sm" onClick={onClose}>

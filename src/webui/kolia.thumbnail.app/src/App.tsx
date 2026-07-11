@@ -1,24 +1,60 @@
 import { QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import './App.css'
 import { queryClient } from './lib/query-client'
 import { SidebarProvider } from './lib/sidebar-context'
 import { AppSidebar } from './components/app-sidebar'
-import { ThumbnailTable } from './features/thumbnails/thumbnail-table'
+import { AdminLayout } from './components/layout/admin-layout'
+import { flattenMenuItems, adminMenuGroups } from './lib/admin-menu'
+
+// ── Generate routes from menu configuration ───────────
+const flatMenuItems = flattenMenuItems(adminMenuGroups)
+const pageRoutes = flatMenuItems.map((item) => ({
+  path: item.key,
+  element: item.component ? <item.component /> : null,
+}))
 
 function App() {
   return (
-    <SidebarProvider>
-      <QueryClientProvider client={queryClient}>
-        <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-8 sm:px-6 lg:px-8">
-          <section className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur sm:p-8">
-            <ThumbnailTable />
-          </section>
-        </main>
-        <Toaster position="top-right" richColors />
-        <AppSidebar />
-      </QueryClientProvider>
-    </SidebarProvider>
+    <BrowserRouter>
+      <SidebarProvider>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            {/* Admin Layout */}
+            <Route path="/" element={<AdminLayout />}>
+              {/* Redirect root to dashboard */}
+              <Route index element={<Navigate to="/dashboard" replace />} />
+
+              {/* Dynamic routes from menu config */}
+              {pageRoutes.map(
+                (route) =>
+                  route.element && (
+                    <Route
+                      key={route.path}
+                      path={route.path.replace(/^\//, '')}
+                      element={route.element}
+                    />
+                  ),
+              )}
+
+              {/* Catch-all */}
+              <Route
+                path="*"
+                element={
+                  <div className="flex h-full items-center justify-center text-slate-400">
+                    <p className="text-lg">404 — Trang không tồn tại</p>
+                  </div>
+                }
+              />
+            </Route>
+          </Routes>
+
+          <Toaster position="top-right" richColors />
+          <AppSidebar />
+        </QueryClientProvider>
+      </SidebarProvider>
+    </BrowserRouter>
   )
 }
 

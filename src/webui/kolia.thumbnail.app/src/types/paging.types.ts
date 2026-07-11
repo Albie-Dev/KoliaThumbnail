@@ -91,4 +91,6 @@ export interface PagedRequestParams {
   sorts?: SortRequestDto[]
   filters?: FilterRequestDto[]
   rangeFilters?: RangeFilterRequestDto[]
+  includeDeleted?: boolean
+  deletedOnly?: boolean
 }

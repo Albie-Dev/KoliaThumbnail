@@ -7,3 +7,7 @@ export const createAIProviderSchema = z.object({
 })
 
 export type CreateAIProviderInput = z.infer<typeof createAIProviderSchema>
+
+export const updateAIProviderSchema = createAIProviderSchema
+
+export type UpdateAIProviderInput = z.infer<typeof updateAIProviderSchema>

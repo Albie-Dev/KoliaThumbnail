@@ -1,21 +1,29 @@
 import { useRef } from 'react';
 import { useSidebarContext } from '../lib/sidebar-context';
 import { Sidebar, SidebarHeader, SidebarBody, SidebarFooter } from './ui/sidebar';
-import { CreateAIProviderForm, type CreateAIProviderFormHandle } from '../features/thumbnails/create-ai-provider-form';
+import { CreateAIProviderForm, type CreateAIProviderFormHandle } from '../features/ai-providers/create-ai-provider-form';
+import { EditAIProviderForm, type EditAIProviderFormHandle } from '../features/ai-providers/edit-ai-provider-form';
 import { Button } from './ui/button';
 
 export function AppSidebar() {
   const { isOpen, content, close } = useSidebarContext();
-  const formRef = useRef<CreateAIProviderFormHandle>(null);
+  const createFormRef = useRef<CreateAIProviderFormHandle>(null);
+  const editFormRef = useRef<EditAIProviderFormHandle>(null);
 
   const getTitle = () => {
     switch (content) {
       case 'create-ai-provider':
         return 'Tạo nhà cung cấp mới';
       default:
+        if (content && typeof content === 'object' && content.type === 'edit-ai-provider') {
+          return `Chỉnh sửa: ${content.provider.name}`;
+        }
         return '';
     }
   };
+
+  const isEditMode = content !== null && typeof content === 'object' && content.type === 'edit-ai-provider';
+  const isCreateMode = content === 'create-ai-provider';
 
   return (
     <Sidebar isOpen={isOpen} onClose={close}>
@@ -26,8 +34,11 @@ export function AppSidebar() {
             isOpen ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          {content === 'create-ai-provider' && (
-            <CreateAIProviderForm ref={formRef} onClose={close} />
+          {isCreateMode && (
+            <CreateAIProviderForm ref={createFormRef} onClose={close} />
+          )}
+          {isEditMode && (
+            <EditAIProviderForm ref={editFormRef} provider={content.provider} onClose={close} />
           )}
         </div>
       </SidebarBody>
@@ -35,12 +46,20 @@ export function AppSidebar() {
         <Button variant="outline" onClick={close}>
           Hủy
         </Button>
-        {content === 'create-ai-provider' && (
+        {isCreateMode && (
           <Button
-            onClick={() => formRef.current?.submit()}
-            disabled={formRef.current?.isSubmitting}
+            onClick={() => createFormRef.current?.submit()}
+            disabled={createFormRef.current?.isSubmitting}
           >
-            {formRef.current?.isSubmitting ? 'Đang xử lý…' : 'Tạo'}
+            {createFormRef.current?.isSubmitting ? 'Đang xử lý…' : 'Tạo'}
+          </Button>
+        )}
+        {isEditMode && (
+          <Button
+            onClick={() => editFormRef.current?.submit()}
+            disabled={editFormRef.current?.isSubmitting}
+          >
+            {editFormRef.current?.isSubmitting ? 'Đang xử lý…' : 'Lưu'}
           </Button>
         )}
       </SidebarFooter>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import type { ThumbnailItem } from '../features/ai-providers/api';
 
-export type SidebarContent = 'create-ai-provider' | null;
+export type SidebarContent = 'create-ai-provider' | { type: 'edit-ai-provider'; provider: ThumbnailItem } | null;
 
 interface SidebarContextType {
   isOpen: boolean;

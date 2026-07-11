@@ -9,6 +9,7 @@ export interface ThumbnailItem {
   shortName: string
   imageUrl?: string | null
   creationTime?: string | null
+  lastModificationTime?: string | null
 }
 
 export interface AIProviderDetailDto extends ThumbnailItem {
@@ -44,5 +45,21 @@ export async function createAIProvider(data: CreateAIProviderInput): Promise<AIP
     shortName: data.shortName,
     imageUrl: data.imageUrl || null,
   })
+}
+
+export interface UpdateAIProviderInput extends CreateAIProviderInput {
+  id: string
+}
+
+export async function updateAIProvider(data: UpdateAIProviderInput): Promise<AIProviderDetailDto> {
+  return httpClient.put<AIProviderDetailDto>(`/api/v1/ai-providers/${data.id}`, {
+    name: data.name,
+    shortName: data.shortName,
+    imageUrl: data.imageUrl || null,
+  })
+}
+
+export async function deleteAIProvider(id: string): Promise<void> {
+  await httpClient.delete(`/api/v1/ai-providers/${id}`)
 }
 

@@ -19,6 +19,13 @@ export function buildPagedQuery(params: PagedRequestParams): URLSearchParams {
     query.append('SearchText', params.searchText)
   }
 
+  if (params.includeDeleted !== undefined) {
+    query.append('IncludeDeleted', String(params.includeDeleted))
+  }
+  if (params.deletedOnly !== undefined) {
+    query.append('DeletedOnly', String(params.deletedOnly))
+  }
+
   // Sorts: Sorts[i].Field, Sorts[i].Direction
   if (params.sorts) {
     params.sorts.forEach((sort, index) => {
@@ -33,8 +40,8 @@ export function buildPagedQuery(params: PagedRequestParams): URLSearchParams {
       query.append(`Filters[${index}].Field`, filter.field)
       query.append(`Filters[${index}].Operator`, String(filter.operator))
       if (filter.values) {
-        filter.values.forEach((val) => {
-          query.append(`Filters[${index}].Values`, String(val))
+        filter.values.forEach((val, vIdx) => {
+          query.append(`Filters[${index}].Values[${vIdx}]`, String(val))
         })
       }
       if (filter.logicalOperator !== undefined) {
