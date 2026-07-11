@@ -10,7 +10,7 @@ import { DateTimePicker } from '../../components/ui/date-time-picker'
 import { useSidebarContext } from '../../lib/sidebar-context'
 import { formatDateTime } from '../../lib/date-formatter'
 import { StatusFilterGroup, type StatusFilter } from '../../components/filters/status-filter'
-import { fetchThumbnails, deleteAIProvider, type ThumbnailItem } from './api'
+import { fetchThumbnails, deleteAIProvider, type AIProviderBaseDto } from './api'
 import { SortDirection, type SortRequestDto, type RangeFilterRequestDto } from '../../types/paging.types'
 import { useQueryState, parseAsString } from 'nuqs'
 import { ApiError } from '../../lib/api/api-error'
@@ -26,7 +26,7 @@ export function AiProvidersPage() {
   const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>('active')
 
   // ── Delete confirm state ─────────────────────────────────────────────
-  const [deleteTarget, setDeleteTarget] = useState<ThumbnailItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AIProviderBaseDto | null>(null)
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteAIProvider(id),
@@ -129,12 +129,12 @@ export function AiProvidersPage() {
 
   const columns = useMemo(
     () => [
-      { key: 'name', header: 'Tên', sortable: true, render: (item: ThumbnailItem) => item.name },
-      { key: 'shortName', header: 'Mã', sortable: true, render: (item: ThumbnailItem) => item.shortName },
+      { key: 'name', header: 'Tên', sortable: true, render: (item: AIProviderBaseDto) => item.name },
+      { key: 'shortName', header: 'Mã', sortable: true, render: (item: AIProviderBaseDto) => item.shortName },
       {
         key: 'image',
         header: 'Logo',
-        render: (item: ThumbnailItem) =>
+        render: (item: AIProviderBaseDto) =>
           item.imageUrl ? (
             <img src={item.imageUrl} alt={item.name} className="h-8 w-8 rounded object-cover" />
           ) : (
@@ -145,18 +145,18 @@ export function AiProvidersPage() {
         key: 'creationTime',
         header: 'Tạo lúc',
         sortable: true,
-        render: (item: ThumbnailItem) => formatDateTime(item.creationTime),
+        render: (item: AIProviderBaseDto) => formatDateTime(item.creationTime),
       },
       {
         key: 'lastModificationTime',
         header: 'Cập nhật lúc',
         sortable: true,
-        render: (item: ThumbnailItem) => formatDateTime(item.lastModificationTime),
+        render: (item: AIProviderBaseDto) => formatDateTime(item.lastModificationTime),
       },
       {
         key: 'actions',
         header: '',
-        render: (item: ThumbnailItem) =>
+        render: (item: AIProviderBaseDto) =>
           item.isDeleted ? (
             <span className="text-xs text-slate-400 italic">Đã xoá</span>
           ) : (

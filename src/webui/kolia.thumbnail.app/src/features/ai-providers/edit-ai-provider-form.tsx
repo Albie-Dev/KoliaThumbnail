@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { updateAIProvider, type UpdateAIProviderInput } from './api'
-import type { ThumbnailItem } from './api'
+import type { AIProviderBaseDto } from './api'
 import { updateAIProviderSchema } from './schema'
 import { Input } from '../../components/ui/input'
 import { FormField, FormGroup, FormLabel } from '../../components/ui/form'
@@ -14,7 +14,7 @@ import type { z } from 'zod'
 type FormValues = z.infer<typeof updateAIProviderSchema>
 
 interface EditAIProviderFormProps {
-  provider: ThumbnailItem
+  provider: AIProviderBaseDto
   onClose?: () => void
 }
 

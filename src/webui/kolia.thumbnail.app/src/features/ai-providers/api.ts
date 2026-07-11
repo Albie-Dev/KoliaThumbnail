@@ -3,7 +3,7 @@ import { buildPagedQuery } from '../../lib/api/build-paged-query'
 import type { BackendPagedResponse, PagedResult, PagedRequestParams } from '../../types/paging.types'
 import type { CreateAIProviderInput } from './schema'
 
-export interface ThumbnailItem {
+export interface AIProviderBaseDto {
   id: string
   name: string
   shortName: string
@@ -13,13 +13,13 @@ export interface ThumbnailItem {
   lastModificationTime?: string | null
 }
 
-export interface AIProviderDetailDto extends ThumbnailItem {
+export interface AIProviderDetailDto extends AIProviderBaseDto {
   isDeleted: boolean
   lastModificationTime?: string | null
   deletionTime?: string | null
 }
 
-function toPagedResult(payload: BackendPagedResponse<ThumbnailItem>): PagedResult<ThumbnailItem> {
+function toPagedResult(payload: BackendPagedResponse<AIProviderBaseDto>): PagedResult<AIProviderBaseDto> {
   return {
     items: payload.items,
     pageNumber: payload.pageInfo.pageNumber,
@@ -36,7 +36,7 @@ export async function fetchThumbnails(params: PagedRequestParams) {
     ...params,
   })
 
-  const response = await httpClient.get<BackendPagedResponse<ThumbnailItem>>(`/api/v1/ai-providers/paging?${query.toString()}`)
+  const response = await httpClient.get<BackendPagedResponse<AIProviderBaseDto>>(`/api/v1/ai-providers/paging?${query.toString()}`)
   return toPagedResult(response)
 }
 
