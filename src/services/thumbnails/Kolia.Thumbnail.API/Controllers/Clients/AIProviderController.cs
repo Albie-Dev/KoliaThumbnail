@@ -1,4 +1,5 @@
 using Kolia.Thumbnail.API.AIs;
+using Kolia.Thumbnail.API.Exceptions;
 using Kolia.Thumbnail.API.Models.AIs;
 using Kolia.Thumbnail.API.Models.Commons;
 using Microsoft.AspNetCore.Mvc;
@@ -40,6 +41,28 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
             var result = await _aiProviderService.GetWithPagingAsync(request, includeDeleted, deletedOnly, cancellationToken);
 
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Lấy thông tin chi tiết của một nhà cung cấp AI dựa trên ID. Nếu nhà cung cấp AI không tồn tại, ném ra NotFoundException.
+        /// </summary>
+        /// <param name="aiProviderId"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="NotFoundException"></exception>
+        [HttpGet("{aiProviderId}")]
+        public async Task<IActionResult> GetByIdAsync(
+            [FromRoute] Guid aiProviderId,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _aiProviderService.GetByIdAsync(aiProviderId, asNoTracking: true, includeDetails: false, cancellationToken: cancellationToken);
+            
+            if(result == null)
+            {
+                throw new NotFoundException($"Không tìm thấy nhà cung cấp AI với ID: {aiProviderId}");
+            }
+
+            return Ok(result.ToDetailDto());
         }
 
         /// <summary>
