@@ -10,7 +10,7 @@ import { DateTimePicker } from '../../components/ui/date-time-picker'
 import { useSidebarContext } from '../../lib/sidebar-context'
 import { formatDateTime } from '../../lib/date-formatter'
 import { StatusFilterGroup, type StatusFilter } from '../../components/filters/status-filter'
-import { fetchThumbnails, deleteAIProvider, type AIProviderBaseDto } from './api'
+import { getAIProvidersWithPaging, deleteAIProvider, type AIProviderBaseDto } from './api'
 import { SortDirection, type SortRequestDto, type RangeFilterRequestDto } from '../../types/paging.types'
 import { useQueryState, parseAsString } from 'nuqs'
 import { ApiError } from '../../lib/api/api-error'
@@ -116,7 +116,7 @@ export function AiProvidersPage() {
       backendRangeFilters,
     ],
     queryFn: () =>
-      fetchThumbnails({
+      getAIProvidersWithPaging({
         pageNumber: page,
         pageSize: pageSize,
         searchText: search || undefined,
@@ -251,7 +251,7 @@ export function AiProvidersPage() {
         onSort={handleSort}
         // ── Toolbar ─────────────────────────────────────────────
         actions={
-          <Button onClick={() => open('create-ai-provider')} className="gap-2">
+          <Button onClick={() => open({ type: 'create-ai-provider' })} className="gap-2">
             <Plus className="h-4 w-4" />
             Thêm mới
           </Button>

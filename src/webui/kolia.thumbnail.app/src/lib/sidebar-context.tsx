@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
-import type { AIProviderBaseDto } from '../features/ai-providers/api';
 
-export type SidebarContent = 'create-ai-provider' | { type: 'edit-ai-provider'; provider: AIProviderBaseDto } | null;
+export type SidebarContent = { type: string; [key: string]: unknown } | null;
 
 interface SidebarContextType {
   isOpen: boolean;

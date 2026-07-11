@@ -29,7 +29,7 @@ function toPagedResult(payload: BackendPagedResponse<AIProviderBaseDto>): PagedR
   }
 }
 
-export async function fetchThumbnails(params: PagedRequestParams) {
+export async function getAIProvidersWithPaging(params: PagedRequestParams) {
   const query = buildPagedQuery({
     includeTotalCount: true,
     includeItems: true,

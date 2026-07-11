@@ -9,10 +9,11 @@ export function FormGroup({ children, className }: { children: React.ReactNode; 
   return <div className={cn('space-y-2', className)}>{children}</div>
 }
 
-export function FormLabel({ htmlFor, children, className }: { htmlFor?: string; children: React.ReactNode; className?: string }) {
+export function FormLabel({ required, children, className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean }) {
   return (
-    <label htmlFor={htmlFor} className={cn('text-sm font-medium text-slate-700', className)}>
+    <label className={cn('text-sm font-medium text-slate-700', className)} {...props}>
       {children}
+      {required && <span className="ml-0.5 text-rose-500">*</span>}
     </label>
   )
 }

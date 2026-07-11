@@ -20,6 +20,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const errorBody = body as ErrorResponseDto | null
+
     throw new ApiError(
       errorBody?.code ?? 'UNKNOWN_ERROR',
       errorBody?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.',
@@ -38,9 +39,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const httpClient = {
   get: <T>(path: string) => request<T>(path),
+
   post: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
+    request<T>(path, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   put: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+    request<T>(path, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: 'PATCH',
+      ...(body !== undefined && {
+        body: JSON.stringify(body),
+      }),
+    }),
+
+  delete: <T>(path: string) =>
+    request<T>(path, {
+      method: 'DELETE',
+    }),
 }

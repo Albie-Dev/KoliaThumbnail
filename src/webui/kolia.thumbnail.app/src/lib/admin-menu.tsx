@@ -11,6 +11,7 @@ import {
   Server,
   Brain,
   type LucideIcon,
+  SlidersHorizontal,
 } from 'lucide-react'
 import type { AdminMenuGroup, AdminMenuItem } from '../types/admin-layout.types'
 
@@ -18,6 +19,7 @@ import type { AdminMenuGroup, AdminMenuItem } from '../types/admin-layout.types'
 import { useLocation } from 'react-router-dom'
 import type { ComponentType } from 'react'
 import { AiProvidersPage } from '../features/ai-providers/ai-providers-page'
+import { AiConfigurationsPage } from '../features/ai-configurations/ai-configuration-page'
 
 const PlaceholderPage: ComponentType = () => {
   const path = useLocation().pathname
@@ -107,8 +109,15 @@ export const adminMenuGroups: AdminMenuGroup[] = [
           {
             key: '/configuration/ai/providers',
             label: 'Providers',
+            icon: Server,
             component: AiProvidersPage,
           },
+          {
+            key: '/configuration/ai/configurations',
+            label: 'Configurations',
+            icon: SlidersHorizontal,
+            component: AiConfigurationsPage,
+          }
         ],
       },
       {
