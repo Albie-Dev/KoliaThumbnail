@@ -41,6 +41,16 @@ namespace Kolia.Thumbnail.API.AIs
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Đặt cấu hình AI mặc định.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<AIConfigurationDetailDto> SetDefaultAsync(
+            Guid id,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Xóa (soft delete) cấu hình AI.
         /// </summary>
         Task<AIConfigurationDetailDto> DeleteAsync(

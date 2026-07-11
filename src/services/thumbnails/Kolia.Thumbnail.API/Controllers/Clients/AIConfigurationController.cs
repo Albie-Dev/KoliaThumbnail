@@ -117,6 +117,24 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         }
 
         /// <summary>
+        /// Dặt một cấu hình AI làm mặc định.
+        /// </summary>
+        /// <param name="aiConfigurationId"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        [HttpPatch("{aiConfigurationId:guid}/set-default")]
+        public async Task<IActionResult> SetDefaultAsync(
+            [FromRoute] Guid aiConfigurationId,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _aiConfigurationService.SetDefaultAsync(
+                aiConfigurationId,
+                cancellationToken);
+
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Xóa (soft delete) một cấu hình AI.
         /// </summary>
         /// <param name="aiConfigurationId"></param>

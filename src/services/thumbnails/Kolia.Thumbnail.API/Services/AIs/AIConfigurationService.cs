@@ -252,6 +252,55 @@ namespace Kolia.Thumbnail.API.AIs
         }
 
         /// <summary>
+        /// Dặt một cấu hình AI làm mặc định dựa trên ID. Nếu cấu hình đã là mặc định, ném ra BusinessException.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="NotFoundException"></exception>
+        /// <exception cref="BusinessException"></exception>
+        public async Task<AIConfigurationDetailDto> SetDefaultAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            var configuration = await _dbContext.AIConfigurations
+                .Include(x => x.AIProvider)
+                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+            if (configuration is null)
+            {
+                throw new NotFoundException(
+                    message: $"Không tìm thấy AI configuration với Id '{id}'.",
+                    code: "AI_CONFIGURATION_NOT_FOUND");
+            }
+
+            if (configuration.IsDefault)
+            {
+                throw new BusinessException(
+                    message: $"AI configuration '{configuration.Name}' hiện đã là cấu hình mặc định.",
+                    code: "AI_CONFIGURATION_ALREADY_DEFAULT");
+            }
+
+            var currentDefaultConfiguration = await _dbContext.AIConfigurations
+                .Where(x =>
+                    x.AIProviderId == configuration.AIProviderId &&
+                    x.IsDefault &&
+                    x.Id != configuration.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (currentDefaultConfiguration is not null)
+            {
+                currentDefaultConfiguration.IsDefault = false;
+            }
+
+            configuration.IsDefault = true;
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return configuration.ToDetailDto();
+        }
+
+        /// <summary>
         /// Xóa (soft delete) một cấu hình AI dựa trên ID. Nếu cấu hình là mặc định, ném ra BusinessException.
         /// </summary>
         /// <param name="id"></param>
