@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../../components/ui/confirm-dialog'
 import { DateTimePicker } from '../../components/ui/date-time-picker'
 import { useSidebarContext } from '../../lib/sidebar-context'
 import { formatDateTime } from '../../lib/date-formatter'
-import { cn } from '../../lib/utils'
+import { StatusFilterGroup, type StatusFilter } from '../../components/filters/status-filter'
 import { fetchThumbnails, deleteAIProvider, type ThumbnailItem } from './api'
 import { SortDirection, type SortRequestDto, type RangeFilterRequestDto } from '../../types/paging.types'
 import { useQueryState, parseAsString } from 'nuqs'
@@ -22,7 +22,6 @@ export function AiProvidersPage() {
     useDataTableState(1, 10)
 
   // ── Status filter ──────────────────────────────────────────────────
-  type StatusFilter = 'all' | 'active' | 'deleted'
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
   const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>('active')
 
@@ -199,37 +198,10 @@ export function AiProvidersPage() {
     setPage(1)
   }
 
-  const filterOptions: { value: StatusFilter; label: string }[] = [
-    { value: 'all', label: 'Tất cả' },
-    { value: 'active', label: 'Đang hoạt động' },
-    { value: 'deleted', label: 'Đã xoá' },
-  ]
-
   const filterContent = (
     <div className="space-y-5">
       {/* Trạng thái */}
-      <div>
-        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
-          Trạng thái
-        </label>
-        <div className="flex rounded-md border border-slate-200 bg-slate-50 p-px">
-          {filterOptions.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setLocalStatusFilter(opt.value)}
-              className={cn(
-                'flex-1 rounded px-2 py-1 text-xs font-medium transition-all duration-150',
-                localStatusFilter === opt.value
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-600',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <StatusFilterGroup value={localStatusFilter} onChange={setLocalStatusFilter} />
 
       {/* Khoảng thời gian tạo */}
       <div>
