@@ -18,15 +18,16 @@ namespace Kolia.Thumbnail.API
                 {
                     options.JsonSerializerOptions.Converters.Add(new LocalDateTimeOffsetJsonConverter());
                 });
-            services.AddDbContext<ThumbnailDbContext>(config =>
+            services.AddSingleton<AuditEntityInterceptor>();
+
+            services.AddDbContext<ThumbnailDbContext>((sp, config) =>
             {
                 config.UseNpgsql(
                     configuration.GetConnectionString("DefaultConnection"));
 
-                config.AddInterceptors(services.BuildServiceProvider()
+                config.AddInterceptors(sp
                     .GetRequiredService<AuditEntityInterceptor>());
             });
-            services.AddSingleton<AuditEntityInterceptor>();
 
 
             services.AddScoped<IAIProviderService, AIProviderService>();

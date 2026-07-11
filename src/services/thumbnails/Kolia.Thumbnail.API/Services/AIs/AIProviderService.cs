@@ -30,10 +30,26 @@ namespace Kolia.Thumbnail.API.AIs
         /// <returns></returns>
         public async Task<PagedResponseDto<AIProviderDetailDto>> GetWithPagingAsync(
             PagedRequestDto request,
+            bool? includeDeleted = null,
+            bool? deletedOnly = null,
             CancellationToken cancellationToken = default)
         {
             IQueryable<AIProviderEntity> query = _dbContext.AIProviders
                 .AsNoTracking();
+
+            if (includeDeleted.HasValue)
+            {
+                query = query.IgnoreQueryFilters();
+
+                if (deletedOnly == true)
+                {
+                    query = query.Where(x => x.IsDeleted);
+                }
+                else if (includeDeleted == false)
+                {
+                    query = query.Where(x => !x.IsDeleted);
+                }
+            }
 
             query = query.ApplyQuery(request);
 
@@ -52,7 +68,7 @@ namespace Kolia.Thumbnail.API.AIs
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         /// <exception cref="BusinessException"></exception>
-        public async Task<AIProviderEntity?> CreateAsync(AIProviderCreateDto aIProviderCreateDto,
+        public async Task<AIProviderDetailDto> CreateAsync(AIProviderCreateDto aIProviderCreateDto,
             CancellationToken cancellationToken = default)
         {
             var existingProvider = await _dbContext.AIProviders.AsNoTracking()
@@ -66,7 +82,7 @@ namespace Kolia.Thumbnail.API.AIs
             AIProviderEntity aiProviderEntity = aIProviderCreateDto.ToEntity();
             await _dbContext.AIProviders.AddAsync(aiProviderEntity, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
-            return aiProviderEntity;
+            return aiProviderEntity.ToDetailDto();
         }
 
         /// <summary>
@@ -101,6 +117,80 @@ namespace Kolia.Thumbnail.API.AIs
             }
 
             return await query.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        }
+
+        /// <summary>
+        /// Cập nhật thông tin của một nhà cung cấp AI dựa trên ID.
+        /// Nếu nhà cung cấp AI không tồn tại, ném ra NotFoundException;
+        /// nếu tên đã tồn tại bởi nhà cung cấp khác, ném ra BusinessException.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="NotFoundException"></exception>
+        /// <exception cref="BusinessException"></exception>
+        public async Task<AIProviderDetailDto> UpdateAsync(Guid id,
+            AIProviderUpdateDto request,
+            CancellationToken cancellationToken = default)
+        {
+            // 1. Kiểm tra tồn tại
+            var existingProvider = await _dbContext.AIProviders
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+            if (existingProvider is null)
+            {
+                throw new NotFoundException(
+                    message: $"Không tìm thấy AI provider với Id '{id}'.",
+                    code: "AI_PROVIDER_NOT_FOUND");
+            }
+
+            // 2. Kiểm tra trùng tên (loại trừ chính nó)
+            var duplicateName = await _dbContext.AIProviders.AsNoTracking()
+                .AnyAsync(p => p.Name == request.Name && p.Id != id, cancellationToken);
+
+            if (duplicateName)
+            {
+                throw new BusinessException(
+                    message: $"AI provider có tên '{request.Name}' đã tồn tại.",
+                    code: "AI_PROVIDER_ALREADY_EXISTS");
+            }
+
+            // 3. Map dữ liệu từ DTO sang entity
+            request.ToEntity(existingProvider);
+
+            // 4. Lưu thay đổi
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return existingProvider.ToDetailDto();
+        }
+
+        /// <summary>
+        /// Xoá (soft delete) một nhà cung cấp AI dựa trên ID.
+        /// Interceptor AuditEntityInterceptor tự động chuyển EntityState.Deleted
+        /// thành Modified và set IsDeleted=true, DeletionTime, LastModificationTime.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="NotFoundException"></exception>
+        public async Task<AIProviderDetailDto> DeleteAsync(Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            var existingProvider = await _dbContext.AIProviders
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+            if (existingProvider is null)
+            {
+                throw new NotFoundException(
+                    message: $"Không tìm thấy AI provider với Id '{id}'.",
+                    code: "AI_PROVIDER_NOT_FOUND");
+            }
+
+            _dbContext.AIProviders.Remove(existingProvider);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return existingProvider.ToDetailDto();
         }
     }
 }

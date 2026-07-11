@@ -14,15 +14,17 @@ namespace Kolia.Thumbnail.API.AIs
         /// <returns></returns>
         Task<PagedResponseDto<AIProviderDetailDto>> GetWithPagingAsync(
             PagedRequestDto request,
+            bool? includeDeleted = null,
+            bool? deletedOnly = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Tạo một nhà cung cấp AI mới trong cơ sở dữ liệu. Nếu quá trình tạo thành công, trả về thực thể nhà cung cấp AI đã được tạo; nếu có lỗi xảy ra, trả về null.
+        /// Tạo một nhà cung cấp AI mới trong cơ sở dữ liệu.
         /// </summary>
         /// <param name="aIProviderCreateDto"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task<AIProviderEntity?> CreateAsync(AIProviderCreateDto aIProviderCreateDto,
+        Task<AIProviderDetailDto> CreateAsync(AIProviderCreateDto aIProviderCreateDto,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -38,6 +40,30 @@ namespace Kolia.Thumbnail.API.AIs
             bool asNoTracking = true,
             bool includeDeleted = false,
             bool includeDetails = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Cập nhật thông tin của một nhà cung cấp AI dựa trên ID. Nếu nhà cung cấp AI không tồn tại, ném ra NotFoundException;
+        /// nếu tên đã tồn tại bởi nhà cung cấp khác, ném ra BusinessException.
+        /// Trả về thực thể nhà cung cấp AI đã được cập nhật.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<AIProviderDetailDto> UpdateAsync(Guid id,
+            AIProviderUpdateDto request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Xoá (soft delete) một nhà cung cấp AI dựa trên ID.
+        /// Nếu nhà cung cấp AI không tồn tại, ném ra NotFoundException.
+        /// Trả về thực thể nhà cung cấp AI đã được đánh dấu xoá.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<AIProviderDetailDto> DeleteAsync(Guid id,
             CancellationToken cancellationToken = default);
     }
 }
