@@ -1,5 +1,6 @@
 import { httpClient } from '../../lib/api/http-client'
-import type { BackendPagedResponse, PagedResult } from '../../types/paging.types'
+import { buildPagedQuery } from '../../lib/api/build-paged-query'
+import type { BackendPagedResponse, PagedResult, PagedRequestParams } from '../../types/paging.types'
 import type { CreateAIProviderInput } from './schema'
 
 export interface ThumbnailItem {
@@ -26,12 +27,11 @@ function toPagedResult(payload: BackendPagedResponse<ThumbnailItem>): PagedResul
   }
 }
 
-export async function fetchThumbnails(pageNumber = 1, pageSize = 20) {
-  const query = new URLSearchParams({
-    PageNumber: String(pageNumber),
-    PageSize: String(pageSize),
-    IncludeTotalCount: 'true',
-    IncludeItems: 'true',
+export async function fetchThumbnails(params: PagedRequestParams) {
+  const query = buildPagedQuery({
+    includeTotalCount: true,
+    includeItems: true,
+    ...params,
   })
 
   const response = await httpClient.get<BackendPagedResponse<ThumbnailItem>>(`/api/v1/ai-providers/paging?${query.toString()}`)
@@ -45,3 +45,4 @@ export async function createAIProvider(data: CreateAIProviderInput): Promise<AIP
     imageUrl: data.imageUrl || null,
   })
 }
+

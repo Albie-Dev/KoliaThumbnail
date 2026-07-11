@@ -52,6 +52,8 @@ export const SidebarTrigger: React.FC<SidebarTriggerProps> = ({ children, asChil
   return <button onClick={open}>{children}</button>;
 };
 
+import * as Portal from '@radix-ui/react-portal';
+
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -66,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   side = 'right',
 }) => {
   return (
-    <>
+    <Portal.Root>
       {/* Backdrop */}
       <div
         className={cn(
@@ -87,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {children}
       </div>
-    </>
+    </Portal.Root>
   );
 };
 

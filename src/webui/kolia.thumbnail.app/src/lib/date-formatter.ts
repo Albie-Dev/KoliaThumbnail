@@ -11,7 +11,7 @@ export function formatDateTime(dateTimeString: string | null | undefined): strin
     const date = new Date(dateTimeString);
     if (isNaN(date.getTime())) return '—';
 
-    // Format to local time: DD/MM/YYYY HH:MM:SS
+    // Format to local time: DD/MM/YYYY HH:MM:SS zzz
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
@@ -19,7 +19,15 @@ export function formatDateTime(dateTimeString: string | null | undefined): strin
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
 
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    // Get timezone offset in +/-HH:mm format
+    const offsetMinutes = -date.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absoluteMinutes = Math.abs(offsetMinutes);
+    const hoursOffset = String(Math.floor(absoluteMinutes / 60)).padStart(2, '0');
+    const minsOffset = String(absoluteMinutes % 60).padStart(2, '0');
+    const timezone = `${sign}${hoursOffset}:${minsOffset}`;
+
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds} ${timezone}`;
   } catch (error) {
     return '—';
   }
