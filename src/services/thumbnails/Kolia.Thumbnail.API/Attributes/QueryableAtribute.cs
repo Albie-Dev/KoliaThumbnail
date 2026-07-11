@@ -18,6 +18,14 @@ namespace Kolia.Thumbnail.API.Attributes
         public bool Filterable { get; init; } = false;
 
         /// <summary>
+        /// Cho phép lọc theo khoảng giá trị (From/To) với toán tử <c>&gt;=</c> và <c>&lt;=</c>.
+        /// Chỉ có hiệu lực với các kiểu số và ngày tháng hỗ trợ toán tử so sánh
+        /// (ví dụ: <c>DateTime</c>, <c>int</c>, <c>long</c>, <c>decimal</c>,...).
+        /// Kiểu không hỗ trợ so sánh (như <c>string</c>, <c>Guid</c>) sẽ bị bỏ qua dù flag này là <c>true</c>.
+        /// </summary>
+        public bool RangeFilterable { get; init; } = false;
+
+        /// <summary>
         /// Cho phép sắp xếp theo thuộc tính.
         /// </summary>
         public bool Sortable { get; init; } = false;

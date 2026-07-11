@@ -24,5 +24,20 @@ namespace Kolia.Thumbnail.API.AIs
         /// <returns></returns>
         Task<AIProviderEntity?> CreateAsync(AIProviderCreateDto aIProviderCreateDto,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Lấy thông tin chi tiết của một nhà cung cấp AI dựa trên ID. Nếu nhà cung cấp AI tồn tại, trả về thực thể nhà cung cấp AI; nếu không tồn tại, trả về null.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="asNoTracking"></param>
+        /// <param name="includeDeleted"></param>
+        /// <param name="includeDetails"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<AIProviderEntity?> GetByIdAsync(Guid id,
+            bool asNoTracking = true,
+            bool includeDeleted = false,
+            bool includeDetails = false,
+            CancellationToken cancellationToken = default);
     }
 }

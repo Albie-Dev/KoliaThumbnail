@@ -16,6 +16,7 @@ namespace Kolia.Thumbnail.API.Data.Entities
         /// </summary>
         [Queryable(
             Filterable = true,
+            RangeFilterable = true,
             Sortable = true
         )]
         public DateTimeOffset CreationTime { get; private set; } = DateTimeOffset.UtcNow;
@@ -24,6 +25,7 @@ namespace Kolia.Thumbnail.API.Data.Entities
         /// </summary>
         [Queryable(
             Filterable = true,
+            RangeFilterable = true,
             Sortable = true
         )]
         public DateTimeOffset? LastModificationTime { get; set; } = null;
@@ -39,6 +41,7 @@ namespace Kolia.Thumbnail.API.Data.Entities
         /// </summary>
         [Queryable(
             Filterable = true,
+            RangeFilterable = true,
             Sortable = true
         )]
         public DateTimeOffset? DeletionTime { get; set; } = null;

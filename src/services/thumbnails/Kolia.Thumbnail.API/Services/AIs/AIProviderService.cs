@@ -22,7 +22,8 @@ namespace Kolia.Thumbnail.API.AIs
         }
 
         /// <summary>
-        /// Lấy danh sách các nhà cung cấp AI với phân trang dựa trên yêu cầu được cung cấp. Trả về một đối tượng PagedResponseDto chứa danh sách các nhà cung cấp AI và thông tin phân trang.
+        /// Lấy danh sách các nhà cung cấp AI với phân trang dựa trên yêu cầu được cung cấp.
+        /// Trả về một đối tượng PagedResponseDto chứa danh sách các nhà cung cấp AI và thông tin phân trang.
         /// </summary>
         /// <param name="request"></param>
         /// <param name="cancellationToken"></param>
@@ -43,7 +44,9 @@ namespace Kolia.Thumbnail.API.AIs
         }
 
         /// <summary>
-        /// Tạo một nhà cung cấp AI mới trong cơ sở dữ liệu. Nếu quá trình tạo thành công, trả về thực thể nhà cung cấp AI đã được tạo; nếu có lỗi xảy ra, ném ra BusinessException với thông tin chi tiết về lỗi.
+        /// Tạo một nhà cung cấp AI mới trong cơ sở dữ liệu.
+        /// Nếu quá trình tạo thành công, trả về thực thể nhà cung cấp AI đã được tạo;
+        /// nếu có lỗi xảy ra, ném ra BusinessException với thông tin chi tiết về lỗi.
         /// </summary>
         /// <param name="aIProviderCreateDto"></param>
         /// <param name="cancellationToken"></param>
@@ -64,6 +67,40 @@ namespace Kolia.Thumbnail.API.AIs
             await _dbContext.AIProviders.AddAsync(aiProviderEntity, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
             return aiProviderEntity;
+        }
+
+        /// <summary>
+        /// Lấy thông tin chi tiết của một nhà cung cấp AI dựa trên ID.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="asNoTracking"></param>
+        /// <param name="includeDetails"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<AIProviderEntity?> GetByIdAsync(Guid id,
+            bool asNoTracking = true,
+            bool includeDetails = false,
+            bool includeDeleted = false,
+            CancellationToken cancellationToken = default)
+        {
+            IQueryable<AIProviderEntity> query = _dbContext.AIProviders;
+
+            if (asNoTracking)
+            {
+                query = query.AsNoTracking();
+            }
+
+            if (includeDetails)
+            {
+                query = query.Include(p => p.Configurations);
+            }
+
+            if (includeDeleted)
+            {
+                query = query.IgnoreQueryFilters();
+            }
+
+            return await query.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         }
     }
 }

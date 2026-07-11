@@ -1,6 +1,7 @@
 using Kolia.Thumbnail.API.AIs;
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Interceptors;
+using Kolia.Thumbnail.API.Extensions;
 using Kolia.Thumbnail.API.Middlewares;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,11 @@ namespace Kolia.Thumbnail.API
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(new LocalDateTimeOffsetJsonConverter());
+                });
             services.AddDbContext<ThumbnailDbContext>(config =>
             {
                 config.UseNpgsql(

@@ -40,6 +40,12 @@ namespace Kolia.Thumbnail.API.Models.Commons
         public List<FilterRequestDto> Filters { get; set; } = [];
 
         /// <summary>
+        /// Danh sách điều kiện lọc theo khoảng giá trị (From/To).
+        /// Hỗ trợ partial range: chỉ truyền From hoặc To.
+        /// </summary>
+        public List<RangeFilterRequestDto> RangeFilters { get; set; } = [];
+
+        /// <summary>
         /// Danh sách điều kiện sắp xếp.
         /// </summary>
         public List<SortRequestDto> Sorts { get; set; } = [];
@@ -66,6 +72,40 @@ namespace Kolia.Thumbnail.API.Models.Commons
         /// Tùy theo từng toán tử sẽ sử dụng số lượng phần tử khác nhau.
         /// </summary>
         public List<JsonElement> Values { get; set; } = [];
+
+        /// <summary>
+        /// Toán tử logic với điều kiện phía trước.
+        /// </summary>
+        public CLogicalOperator LogicalOperator { get; set; } = CLogicalOperator.And;
+    }
+
+    /// <summary>
+    /// DTO đại diện cho một điều kiện lọc theo khoảng giá trị.
+    /// Hỗ trợ partial range: chỉ cần truyền <see cref="From"/> hoặc <see cref="To"/>.
+    /// Áp dụng cho các kiểu số và ngày tháng: <c>DateTime</c>, <c>DateTimeOffset</c>,
+    /// <c>int</c>, <c>long</c>, <c>decimal</c>, <c>double</c>, <c>float</c>, <c>short</c>, <c>byte</c>, v.v.
+    /// </summary>
+    public class RangeFilterRequestDto
+    {
+        /// <summary>
+        /// Tên thuộc tính cần lọc.
+        /// Ví dụ: CreationTime, Price, Quantity,...
+        /// </summary>
+        public string Field { get; set; } = null!;
+
+        /// <summary>
+        /// Giá trị bắt đầu của khoảng (<c>&gt;=</c>).
+        /// Khi <c>null</c> hoặc không truyền thì không giới hạn cận dưới.
+        /// Nhận chuỗi từ query string (ISO 8601, số, v.v.) và được parse trong QueryableExtensions.
+        /// </summary>
+        public string? From { get; set; }
+
+        /// <summary>
+        /// Giá trị kết thúc của khoảng (<c>&lt;=</c>).
+        /// Khi <c>null</c> hoặc không truyền thì không giới hạn cận trên.
+        /// Nhận chuỗi từ query string (ISO 8601, số, v.v.) và được parse trong QueryableExtensions.
+        /// </summary>
+        public string? To { get; set; }
 
         /// <summary>
         /// Toán tử logic với điều kiện phía trước.

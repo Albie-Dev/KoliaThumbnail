@@ -32,9 +32,50 @@ namespace Kolia.Thumbnail.API.Extensions
             public required IReadOnlyDictionary<string, QueryPropertyMetadata> FilterableProperties { get; init; }
 
             public required IReadOnlyDictionary<string, QueryPropertyMetadata> SortableProperties { get; init; }
+
+            /// <summary>
+            /// Các property được phép filter theo khoảng giá trị (From/To).
+            /// Chỉ chứa các property có <see cref="QueryableAttribute.RangeFilterable"/> = <c>true</c>
+            /// Và kiểu thuộc <see cref="_rangeComparableTypes"/>.
+            /// </summary>
+            public required IReadOnlyDictionary<string, QueryPropertyMetadata> RangeFilterableProperties { get; init; }
         }
 
         private static readonly ConcurrentDictionary<Type, QueryEntityMetadata> _metadataCache = new();
+
+        /// <summary>
+        /// Tập hợp các kiểu dữ liệu hỗ trợ toán tử so sánh (<c>&gt;=</c>, <c>&lt;=</c>).
+        /// Đây là nguồn thật duy nhất cho việc detect range-comparable type —
+        /// không hard-code ở từng call-site.
+        /// Muốn bổ sung kiểu mới chỉ cần thêm vào set này.
+        /// </summary>
+        private static readonly HashSet<Type> _rangeComparableTypes =
+        [
+            typeof(byte),
+            typeof(sbyte),
+            typeof(short),
+            typeof(ushort),
+            typeof(int),
+            typeof(uint),
+            typeof(long),
+            typeof(ulong),
+            typeof(float),
+            typeof(double),
+            typeof(decimal),
+            typeof(DateTime),
+            typeof(DateTimeOffset),
+            typeof(TimeSpan),
+            typeof(DateOnly),
+            typeof(TimeOnly)
+        ];
+
+        /// <summary>
+        /// Kiểm tra một kiểu có hỗ trợ range filter không (dựa trên <see cref="_rangeComparableTypes"/>).
+        /// Tự động unwrap <c>Nullable&lt;T&gt;</c> trước khi kiểm tra.
+        /// </summary>
+        private static bool IsRangeComparableType(Type type) =>
+            _rangeComparableTypes.Contains(
+                Nullable.GetUnderlyingType(type) ?? type);
 
         private static QueryEntityMetadata GetMetadata<TEntity>()
         {
@@ -82,6 +123,12 @@ namespace Kolia.Thumbnail.API.Extensions
 
                 SortableProperties = properties
                     .Where(x => x.Queryable.Sortable)
+                    .ToDictionary(
+                        x => x.Name,
+                        StringComparer.OrdinalIgnoreCase),
+
+                RangeFilterableProperties = properties
+                    .Where(x => x.Queryable.RangeFilterable && IsRangeComparableType(x.PropertyType))
                     .ToDictionary(
                         x => x.Name,
                         StringComparer.OrdinalIgnoreCase)
@@ -521,13 +568,193 @@ namespace Kolia.Thumbnail.API.Extensions
                 less);
         }
 
+        /// <summary>
+        /// Áp dụng các điều kiện lọc theo khoảng giá trị (<c>&gt;=</c> / <c>&lt;=</c>) vào query.
+        /// Hỗ trợ partial range: chỉ cần truyền <c>From</c> hoặc <c>To</c>.
+        /// Property phải được đánh dấu <see cref="QueryableAttribute.RangeFilterable"/> = <c>true</c>
+        /// và kiểu phải thuộc các kiểu so sánh được hỗ trợ (<see cref="_rangeComparableTypes"/>).
+        /// </summary>
+        public static IQueryable<TEntity> ApplyRangeFilters<TEntity>(
+            this IQueryable<TEntity> query,
+            IReadOnlyCollection<RangeFilterRequestDto>? rangeFilters)
+        {
+            if (rangeFilters is null || rangeFilters.Count == 0)
+            {
+                return query;
+            }
+
+            QueryEntityMetadata metadata = GetMetadata<TEntity>();
+
+            ParameterExpression parameter = Expression.Parameter(
+                typeof(TEntity),
+                "x");
+
+            Expression? finalExpression = null;
+
+            foreach (RangeFilterRequestDto filter in rangeFilters)
+            {
+                if (!metadata.RangeFilterableProperties.TryGetValue(
+                        filter.Field,
+                        out QueryPropertyMetadata? property))
+                {
+                    continue;
+                }
+
+                Expression? expression = BuildRangeExpression(
+                    parameter,
+                    property,
+                    filter);
+
+                if (expression is null)
+                {
+                    continue;
+                }
+
+                finalExpression = finalExpression is null
+                    ? expression
+                    : filter.LogicalOperator == CLogicalOperator.Or
+                        ? Expression.OrElse(finalExpression, expression)
+                        : Expression.AndAlso(finalExpression, expression);
+            }
+
+            if (finalExpression is null)
+            {
+                return query;
+            }
+
+            Expression<Func<TEntity, bool>> lambda =
+                Expression.Lambda<Func<TEntity, bool>>(
+                    finalExpression,
+                    parameter);
+
+            return query.Where(lambda);
+        }
+
+        /// <summary>
+        /// Xây dựng expression so sánh khoảng cho một property.
+        /// Hỗ trợ đầy đủ 4 trường hợp:
+        /// <list type="bullet">
+        /// <item><c>From</c> + <c>To</c>: <c>member &gt;= from AND member &lt;= to</c></item>
+        /// <item><c>From</c> only: <c>member &gt;= from</c></item>
+        /// <item><c>To</c> only: <c>member &lt;= to</c></item>
+        /// <item>Cả hai null: trả về <c>null</c> (bỏ qua filter này)</item>
+        /// </list>
+        /// </summary>
+        private static Expression? BuildRangeExpression(
+            ParameterExpression parameter,
+            QueryPropertyMetadata property,
+            RangeFilterRequestDto filter)
+        {
+            MemberExpression member = Expression.Property(
+                parameter,
+                property.Property);
+
+            Type type = property.PropertyType;
+
+            Expression? lower = BuildBoundExpression(
+                member,
+                type,
+                filter.From,
+                ExpressionType.GreaterThanOrEqual);
+
+            Expression? upper = BuildBoundExpression(
+                member,
+                type,
+                filter.To,
+                ExpressionType.LessThanOrEqual);
+
+            return (lower, upper) switch
+            {
+                (not null, not null) => Expression.AndAlso(lower, upper),
+                (not null, null)     => lower,
+                (null, not null)     => upper,
+                _                    => null
+            };
+        }
+
+        /// <summary>
+        /// Xây dựng một cạnh của range expression (cận dưới hoặc cận trên).
+        /// Trả về <c>null</c> khi giá trị không được truyền hoặc null/rỗng.
+        /// Nhận <c>string?</c> vì <see cref="RangeFilterRequestDto.From"/> và <see cref="RangeFilterRequestDto.To"/>
+        /// được bind từ query string qua <c>[FromQuery]</c>.
+        /// </summary>
+        private static Expression? BuildBoundExpression(
+            MemberExpression member,
+            Type type,
+            string? bound,
+            ExpressionType comparisonType)
+        {
+            if (string.IsNullOrWhiteSpace(bound))
+            {
+                return null;
+            }
+
+            object? converted = null;
+
+            if (type == typeof(DateTimeOffset))
+            {
+                if (DateTimeOffset.TryParse(bound, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto))
+                {
+                    converted = dto;
+                }
+                else if (DateTimeOffset.TryParse(bound, out var dto2))
+                {
+                    converted = dto2;
+                }
+            }
+            else if (type == typeof(DateTime))
+            {
+                if (DateTime.TryParse(bound, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
+                {
+                    converted = dt;
+                }
+                else if (DateTime.TryParse(bound, out var dt2))
+                {
+                    converted = dt2;
+                }
+            }
+
+            if (converted is null)
+            {
+                try
+                {
+                    converted = ConvertValue(bound, type);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            if (converted is null)
+            {
+                return null;
+            }
+
+            return Expression.MakeBinary(
+                comparisonType,
+                member,
+                Expression.Constant(converted, member.Type));
+        }
+
         public static IQueryable<TEntity> ApplySorting<TEntity>(
             this IQueryable<TEntity> query,
             IReadOnlyCollection<SortRequestDto>? sorts)
         {
+            var (result, _) = ApplySortingCore(query, sorts);
+            return result;
+        }
+
+        /// <summary>
+        /// Áp dụng sort và trả về flag cho biết có sort nào được apply không.
+        /// </summary>
+        private static (IQueryable<TEntity> Query, bool WasSorted) ApplySortingCore<TEntity>(
+            IQueryable<TEntity> query,
+            IReadOnlyCollection<SortRequestDto>? sorts)
+        {
             if (sorts is null || sorts.Count == 0)
             {
-                return query;
+                return (query, false);
             }
 
             QueryEntityMetadata metadata = GetMetadata<TEntity>();
@@ -552,7 +779,40 @@ namespace Kolia.Thumbnail.API.Extensions
                 firstSort = false;
             }
 
-            return query;
+            // firstSort vẫn true có nghĩa không có field hợp lệ nào được apply
+            return (query, !firstSort);
+        }
+
+        /// <summary>
+        /// Áp dụng sort mặc định khi không có sort nào được truyền vào (hoặc tất cả field không hợp lệ).
+        /// Ưu tiên sort theo <c>CreationTime DESC</c>; nếu entity không có thì dùng sortable property đầu tiên tìm được.
+        /// Giúp tránh EF Core warning <i>Skip/Take without OrderBy</i>.
+        /// </summary>
+        private static IQueryable<TEntity> ApplyDefaultSorting<TEntity>(
+            IQueryable<TEntity> query)
+        {
+            QueryEntityMetadata metadata = GetMetadata<TEntity>();
+
+            if (metadata.SortableProperties.Count == 0)
+            {
+                return query;
+            }
+
+            // Ưu tiên CreationTime DESC (field chuẩn trên BaseEntity)
+            if (metadata.SortableProperties.TryGetValue(
+                    "CreationTime",
+                    out QueryPropertyMetadata? creationTimeProp))
+            {
+                return ApplyOrder(query, creationTimeProp.Property, CSortDirection.Desc, true);
+            }
+
+            // Fallback: lấy sortable property đầu tiên theo thứ tự alphabetical
+            QueryPropertyMetadata fallbackProp = metadata.SortableProperties
+                .OrderBy(x => x.Key)
+                .First()
+                .Value;
+
+            return ApplyOrder(query, fallbackProp.Property, CSortDirection.Asc, true);
         }
 
         private static IQueryable<TEntity> ApplyOrder<TEntity>(
@@ -639,10 +899,15 @@ namespace Kolia.Thumbnail.API.Extensions
                 query = query.ApplyFilters(request.Filters);
             }
 
-            if (request.Sorts is { Count: > 0 })
+            if (request.RangeFilters is { Count: > 0 })
             {
-                query = query.ApplySorting(request.Sorts);
+                query = query.ApplyRangeFilters(request.RangeFilters);
             }
+
+            // Apply sorting; nếu không có sort hợp lệ nào được apply thì dùng default sort
+            // để tránh EF Core warning: "Skip/Take without OrderBy".
+            var (sortedQuery, wasSorted) = ApplySortingCore(query, request.Sorts);
+            query = wasSorted ? sortedQuery : ApplyDefaultSorting(query);
 
             if (request.PageSize > 0)
             {
