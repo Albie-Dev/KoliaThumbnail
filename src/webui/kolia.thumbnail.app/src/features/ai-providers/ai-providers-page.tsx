@@ -73,8 +73,8 @@ export function AiProvidersPage() {
     let field = 'Name'
     if (sortBy === 'name') field = 'Name'
     if (sortBy === 'shortName') field = 'ShortName'
-    if (sortBy === 'created') field = 'CreationTime'
-    if (sortBy === 'lastModified') field = 'LastModificationTime'
+    if (sortBy === 'creationTime') field = 'CreationTime'
+    if (sortBy === 'lastModificationTime') field = 'LastModificationTime'
 
     return [
       {
@@ -142,13 +142,13 @@ export function AiProvidersPage() {
           ),
       },
       {
-        key: 'created',
+        key: 'creationTime',
         header: 'Tạo lúc',
         sortable: true,
         render: (item: ThumbnailItem) => formatDateTime(item.creationTime),
       },
       {
-        key: 'lastModified',
+        key: 'lastModificationTime',
         header: 'Cập nhật lúc',
         sortable: true,
         render: (item: ThumbnailItem) => formatDateTime(item.lastModificationTime),
