@@ -161,22 +161,23 @@ export function AiProvidersPage() {
             <span className="text-xs text-slate-400 italic">Đã xoá</span>
           ) : (
             <div className="flex items-center gap-0.5">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => open({ type: 'edit-ai-provider', provider: item })}
-                className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                 title="Chỉnh sửa"
               >
                 <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setDeleteTarget(item)}
-                className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                 title="Xoá"
+                className="hover:bg-red-50 hover:text-red-600"
               >
                 <Trash2 className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           ),
       },
