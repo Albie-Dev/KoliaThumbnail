@@ -31,6 +31,7 @@ namespace Kolia.Thumbnail.API
 
 
             services.AddScoped<IAIProviderService, AIProviderService>();
+            services.AddScoped<IAIConfigurationService, AIConfigurationService>();
 
             return services;
         }
