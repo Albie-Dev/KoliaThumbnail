@@ -4,6 +4,8 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { AdminMenuGroup, AdminMenuItem } from '../../types/admin-layout.types'
 import { adminMenuGroups } from '../../lib/admin-menu'
+import koliaIcon from '../../assets/logo/kolia-icon-only.svg'
+import koliaLogo from '../../assets/logo/kolia-primary-logo.svg'
 
 // ── Props ──────────────────────────────────────────────
 interface AdminSidebarProps {
@@ -190,11 +192,10 @@ function MenuGroup({
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="flex h-14 items-center gap-3 border-b border-slate-200 px-4">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white">
-        K
-      </div>
-      {!collapsed && (
-        <span className="text-base font-bold text-slate-900">KoliaEngine</span>
+      {collapsed ? (
+        <img src={koliaIcon} alt="Kolia" className="h-8 w-8" />
+      ) : (
+        <img src={koliaLogo} alt="Kolia Thumbnail Engine" className="h-8" />
       )}
     </div>
   )

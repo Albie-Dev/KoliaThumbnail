@@ -1,4 +1,5 @@
 import { cn } from '../../lib/utils'
+import koliaIcon from '../../assets/logo/kolia-icon-only.svg'
 
 // ── Props ──────────────────────────────────────────────
 interface AdminFooterProps {
@@ -17,7 +18,10 @@ export function AdminFooter({ sidebarCollapsed }: AdminFooterProps) {
       )}
     >
       <div className="flex items-center justify-between text-xs text-slate-400">
-        <p>© {year} KoliaEngine. All rights reserved.</p>
+        <div className="flex items-center gap-2">
+          <img src={koliaIcon} alt="Kolia" className="h-4 w-4 opacity-60" />
+          <p>© {year} KoliaEngine. All rights reserved.</p>
+        </div>
         <div className="flex items-center gap-4">
           <a href="#" className="hover:text-slate-600 transition-colors">
             Điều khoản
