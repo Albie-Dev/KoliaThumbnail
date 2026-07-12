@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
@@ -7,6 +8,16 @@ import { SidebarProvider } from './lib/sidebar-context'
 import { AppSidebar } from './components/app-sidebar'
 import { AdminLayout } from './components/layout/admin-layout'
 import { flattenMenuItems, adminMenuGroups } from './lib/admin-menu'
+
+// Fallback hiển thị trong lúc chunk của trang (được tách nhờ React.lazy
+// trong admin-menu.tsx) đang được tải xuống.
+function RouteLoadingFallback() {
+  return (
+    <div className="flex h-full items-center justify-center text-slate-400">
+      <p className="text-sm">Đang tải…</p>
+    </div>
+  )
+}
 
 // ── Generate routes from menu configuration ───────────
 const flatMenuItems = flattenMenuItems(adminMenuGroups)
@@ -20,35 +31,37 @@ function App() {
     <BrowserRouter>
       <SidebarProvider>
         <QueryClientProvider client={queryClient}>
-          <Routes>
-            {/* Admin Layout */}
-            <Route path="/" element={<AdminLayout />}>
-              {/* Redirect root to dashboard */}
-              <Route index element={<Navigate to="/dashboard" replace />} />
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <Routes>
+              {/* Admin Layout */}
+              <Route path="/" element={<AdminLayout />}>
+                {/* Redirect root to dashboard */}
+                <Route index element={<Navigate to="/dashboard" replace />} />
 
-              {/* Dynamic routes from menu config */}
-              {pageRoutes.map(
-                (route) =>
-                  route.element && (
-                    <Route
-                      key={route.path}
-                      path={route.path.replace(/^\//, '')}
-                      element={route.element}
-                    />
-                  ),
-              )}
+                {/* Dynamic routes from menu config */}
+                {pageRoutes.map(
+                  (route) =>
+                    route.element && (
+                      <Route
+                        key={route.path}
+                        path={route.path.replace(/^\//, '')}
+                        element={route.element}
+                      />
+                    ),
+                )}
 
-              {/* Catch-all */}
-              <Route
-                path="*"
-                element={
-                  <div className="flex h-full items-center justify-center text-slate-400">
-                    <p className="text-lg">404 — Trang không tồn tại</p>
-                  </div>
-                }
-              />
-            </Route>
-          </Routes>
+                {/* Catch-all */}
+                <Route
+                  path="*"
+                  element={
+                    <div className="flex h-full items-center justify-center text-slate-400">
+                      <p className="text-lg">404 — Trang không tồn tại</p>
+                    </div>
+                  }
+                />
+              </Route>
+            </Routes>
+          </Suspense>
 
           <Toaster position="top-right" richColors />
           <AppSidebar />

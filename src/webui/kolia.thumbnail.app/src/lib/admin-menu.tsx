@@ -16,10 +16,22 @@ import {
 import type { AdminMenuGroup, AdminMenuItem } from '../types/admin-layout.types'
 
 // ── Pages ─────────────────────────────────────────────
+// Dùng React.lazy() để mỗi trang được tách thành 1 chunk riêng (code-splitting
+// theo route). Trình duyệt chỉ tải code của trang khi người dùng thực sự
+// điều hướng tới route đó, thay vì tải toàn bộ mọi trang ngay từ đầu.
+// Khi thêm trang mới vào menu, hãy khai báo theo đúng mẫu lazy() bên dưới
+// thay vì import tĩnh trực tiếp.
 import { useLocation } from 'react-router-dom'
-import type { ComponentType } from 'react'
-import { AiProvidersPage } from '../features/ai-providers/ai-providers-page'
-import { AiConfigurationsPage } from '../features/ai-configurations/ai-configuration-page'
+import { lazy, type ComponentType } from 'react'
+
+const AiProvidersPage = lazy(() =>
+  import('../features/ai-providers/ai-providers-page').then((m) => ({ default: m.AiProvidersPage })),
+)
+const AiConfigurationsPage = lazy(() =>
+  import('../features/ai-configurations/ai-configuration-page').then((m) => ({
+    default: m.AiConfigurationsPage,
+  })),
+)
 
 const PlaceholderPage: ComponentType = () => {
   const path = useLocation().pathname
