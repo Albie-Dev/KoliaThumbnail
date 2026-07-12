@@ -2,7 +2,7 @@ import type { Ref } from 'react'
 import { registerSidebarEntry } from '../../lib/sidebar-registry'
 import { CreateAIConfigurationForm, type CreateAIConfigurationFormHandle } from './create-ai-configuration-form'
 import { EditAIConfigurationForm, type EditAIConfigurationFormHandle } from './edit-ai-configuration-form'
-import type { AIConfigurationBaseDto } from './api'
+import type { AIConfigurationDetailDto } from './api'
 
 // ── Tạo mới cấu hình ──────────────────────────────────────────────────
 registerSidebarEntry<{ type: 'create-ai-configuration' }>('create-ai-configuration', {
@@ -17,7 +17,7 @@ registerSidebarEntry<{ type: 'create-ai-configuration' }>('create-ai-configurati
 })
 
 // ── Chỉnh sửa cấu hình ────────────────────────────────────────────────
-registerSidebarEntry<{ type: 'edit-ai-configuration'; configuration: AIConfigurationBaseDto }>(
+registerSidebarEntry<{ type: 'edit-ai-configuration'; configuration: AIConfigurationDetailDto }>(
   'edit-ai-configuration',
   {
     title: (content) => `Chỉnh sửa: ${content.configuration.name}`,

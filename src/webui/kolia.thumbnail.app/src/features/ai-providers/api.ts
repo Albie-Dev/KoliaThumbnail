@@ -15,6 +15,7 @@ export interface AIProviderBaseDto {
   id: string
   name: string
   shortName: string
+  providerType: number
   imageUrl?: string | null
   baseUrl: string
   endpoints: AIProviderEndpointDto[]
@@ -54,9 +55,9 @@ export async function createAIProvider(data: CreateAIProviderInput): Promise<AIP
   return httpClient.post<AIProviderDetailDto>('/api/v1/ai-providers', {
     name: data.name,
     shortName: data.shortName,
+    providerType: data.providerType,
     imageUrl: data.imageUrl || null,
     baseUrl: data.baseUrl,
-    endpoints: data.endpoints,
   })
 }
 
@@ -68,9 +69,9 @@ export async function updateAIProvider(data: UpdateAIProviderInput): Promise<AIP
   return httpClient.put<AIProviderDetailDto>(`/api/v1/ai-providers/${data.id}`, {
     name: data.name,
     shortName: data.shortName,
+    providerType: data.providerType,
     imageUrl: data.imageUrl || null,
     baseUrl: data.baseUrl,
-    endpoints: data.endpoints,
   })
 }
 

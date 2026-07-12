@@ -7,7 +7,8 @@ import type { z } from 'zod'
 
 import {
     updateAIConfiguration,
-    type AIConfigurationBaseDto,
+    type AIConfigurationDetailDto,
+    type UpdateAIConfigurationInput,
 } from './api'
 import { updateAIConfigurationSchema } from './schema'
 
@@ -24,7 +25,7 @@ import { Checkbox } from '../../components/ui/checkbox';
 type FormValues = z.input<typeof updateAIConfigurationSchema>;
 
 interface EditAIConfigurationFormProps {
-    configuration: AIConfigurationBaseDto
+    configuration: AIConfigurationDetailDto
     onClose?: () => void
 }
 
@@ -55,10 +56,7 @@ export const EditAIConfigurationForm =
                 name: configuration.name,
                 description:
                     configuration.description ?? '',
-                apiKey: configuration.apiKey,
-                baseUrl: configuration.baseUrl,
-                endpoint:
-                    configuration.endpoint ?? '',
+                apiKey: '',
                 apiVersion:
                     configuration.apiVersion ?? '',
                 timeoutSeconds:
@@ -82,9 +80,7 @@ export const EditAIConfigurationForm =
             reset({
                 name: configuration.name,
                 description: configuration.description ?? '',
-                apiKey: configuration.apiKey,
-                baseUrl: configuration.baseUrl,
-                endpoint: configuration.endpoint ?? '',
+                apiKey: '',
                 apiVersion: configuration.apiVersion ?? '',
                 timeoutSeconds: configuration.timeoutSeconds,
                 retryCount: configuration.retryCount,
@@ -117,41 +113,30 @@ export const EditAIConfigurationForm =
                             )
                         },
                     )
-
-                    toast.warning(
-                        'Vui lòng kiểm tra lại thông tin đã nhập.',
-                    )
                 }
             },
 
             onSuccess: () => {
-                toast.success(
-                    'Cập nhật cấu hình AI thành công!',
-                )
-
-                onClose?.()
-
-                reset()
-
                 queryClient.invalidateQueries({
                     queryKey: ['ai-configurations'],
                 })
             },
+
         })
 
         const onSubmit = async (data: FormValues) => {
-            await toast.promise(
-                mutateAsync({
+            try {
+                await mutateAsync({
                     id: configuration.id,
                     ...data,
-                }),
-                {
-                    loading: 'Đang cập nhật...',
-                    success: 'Cập nhật thành công!',
-                    error: (error: Error) =>
-                        error.message || 'Có lỗi xảy ra',
-                },
-            )
+                    apiKey: data.apiKey ?? '',
+                } as UpdateAIConfigurationInput)
+                toast.success('Cập nhật cấu hình AI thành công!')
+                onClose?.()
+                reset()
+            } catch {
+                // Global mutation cache đã hiển thị toast.error cho business error
+            }
         };
 
         useImperativeHandle(ref, () => ({
@@ -198,45 +183,17 @@ export const EditAIConfigurationForm =
                         API Key
                     </FormLabel>
 
-                    <Input
-                        id="edit-apiKey"
-                        {...register('apiKey')}
-                    />
+                    <div className="space-y-1.5">
+                        <p className="text-xs text-slate-400 font-mono">{configuration.apiKeyMasked}</p>
+                        <Input
+                            id="edit-apiKey"
+                            placeholder="Để trống nếu không đổi key"
+                            {...register('apiKey')}
+                        />
+                    </div>
 
                     <FormField
                         error={errors.apiKey?.message}
-                    />
-                </FormGroup>
-
-                <FormGroup>
-                    <FormLabel htmlFor="edit-baseUrl">
-                        Base URL
-                    </FormLabel>
-
-                    <Input
-                        id="edit-baseUrl"
-                        {...register('baseUrl')}
-                    />
-
-                    <FormField
-                        error={errors.baseUrl?.message}
-                    />
-                </FormGroup>
-
-                <FormGroup>
-                    <FormLabel htmlFor="edit-endpoint">
-                        Endpoint
-                    </FormLabel>
-
-                    <Input
-                        id="edit-endpoint"
-                        {...register('endpoint')}
-                    />
-
-                    <FormField
-                        error={
-                            errors.endpoint?.message
-                        }
                     />
                 </FormGroup>
 

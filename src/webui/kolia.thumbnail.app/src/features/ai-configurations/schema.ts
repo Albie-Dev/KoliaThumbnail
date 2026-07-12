@@ -17,17 +17,6 @@ export const createAIConfigurationSchema = z.object({
         .trim()
         .min(1, 'API Key không được để trống'),
 
-    baseUrl: z
-        .string()
-        .trim()
-        .min(1, 'Base URL không được để trống')
-        .url('Base URL không hợp lệ'),
-
-    endpoint: z
-        .string()
-        .optional()
-        .nullable(),
-
     apiVersion: z
         .string()
         .optional()
@@ -68,7 +57,9 @@ export type CreateAIConfigurationInput = z.infer<
     typeof createAIConfigurationSchema
 >
 
-export const updateAIConfigurationSchema = createAIConfigurationSchema
+export const updateAIConfigurationSchema = createAIConfigurationSchema.extend({
+    apiKey: z.string().trim().optional().default(''),
+})
 
 export type UpdateAIConfigurationInput = z.infer<
     typeof updateAIConfigurationSchema

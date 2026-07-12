@@ -7,13 +7,15 @@ import { useDataTableState } from '../../components/data-table/use-data-table-st
 import { Button } from '../../components/ui/button'
 import { ConfirmDialog } from '../../components/ui/confirm-dialog'
 import { DateTimePicker } from '../../components/ui/date-time-picker'
+import { SelectDropdown } from '../../components/selects/select-dropdown'
 import { useSidebarContext } from '../../lib/sidebar-context'
 import { formatDateTime } from '../../lib/date-formatter'
 import { StatusFilterGroup, type StatusFilter } from '../../components/filters/status-filter'
 import { getAIProvidersWithPaging, deleteAIProvider, type AIProviderBaseDto } from './api'
-import { SortDirection, type SortRequestDto, type RangeFilterRequestDto } from '../../types/paging.types'
+import { SortDirection, FilterOperator, type SortRequestDto, type RangeFilterRequestDto } from '../../types/paging.types'
 import { useQueryState, parseAsString } from 'nuqs'
 import { ApiError } from '../../lib/api/api-error'
+import { AI_PROVIDER_TYPE_OPTIONS, CAIProviderType, getAIProviderTypeLabel, getAIProviderTypeBadgeClass } from './ai-provider-type'
 
 export function AiProvidersPage() {
   const { open } = useSidebarContext()
@@ -54,6 +56,10 @@ export function AiProvidersPage() {
   const [filterCreationFrom, setFilterCreationFrom] = useState(appliedCreationFrom)
   const [filterCreationTo, setFilterCreationTo] = useState(appliedCreationTo)
 
+  // ── ProviderType filter ──────────────────────────────────────────────
+  const [appliedProviderType, setAppliedProviderType] = useQueryState('providerType', parseAsString.withDefault(''))
+  const [filterProviderType, setFilterProviderType] = useState(appliedProviderType)
+
   // ── Sync local status filter when applied status changes (e.g. sidebar opens) ──
   useEffect(() => {
     setLocalStatusFilter(statusFilter)
@@ -67,6 +73,10 @@ export function AiProvidersPage() {
   useEffect(() => {
     setFilterCreationTo(appliedCreationTo)
   }, [appliedCreationTo])
+
+  useEffect(() => {
+    setFilterProviderType(appliedProviderType)
+  }, [appliedProviderType])
 
   const backendSorts = useMemo<SortRequestDto[]>(() => {
     if (!sortBy || !sortOrder) return []
@@ -112,6 +122,7 @@ export function AiProvidersPage() {
       pageSize,
       search,
       statusFilter,
+      appliedProviderType,
       backendSorts,
       backendRangeFilters,
     ],
@@ -122,6 +133,9 @@ export function AiProvidersPage() {
         searchText: search || undefined,
         sorts: backendSorts,
         rangeFilters: backendRangeFilters,
+        filters: appliedProviderType
+          ? [{ field: 'ProviderType', operator: FilterOperator.Equal, values: [Number(appliedProviderType)] }]
+          : undefined,
         includeDeleted: backendDeletedFilters.includeDeleted,
         deletedOnly: backendDeletedFilters.deletedOnly,
       }),
@@ -151,11 +165,17 @@ export function AiProvidersPage() {
           ),
       },
       {
-        key: 'endpoints',
-        header: 'Endpoints',
-        render: (item: AIProviderBaseDto) => (
-          <span className="text-sm">{item.endpoints?.length ?? 0}</span>
-        ),
+        key: 'providerType',
+        header: 'Loại',
+        sortable: true,
+        render: (item: AIProviderBaseDto) => {
+          const label = getAIProviderTypeLabel(item.providerType as CAIProviderType)
+          return (
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getAIProviderTypeBadgeClass(item.providerType)}`}>
+              {label || item.providerType}
+            </span>
+          )
+        },
       },
       {
         key: 'creationTime',
@@ -204,6 +224,7 @@ export function AiProvidersPage() {
   const handleApplyFilter = () => {
     setAppliedCreationFrom(filterCreationFrom)
     setAppliedCreationTo(filterCreationTo)
+    setAppliedProviderType(filterProviderType)
     setStatusFilter(localStatusFilter)
     setPage(1)
   }
@@ -213,6 +234,8 @@ export function AiProvidersPage() {
     setFilterCreationTo('')
     setAppliedCreationFrom('')
     setAppliedCreationTo('')
+    setFilterProviderType('')
+    setAppliedProviderType('')
     setLocalStatusFilter('active')
     setStatusFilter('active')
     setPage(1)
@@ -222,6 +245,21 @@ export function AiProvidersPage() {
     <div className="space-y-5">
       {/* Trạng thái */}
       <StatusFilterGroup value={localStatusFilter} onChange={setLocalStatusFilter} />
+
+      {/* Loại nhà cung cấp */}
+      <div>
+        <label className="mb-1.5 block text-xs font-medium text-slate-600">Loại nhà cung cấp</label>
+        <SelectDropdown<{ id: number; label: string }>
+          items={AI_PROVIDER_TYPE_OPTIONS}
+          getOptionId={(opt) => String(opt.id)}
+          getOptionLabel={(opt) => opt.label}
+          value={AI_PROVIDER_TYPE_OPTIONS.find((opt) => String(opt.id) === filterProviderType) ?? null}
+          onChange={(opt) => setFilterProviderType(opt ? String(opt.id) : '')}
+          allowSearch={true}
+          searchPlaceholder="Tìm loại..."
+          placeholder="Tất cả loại"
+        />
+      </div>
 
       {/* Khoảng thời gian tạo */}
       <div>

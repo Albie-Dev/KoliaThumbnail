@@ -329,6 +329,26 @@ export function AiConfigurationsPage() {
             },
 
             {
+                key: 'apiKeyMasked',
+                header: 'API Key',
+                render: (item: AIConfigurationDetailDto) => (
+                    <span className="font-mono text-xs text-slate-500" title={item.apiKey}>
+                        {item.apiKeyMasked}
+                    </span>
+                ),
+            },
+
+            {
+                key: 'totalTokensUsed',
+                header: 'Tokens',
+                render: (item: AIConfigurationDetailDto) => (
+                    <span className="text-xs text-slate-500">
+                        {item.totalTokensUsed.toLocaleString()}
+                    </span>
+                ),
+            },
+
+            {
                 key: 'isEnabled',
                 header: 'Status',
                 render: (item: AIConfigurationBaseDto) =>

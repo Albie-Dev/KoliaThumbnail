@@ -14,8 +14,6 @@ export interface AIConfigurationBaseDto {
     description?: string | null
 
     apiKey: string
-    baseUrl: string
-    endpoint?: string | null
     apiVersion?: string | null
 
     timeoutSeconds: number
@@ -38,6 +36,10 @@ export interface AIConfigurationDetailDto extends AIConfigurationBaseDto {
     aiProviderShortName: string
     aiProviderName: string
     aiProviderLogo?: string | null
+
+    apiKeyMasked: string
+    totalTokensUsed: number
+    lastTokenResetTime?: string | null
 
     deletionTime?: string | null
 }
@@ -118,8 +120,6 @@ export async function createAIConfiguration(
             description: data.description || null,
 
             apiKey: data.apiKey,
-            baseUrl: data.baseUrl,
-            endpoint: data.endpoint || null,
             apiVersion: data.apiVersion || null,
 
             timeoutSeconds: data.timeoutSeconds,
@@ -154,8 +154,6 @@ export async function updateAIConfiguration(
             description: data.description || null,
 
             apiKey: data.apiKey,
-            baseUrl: data.baseUrl,
-            endpoint: data.endpoint || null,
             apiVersion: data.apiVersion || null,
 
             timeoutSeconds: data.timeoutSeconds,

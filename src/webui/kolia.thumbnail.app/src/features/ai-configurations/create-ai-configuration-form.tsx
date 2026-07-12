@@ -58,8 +58,6 @@ export const CreateAIConfigurationForm =
                 name: '',
                 description: '',
                 apiKey: '',
-                baseUrl: '',
-                endpoint: '',
                 apiVersion: '',
                 timeoutSeconds: 120,
                 retryCount: 3,
@@ -71,7 +69,7 @@ export const CreateAIConfigurationForm =
             },
         })
 
-        const { mutate } = useMutation({
+        const { mutateAsync } = useMutation({
             mutationFn: (
                 data: CreateAIConfigurationInput,
             ) => createAIConfiguration(data),
@@ -92,22 +90,10 @@ export const CreateAIConfigurationForm =
                             )
                         },
                     )
-
-                    toast.warning(
-                        'Vui lòng kiểm tra lại thông tin đã nhập.',
-                    )
                 }
             },
 
             onSuccess: () => {
-                toast.success(
-                    'Tạo cấu hình AI thành công!',
-                )
-
-                onClose?.()
-
-                reset()
-
                 queryClient.invalidateQueries({
                     queryKey: ['ai-configurations'],
                 })
@@ -120,27 +106,12 @@ export const CreateAIConfigurationForm =
             setIsSubmitting(true)
 
             try {
-                await toast.promise(
-                    new Promise(
-                        (resolve, reject) => {
-                            mutate(data as CreateAIConfigurationInput, {
-                                onSuccess: () =>
-                                    resolve(null),
-                                onError: (error) =>
-                                    reject(error),
-                            })
-                        },
-                    ),
-                    {
-                        loading:
-                            'Đang tạo cấu hình...',
-                        success:
-                            'Tạo thành công!',
-                        error: (error: Error) =>
-                            error.message ||
-                            'Có lỗi xảy ra',
-                    },
-                )
+                await mutateAsync(data as CreateAIConfigurationInput)
+                toast.success('Tạo cấu hình AI thành công!')
+                onClose?.()
+                reset()
+            } catch {
+                // Global mutation cache đã hiển thị toast.error cho business error
             } finally {
                 setIsSubmitting(false)
             }
@@ -272,36 +243,10 @@ export const CreateAIConfigurationForm =
                     </FormGroup>
 
                     <FormGroup>
-                        <FormLabel htmlFor="baseUrl" required>
-                            Base URL
-                        </FormLabel>
-                        <Input
-                            id="baseUrl"
-                            placeholder="https://api.openai.com/v1"
-                            className="font-mono text-sm"
-                            {...register('baseUrl')}
-                        />
-                        <FormField error={errors.baseUrl?.message} />
-                    </FormGroup>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormGroup>
-                            <FormLabel htmlFor="endpoint">Endpoint</FormLabel>
-                            <Input
-                                id="endpoint"
-                                placeholder="Để trống nếu dùng mặc định"
-                                className="font-mono text-sm"
-                                {...register('endpoint')}
-                            />
-                            <FormField error={errors.endpoint?.message} />
-                        </FormGroup>
-
-                        <FormGroup>
-                            <FormLabel htmlFor="apiVersion">API Version</FormLabel>
+                        <FormLabel htmlFor="apiVersion">API Version</FormLabel>
                             <Input id="apiVersion" placeholder="VD: 2024-02-01" {...register('apiVersion')} />
                             <FormField error={errors.apiVersion?.message} />
-                        </FormGroup>
-                    </div>
+                    </FormGroup>
                 </FormSection>
 
                 <FormSection title="Trạng thái"
