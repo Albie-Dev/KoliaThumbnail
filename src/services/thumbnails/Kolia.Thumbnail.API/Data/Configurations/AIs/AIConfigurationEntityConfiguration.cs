@@ -22,14 +22,7 @@ namespace Kolia.Thumbnail.API.Data.Configurations.AIs
 
             builder.Property(x => x.ApiKey)
                 .IsRequired()
-                .HasMaxLength(500);
-
-            builder.Property(x => x.BaseUrl)
-                .IsRequired()
-                .HasMaxLength(500);
-
-            builder.Property(x => x.Endpoint)
-                .HasMaxLength(500);
+                .HasMaxLength(2000);
 
             builder.Property(x => x.ApiVersion)
                 .HasMaxLength(50);
@@ -48,6 +41,14 @@ namespace Kolia.Thumbnail.API.Data.Configurations.AIs
 
             builder.Property(x => x.IsDefault)
                 .HasDefaultValue(false);
+
+            builder.Property(x => x.TotalTokensUsed)
+                .HasDefaultValue(0L);
+
+            builder.Property(x => x.ApiKeyHash)
+                .HasMaxLength(512);
+
+            builder.Property(x => x.LastTokenResetTime);
 
             builder.Property(x => x.ExtraSettingsJson);
 

@@ -1,8 +1,16 @@
+using System.Text.Json;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Kolia.Thumbnail.API.AIs;
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Interceptors;
+using Kolia.Thumbnail.API.Engines;
+using Kolia.Thumbnail.API.Engines.Providers;
 using Kolia.Thumbnail.API.Extensions;
 using Kolia.Thumbnail.API.Middlewares;
+using Kolia.Thumbnail.API.Models.AIs;
+using Kolia.Thumbnail.API.Security;
+using Kolia.Thumbnail.API.Services.AIs;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kolia.Thumbnail.API
@@ -16,7 +24,12 @@ namespace Kolia.Thumbnail.API
             services.AddControllers()
                 .AddJsonOptions(options =>
                 {
+                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
                     options.JsonSerializerOptions.Converters.Add(new LocalDateTimeOffsetJsonConverter());
+                })
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    options.SuppressModelStateInvalidFilter = true;
                 });
             services.AddSingleton<AuditEntityInterceptor>();
 
@@ -32,6 +45,31 @@ namespace Kolia.Thumbnail.API
 
             services.AddScoped<IAIProviderService, AIProviderService>();
             services.AddScoped<IAIConfigurationService, AIConfigurationService>();
+
+            // Security - ApiKey protection
+            services.AddDataProtection();
+            services.AddScoped<IApiKeyProtector, ApiKeyProtector>();
+            services.AddScoped<AIConfigurationMapper>();
+
+            // AI Engines — đăng ký typed HttpClient kèm interface để ResolveEngine hoạt động
+            services.AddHttpClient<GeminiEngine>();
+            services.AddHttpClient<GroqEngine>();
+
+            // Đăng ký engine theo interface để AIExecutorService có thể ResolveEngine
+            services.AddScoped<IAIEngine>(sp => sp.GetRequiredService<GeminiEngine>());
+            services.AddScoped<IChatCapableEngine>(sp => sp.GetRequiredService<GeminiEngine>());
+            services.AddScoped<IImageGenerationCapableEngine>(sp => sp.GetRequiredService<GeminiEngine>());
+            services.AddScoped<IEmbeddingCapableEngine>(sp => sp.GetRequiredService<GeminiEngine>());
+            services.AddScoped<IAIEngine>(sp => sp.GetRequiredService<GroqEngine>());
+            services.AddScoped<IChatCapableEngine>(sp => sp.GetRequiredService<GroqEngine>());
+            services.AddScoped<ISpeechToTextCapableEngine>(sp => sp.GetRequiredService<GroqEngine>());
+            services.AddScoped<ITextToSpeechCapableEngine>(sp => sp.GetRequiredService<GroqEngine>());
+
+            services.AddScoped<IAIExecutorService, AIExecutorService>();
+
+            // FluentValidation
+            services.AddFluentValidationAutoValidation();
+            services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
             return services;
         }

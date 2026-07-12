@@ -25,6 +25,18 @@ namespace Kolia.Thumbnail.API.Models.AIs
         public string? AIProviderLogo { get; set; } = null;
         #endregion
         /// <summary>
+        /// API Key đã được che giấu (chỉ hiện 4 ký tự cuối), dùng để hiển thị ở FE.
+        /// </summary>
+        public string ApiKeyMasked { get; set; } = null!;
+        /// <summary>
+        /// Tổng số token đã sử dụng (tích luỹ) cho cấu hình này.
+        /// </summary>
+        public long TotalTokensUsed { get; set; }
+        /// <summary>
+        /// Thời điểm TotalTokensUsed bị reset gần nhất (do đổi ApiKey).
+        /// </summary>
+        public DateTimeOffset? LastTokenResetTime { get; set; }
+        /// <summary>
         /// Ngày giờ tạo của cấu hình AI. Đây là thời điểm mà cấu hình AI được thêm vào hệ thống.
         /// </summary>
         public DateTimeOffset? CreationTime { get; set; }
@@ -80,20 +92,6 @@ namespace Kolia.Thumbnail.API.Models.AIs
         /// API Key dùng để xác thực với nhà cung cấp AI.
         /// </summary>
         public string ApiKey { get; set; } = null!;
-
-        /// <summary>
-        /// Địa chỉ URL cơ sở của API.
-        /// Ví dụ:
-        /// https://api.openai.com/v1
-        /// https://generativelanguage.googleapis.com
-        /// </summary>
-        public string BaseUrl { get; set; } = null!;
-
-        /// <summary>
-        /// Endpoint được sử dụng để ghi đè endpoint mặc định của provider.
-        /// Để trống nếu sử dụng endpoint mặc định.
-        /// </summary>
-        public string? Endpoint { get; set; }
 
         /// <summary>
         /// Phiên bản API.

@@ -20,22 +20,9 @@ namespace Kolia.Thumbnail.API.Data.Entities.AIs
 
         /// <summary>
         /// API Key dùng để xác thực với nhà cung cấp AI.
+        /// Được mã hoá khi lưu vào DB và giải mã khi đọc lên.
         /// </summary>
         public string ApiKey { get; set; } = null!;
-
-        /// <summary>
-        /// Địa chỉ URL cơ sở của API.
-        /// Ví dụ:
-        /// https://api.openai.com/v1
-        /// https://generativelanguage.googleapis.com
-        /// </summary>
-        public string BaseUrl { get; set; } = null!;
-
-        /// <summary>
-        /// Endpoint được sử dụng để ghi đè endpoint mặc định của provider.
-        /// Để trống nếu sử dụng endpoint mặc định.
-        /// </summary>
-        public string? Endpoint { get; set; }
 
         /// <summary>
         /// Phiên bản API.
@@ -69,6 +56,23 @@ namespace Kolia.Thumbnail.API.Data.Entities.AIs
         /// Cho biết đây có phải là cấu hình mặc định của nhà cung cấp AI hay không.
         /// </summary>
         public bool IsDefault { get; set; }
+
+        /// <summary>
+        /// Tổng số token đã sử dụng (tích luỹ) cho cấu hình này.
+        /// Dùng để theo dõi chi phí và quota. Khi đổi ApiKey, giá trị này tự động reset về 0.
+        /// </summary>
+        public long TotalTokensUsed { get; set; }
+
+        /// <summary>
+        /// Băm của ApiKey hiện tại, dùng để phát hiện khi ApiKey bị thay đổi.
+        /// Khi ApiKey thay đổi, TotalTokensUsed sẽ tự động reset.
+        /// </summary>
+        public string? ApiKeyHash { get; set; }
+
+        /// <summary>
+        /// Thời điểm TotalTokensUsed bị reset gần nhất (do đổi ApiKey).
+        /// </summary>
+        public DateTimeOffset? LastTokenResetTime { get; set; }
 
         /// <summary>
         /// Thiết lập mở rộng dành riêng cho từng nhà cung cấp AI dưới dạng JSON.

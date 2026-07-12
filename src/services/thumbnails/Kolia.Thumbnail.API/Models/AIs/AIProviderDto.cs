@@ -1,3 +1,5 @@
+using Kolia.Thumbnail.API.Enums;
+
 namespace Kolia.Thumbnail.API.Models.AIs
 {
     /// <summary>
@@ -59,8 +61,19 @@ namespace Kolia.Thumbnail.API.Models.AIs
         /// </summary>
         public string ShortName { get; set; } = null!;
         /// <summary>
+        /// Loại nhà cung cấp AI
+        /// </summary>
+        public CAIProviderType ProviderType { get; set; }
+        /// <summary>
         /// URL của hình ảnh đại diện cho nhà cung cấp AI. Đây có thể là logo hoặc bất kỳ hình ảnh nào liên quan đến nhà cung cấp AI, giúp người dùng dễ dàng nhận diện.
         /// </summary>
         public string? ImageUrl { get; set; } = null;
+
+        /// <summary>
+        /// URL cơ sở (Base URL) của nhà cung cấp AI.
+        /// Đây là địa chỉ chính mà các yêu cầu API sẽ được gửi đến khi tương tác với nhà cung cấp AI.
+        /// Ví dụ: "https://api.openai.com".
+        /// </summary>
+        public string BaseUrl { get; set; } = null!;
     }
 }

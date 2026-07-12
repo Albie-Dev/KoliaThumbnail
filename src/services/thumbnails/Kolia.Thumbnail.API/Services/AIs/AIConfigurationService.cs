@@ -1,5 +1,6 @@
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Entities.AIs;
+using Kolia.Thumbnail.API.Engines;
 using Kolia.Thumbnail.API.Exceptions;
 using Kolia.Thumbnail.API.Extensions;
 using Kolia.Thumbnail.API.Models.AIs;
@@ -15,13 +16,19 @@ namespace Kolia.Thumbnail.API.AIs
     {
         private readonly ILogger<AIConfigurationService> _logger;
         private readonly ThumbnailDbContext _dbContext;
+        private readonly AIConfigurationMapper _mapper;
+        private readonly IServiceProvider _serviceProvider;
         public AIConfigurationService(
             ILogger<AIConfigurationService> logger,
-            ThumbnailDbContext dbContext
+            ThumbnailDbContext dbContext,
+            AIConfigurationMapper mapper,
+            IServiceProvider serviceProvider
         )
         {
             _logger = logger;
             _dbContext = dbContext;
+            _mapper = mapper;
+            _serviceProvider = serviceProvider;
         }
 
         /// <summary>
@@ -60,7 +67,7 @@ namespace Kolia.Thumbnail.API.AIs
 
             return await query.ToPagedResponseAsync<AIConfigurationEntity, AIConfigurationDetailDto>(
                 request,
-                selector: x => x.ToDetailDto(),
+                selector: x => _mapper.ToDetailDto(x),
                 cancellationToken);
         }
 
@@ -136,6 +143,9 @@ namespace Kolia.Thumbnail.API.AIs
                     code: "AI_CONFIGURATION_ALREADY_EXISTS");
             }
 
+            // Validate API key with the provider's engine
+            await ValidateApiKeyWithEngineAsync(provider.ProviderType, request.ApiKey, cancellationToken);
+
             if (request.IsDefault)
             {
                 var defaultConfigurations = await _dbContext.AIConfigurations
@@ -160,14 +170,14 @@ namespace Kolia.Thumbnail.API.AIs
                 }
             }
 
-            var entity = request.ToEntity();
+            var entity = _mapper.ToEntity(request);
 
             await _dbContext.AIConfigurations.AddAsync(entity, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             entity.AIProvider = provider;
 
-            return entity.ToDetailDto();
+            return _mapper.ToDetailDto(entity);
         }
 
         /// <summary>
@@ -227,6 +237,12 @@ namespace Kolia.Thumbnail.API.AIs
                     code: "AI_CONFIGURATION_ALREADY_EXISTS");
             }
 
+            // Validate API key with the provider's engine (chỉ khi gửi key mới)
+            if (!string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                await ValidateApiKeyWithEngineAsync(provider.ProviderType, request.ApiKey, cancellationToken);
+            }
+
             if (request.IsDefault)
             {
                 var defaultConfigurations = await _dbContext.AIConfigurations
@@ -242,13 +258,13 @@ namespace Kolia.Thumbnail.API.AIs
                 }
             }
 
-            request.ToEntity(existingConfiguration);
+            _mapper.ToEntity(request, existingConfiguration);
 
             existingConfiguration.AIProvider = provider;
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return existingConfiguration.ToDetailDto();
+            return _mapper.ToDetailDto(existingConfiguration);
         }
 
         /// <summary>
@@ -297,7 +313,7 @@ namespace Kolia.Thumbnail.API.AIs
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return configuration.ToDetailDto();
+            return _mapper.ToDetailDto(configuration);
         }
 
         /// <summary>
@@ -334,7 +350,37 @@ namespace Kolia.Thumbnail.API.AIs
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return existingConfiguration.ToDetailDto();
+            return _mapper.ToDetailDto(existingConfiguration);
+        }
+
+        /// <summary>
+        /// Kiểm tra API key có hợp lệ với engine của provider không.
+        /// </summary>
+        private async Task ValidateApiKeyWithEngineAsync(
+            Enums.CAIProviderType providerType,
+            string plainApiKey,
+            CancellationToken cancellationToken)
+        {
+            // Tìm engine phù hợp với provider type
+            var engine = _serviceProvider.GetServices<IAIEngine>()
+                .FirstOrDefault(e => e.ProviderType == providerType);
+
+            if (engine is null)
+            {
+                _logger.LogWarning("Không tìm thấy engine cho provider {ProviderType}, bỏ qua validate key.", providerType);
+                return;
+            }
+
+            var isValid = await engine.ValidateApiKeyAsync(plainApiKey);
+
+            if (!isValid)
+            {
+                throw new BusinessException(
+                    message: $"API Key không hợp lệ cho provider. Vui lòng kiểm tra lại.",
+                    code: "AI_CONFIGURATION_INVALID_API_KEY");
+            }
+
+            _logger.LogInformation("API key validated successfully for {ProviderType}.", providerType);
         }
     }
 }

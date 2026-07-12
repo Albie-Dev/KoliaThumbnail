@@ -15,13 +15,16 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
     public class AIConfigurationController : ControllerBase
     {
         private readonly IAIConfigurationService _aiConfigurationService;
+        private readonly AIConfigurationMapper _mapper;
         private readonly ILogger<AIConfigurationController> _logger;
 
         public AIConfigurationController(
             IAIConfigurationService aiConfigurationService,
+            AIConfigurationMapper mapper,
             ILogger<AIConfigurationController> logger)
         {
             _aiConfigurationService = aiConfigurationService;
+            _mapper = mapper;
             _logger = logger;
         }
 
@@ -74,7 +77,7 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
                     code: "AI_CONFIGURATION_NOT_FOUND");
             }
 
-            return Ok(result.ToDetailDto());
+            return Ok(_mapper.ToDetailDto(result));
         }
 
         /// <summary>

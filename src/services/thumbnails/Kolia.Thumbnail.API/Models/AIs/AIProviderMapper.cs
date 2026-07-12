@@ -10,7 +10,9 @@ namespace Kolia.Thumbnail.API.Models.AIs
             {
                 Name = dto.Name,
                 ImageUrl = dto.ImageUrl,
-                ShortName = dto.ShortName
+                ShortName = dto.ShortName,
+                ProviderType = dto.ProviderType,
+                BaseUrl = dto.BaseUrl
             };
         }
 
@@ -20,6 +22,8 @@ namespace Kolia.Thumbnail.API.Models.AIs
             existingEntity.Name = dto.Name;
             existingEntity.ImageUrl = dto.ImageUrl;
             existingEntity.ShortName = dto.ShortName;
+            existingEntity.BaseUrl = dto.BaseUrl;
+            existingEntity.ProviderType = dto.ProviderType;
             return existingEntity;
         }
 
@@ -31,6 +35,8 @@ namespace Kolia.Thumbnail.API.Models.AIs
                 Name = entity.Name,
                 ImageUrl = entity.ImageUrl,
                 ShortName = entity.ShortName,
+                BaseUrl = entity.BaseUrl,
+                ProviderType = entity.ProviderType,
                 CreationTime = entity.CreationTime,
                 LastModificationTime = entity.LastModificationTime,
                 DeletionTime = entity.DeletionTime,

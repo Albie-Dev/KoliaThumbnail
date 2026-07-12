@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Kolia.Thumbnail.API.Data.Migrations
 {
     [DbContext(typeof(ThumbnailDbContext))]
-    [Migration("20260707170419_InitDb")]
+    [Migration("20260712141904_InitDb")]
     partial class InitDb
     {
         /// <inheritdoc />
@@ -119,6 +119,13 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasDefaultValue("");
+
                     b.Property<DateTimeOffset>("CreationTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -141,6 +148,9 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ProviderType")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ShortName")
                         .IsRequired()

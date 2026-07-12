@@ -1,18 +1,29 @@
 using Kolia.Thumbnail.API.Data.Entities.AIs;
+using Kolia.Thumbnail.API.Security;
 
 namespace Kolia.Thumbnail.API.Models.AIs
 {
-    public static class AIConfigurationMapper
+    /// <summary>
+    /// Mapper chuyển đổi giữa Entity và DTO cho AI Configuration.
+    /// Dùng IApiKeyProtector để mã hoá ApiKey khi lưu và giải mã/mask khi đọc.
+    /// </summary>
+    public class AIConfigurationMapper
     {
-        public static AIConfigurationEntity ToEntity(this AIConfiurationCreateDto dto)
+        private readonly IApiKeyProtector _apiKeyProtector;
+
+        public AIConfigurationMapper(IApiKeyProtector apiKeyProtector)
+        {
+            _apiKeyProtector = apiKeyProtector;
+        }
+
+        public AIConfigurationEntity ToEntity(AIConfiurationCreateDto dto)
         {
             return new AIConfigurationEntity
             {
                 Name = dto.Name,
                 Description = dto.Description,
-                ApiKey = dto.ApiKey,
-                BaseUrl = dto.BaseUrl,
-                Endpoint = dto.Endpoint,
+                ApiKey = _apiKeyProtector.Protect(dto.ApiKey),
+                ApiKeyHash = _apiKeyProtector.Hash(dto.ApiKey),
                 ApiVersion = dto.ApiVersion,
                 TimeoutSeconds = dto.TimeoutSeconds,
                 RetryCount = dto.RetryCount,
@@ -20,19 +31,17 @@ namespace Kolia.Thumbnail.API.Models.AIs
                 IsEnabled = dto.IsEnabled,
                 IsDefault = dto.IsDefault,
                 ExtraSettingsJson = dto.ExtraSettingsJson,
-                AIProviderId = dto.AIProviderId
+                AIProviderId = dto.AIProviderId,
+                TotalTokensUsed = 0,
             };
         }
 
-        public static AIConfigurationEntity ToEntity(
-            this AIConfigurationUpdateDto dto,
+        public AIConfigurationEntity ToEntity(
+            AIConfigurationUpdateDto dto,
             AIConfigurationEntity existingEntity)
         {
             existingEntity.Name = dto.Name;
             existingEntity.Description = dto.Description;
-            existingEntity.ApiKey = dto.ApiKey;
-            existingEntity.BaseUrl = dto.BaseUrl;
-            existingEntity.Endpoint = dto.Endpoint;
             existingEntity.ApiVersion = dto.ApiVersion;
             existingEntity.TimeoutSeconds = dto.TimeoutSeconds;
             existingEntity.RetryCount = dto.RetryCount;
@@ -42,19 +51,34 @@ namespace Kolia.Thumbnail.API.Models.AIs
             existingEntity.ExtraSettingsJson = dto.ExtraSettingsJson;
             existingEntity.AIProviderId = dto.AIProviderId;
 
+            // Chỉ cập nhật ApiKey nếu FE gửi key mới (không rỗng)
+            if (!string.IsNullOrWhiteSpace(dto.ApiKey))
+            {
+                var newApiKeyHash = _apiKeyProtector.Hash(dto.ApiKey);
+                bool apiKeyChanged = !string.Equals(
+                    existingEntity.ApiKeyHash, newApiKeyHash, StringComparison.Ordinal);
+
+                if (apiKeyChanged)
+                {
+                    existingEntity.ApiKey = _apiKeyProtector.Protect(dto.ApiKey);
+                    existingEntity.ApiKeyHash = newApiKeyHash;
+                    existingEntity.TotalTokensUsed = 0;
+                    existingEntity.LastTokenResetTime = DateTimeOffset.UtcNow;
+                }
+            }
+
             return existingEntity;
         }
 
-        public static AIConfigurationDetailDto ToDetailDto(this AIConfigurationEntity entity)
+        public AIConfigurationDetailDto ToDetailDto(AIConfigurationEntity entity)
         {
             return new AIConfigurationDetailDto
             {
                 Id = entity.Id,
                 Name = entity.Name,
                 Description = entity.Description,
-                ApiKey = entity.ApiKey,
-                BaseUrl = entity.BaseUrl,
-                Endpoint = entity.Endpoint,
+                ApiKey = string.Empty,
+                ApiKeyMasked = _apiKeyProtector.MaskFromProtected(entity.ApiKey),
                 ApiVersion = entity.ApiVersion,
                 TimeoutSeconds = entity.TimeoutSeconds,
                 RetryCount = entity.RetryCount,
@@ -63,6 +87,8 @@ namespace Kolia.Thumbnail.API.Models.AIs
                 IsDefault = entity.IsDefault,
                 ExtraSettingsJson = entity.ExtraSettingsJson,
                 AIProviderId = entity.AIProviderId,
+                TotalTokensUsed = entity.TotalTokensUsed,
+                LastTokenResetTime = entity.LastTokenResetTime,
 
                 AIProviderName = entity.AIProvider.Name,
                 AIProviderShortName = entity.AIProvider.ShortName,

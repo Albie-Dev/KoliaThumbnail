@@ -28,18 +28,6 @@ namespace Kolia.Thumbnail.API.Validations.AIs
                 .MaximumLength(2000)
                 .WithMessage("API Key không được vượt quá 2000 ký tự.");
 
-            RuleFor(x => x.BaseUrl)
-                .NotEmpty()
-                .WithMessage("Base URL không được để trống.")
-                .MaximumLength(500)
-                .WithMessage("Base URL không được vượt quá 500 ký tự.")
-                .Must(uri => Uri.TryCreate(uri, UriKind.Absolute, out _))
-                .WithMessage("Base URL không hợp lệ.");
-
-            RuleFor(x => x.Endpoint)
-                .MaximumLength(500)
-                .WithMessage("Endpoint không được vượt quá 500 ký tự.");
-
             RuleFor(x => x.ApiVersion)
                 .MaximumLength(100)
                 .WithMessage("API Version không được vượt quá 100 ký tự.");

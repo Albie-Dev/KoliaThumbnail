@@ -8,6 +8,10 @@ public sealed class GlobalExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
 
     public GlobalExceptionMiddleware(
         RequestDelegate next,
@@ -43,7 +47,7 @@ public sealed class GlobalExceptionMiddleware
                 Errors = ex.Errors
                 .Select(x => new ValidationError
                 {
-                    Property = x.PropertyName,
+                    Property = char.ToLowerInvariant(x.PropertyName[0]) + x.PropertyName[1..],
                     Message = x.ErrorMessage,
                     ErrorCode = x.ErrorCode
                 })
@@ -51,8 +55,10 @@ public sealed class GlobalExceptionMiddleware
             };
 
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            context.Response.ContentType = "application/json";
 
-            await context.Response.WriteAsJsonAsync(response);
+            await context.Response.WriteAsync(
+                JsonSerializer.Serialize(response, JsonOptions));
         }
         catch (Exception ex)
         {
@@ -83,6 +89,6 @@ public sealed class GlobalExceptionMiddleware
         };
 
         await context.Response.WriteAsync(
-            JsonSerializer.Serialize(response));
+            JsonSerializer.Serialize(response, JsonOptions));
     }
 }
