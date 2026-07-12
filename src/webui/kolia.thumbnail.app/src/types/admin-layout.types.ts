@@ -14,7 +14,11 @@ export interface AdminMenuItem {
   label: string
 
   /** Optional icon (lucide-react icon component or any ReactNode) */
-  icon?: ComponentType<{ className?: string }> | ReactNode
+  icon?: ComponentType<{ className?: string; style?: React.CSSProperties }> | ReactNode
+
+  /** Optional hex color for the icon (e.g. "#3b82f6").
+   *  When set, the icon will be rendered with this colour instead of the default. */
+  iconColor?: string
 
   /** Nested children — supports infinite depth */
   children?: AdminMenuItem[]

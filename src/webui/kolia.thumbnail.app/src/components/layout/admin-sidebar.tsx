@@ -14,14 +14,14 @@ interface AdminSidebarProps {
 }
 
 // ── Icon render helper ─────────────────────────────────
-function renderIcon(icon: AdminMenuItem['icon'], className?: string) {
+function renderIcon(icon: AdminMenuItem['icon'], className?: string, color?: string) {
   if (!icon) return null
   // Handle both:
   //  - function components (typeof === 'function')
   //  - forwardRef/memo components (typeof === 'object' with $$typeof, e.g. lucide-react icons)
   if (typeof icon === 'function' || (typeof icon === 'object' && icon !== null)) {
-    const IconComp = icon as React.ComponentType<{ className?: string }>
-    return <IconComp className={className} />
+    const IconComp = icon as React.ComponentType<{ className?: string; style?: React.CSSProperties }>
+    return <IconComp className={className} style={color ? { color } : undefined} />
   }
   return icon
 }
@@ -81,7 +81,7 @@ function MenuItem({
           )}
           title={item.label}
         >
-          {item.icon && renderIcon(item.icon, 'h-4 w-4')}
+          {item.icon && renderIcon(item.icon, 'h-4 w-4', item.iconColor)}
         </button>
       </li>
     )
@@ -103,7 +103,7 @@ function MenuItem({
         {/* Icon */}
         {item.icon && (
           <span className="flex-shrink-0">
-            {renderIcon(item.icon, 'h-4 w-4')}
+            {renderIcon(item.icon, 'h-4 w-4', item.iconColor)}
           </span>
         )}
 
