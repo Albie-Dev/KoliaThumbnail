@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Button } from '../ui/button'
+import { SelectDropdown } from '../selects/select-dropdown'
 
 interface DataTablePaginationProps {
   page: number
@@ -47,17 +48,16 @@ export function DataTablePagination({
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
             <span className="text-xs">Hiển thị</span>
-            <select
+            <SelectDropdown<number>
+              items={[10, 20, 50, 100]}
               value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 outline-none transition focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size} / trang
-                </option>
-              ))}
-            </select>
+              onChange={(v) => v !== null && onPageSizeChange(v)}
+              getOptionId={(item) => String(item)}
+              getOptionLabel={(item) => `${item}`}
+              allowSearch={false}
+              placeholder="Hiển thị"
+              className="w-[80px]"
+            />
           </div>
         )}
       </div>
