@@ -132,6 +132,15 @@ export function AiProvidersPage() {
       { key: 'name', header: 'Tên', sortable: true, render: (item: AIProviderBaseDto) => item.name },
       { key: 'shortName', header: 'Mã', sortable: true, render: (item: AIProviderBaseDto) => item.shortName },
       {
+        key: 'baseUrl',
+        header: 'Base URL',
+        render: (item: AIProviderBaseDto) => (
+          <span className="max-w-[200px] truncate block text-xs" title={item.baseUrl}>
+            {item.baseUrl}
+          </span>
+        ),
+      },
+      {
         key: 'image',
         header: 'Logo',
         render: (item: AIProviderBaseDto) =>
@@ -140,6 +149,13 @@ export function AiProvidersPage() {
           ) : (
             <span className="text-sm text-slate-400">—</span>
           ),
+      },
+      {
+        key: 'endpoints',
+        header: 'Endpoints',
+        render: (item: AIProviderBaseDto) => (
+          <span className="text-sm">{item.endpoints?.length ?? 0}</span>
+        ),
       },
       {
         key: 'creationTime',

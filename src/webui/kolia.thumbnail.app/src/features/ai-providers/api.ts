@@ -3,11 +3,21 @@ import { buildPagedQuery } from '../../lib/api/build-paged-query'
 import type { BackendPagedResponse, PagedResult, PagedRequestParams } from '../../types/paging.types'
 import type { CreateAIProviderInput } from './schema'
 
+export interface AIProviderEndpointDto {
+  type: number
+  endpoint: string
+  jsonResponse: string
+  jsonError: string
+  jsonRequest: string
+}
+
 export interface AIProviderBaseDto {
   id: string
   name: string
   shortName: string
   imageUrl?: string | null
+  baseUrl: string
+  endpoints: AIProviderEndpointDto[]
   isDeleted: boolean
   creationTime?: string | null
   lastModificationTime?: string | null
@@ -45,6 +55,8 @@ export async function createAIProvider(data: CreateAIProviderInput): Promise<AIP
     name: data.name,
     shortName: data.shortName,
     imageUrl: data.imageUrl || null,
+    baseUrl: data.baseUrl,
+    endpoints: data.endpoints,
   })
 }
 
@@ -57,6 +69,8 @@ export async function updateAIProvider(data: UpdateAIProviderInput): Promise<AIP
     name: data.name,
     shortName: data.shortName,
     imageUrl: data.imageUrl || null,
+    baseUrl: data.baseUrl,
+    endpoints: data.endpoints,
   })
 }
 

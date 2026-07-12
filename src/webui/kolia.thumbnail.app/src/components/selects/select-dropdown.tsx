@@ -5,7 +5,9 @@ import { ApiError } from '../../lib/api/api-error'
 import type { BackendPagedResponse, PagedRequestParams, PageInfoDto } from '../../types/paging.types'
 
 interface SelectDropdownBaseProps<T> {
-    fetchData: (params: PagedRequestParams) => Promise<BackendPagedResponse<T>>
+    fetchData?: (params: PagedRequestParams) => Promise<BackendPagedResponse<T>>
+    /** Danh sách tĩnh, dùng thay cho fetchData — không cần API */
+    items?: T[]
     getOptionId: (item: T) => string
     getOptionLabel: (item: T) => string
     renderOption?: (item: T, isSelected: boolean) => ReactNode
@@ -40,6 +42,7 @@ const DEFAULT_PAGE_SIZE = 10
 export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
     const {
         fetchData,
+        items: itemsProp,
         getOptionId,
         getOptionLabel,
         renderOption,
@@ -56,6 +59,8 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
         value,
         onChange,
     } = props
+
+    const isStatic = !!itemsProp
 
     const [isOpen, setIsOpen] = useState(false)
     const [searchText, setSearchText] = useState('')
@@ -135,16 +140,41 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
         return e instanceof ApiError ? e.message : 'Không thể tải dữ liệu, vui lòng thử lại.'
     }
 
-    // Load trang 1 khi mở dropdown hoặc khi searchText thay đổi (debounce)
+    // Nếu dùng danh sách tĩnh, filter theo searchText
+    const filteredStaticItems = useMemo(() => {
+        if (!isStatic || !itemsProp) return itemsProp
+        if (!searchText) return itemsProp
+        const lower = searchText.toLowerCase()
+        return itemsProp.filter((item) => getOptionLabel(item).toLowerCase().includes(lower))
+    }, [isStatic, itemsProp, searchText, getOptionLabel])
+
+    // Load dữ liệu khi mở dropdown (chỉ cho async mode)
     useEffect(() => {
         if (!isOpen) return
+
+        if (isStatic) {
+            // Với static items, set trực tiếp
+            setItems(itemsProp ?? [])
+            setPageInfo({
+                pageNumber: 1,
+                pageSize: itemsProp?.length ?? 0,
+                totalRecords: itemsProp?.length ?? 0,
+                totalPages: 1,
+                hasNextPage: false,
+                hasPreviousPage: false,
+            })
+            setLoading(false)
+            setError(null)
+            return
+        }
+
         const requestId = ++requestIdRef.current
         setLoading(true)
         setError(null)
 
         const timeout = setTimeout(async () => {
             try {
-                const result = await fetchData(buildParams(1))
+                const result = await fetchData!(buildParams(1))
                 if (requestId !== requestIdRef.current) return
                 setItems(result.items)
                 setPageInfo(result.pageInfo)
@@ -160,15 +190,15 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
 
         return () => clearTimeout(timeout)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, searchText, fetchData, pageSize])
+    }, [isOpen, searchText, isStatic, pageSize])
 
     async function loadMore() {
-        if (!pageInfo?.hasNextPage || loadingMore) return
+        if (isStatic || !pageInfo?.hasNextPage || loadingMore) return
         const requestId = requestIdRef.current
         setLoadingMore(true)
         setLoadMoreError(null)
         try {
-            const result = await fetchData(buildParams(pageInfo.pageNumber + 1))
+            const result = await fetchData!(buildParams(pageInfo.pageNumber + 1))
             if (requestId !== requestIdRef.current) return
             setItems((prev) => [...prev, ...result.items])
             setPageInfo(result.pageInfo)
@@ -211,11 +241,12 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
     }
 
     function handleRetry() {
+        if (isStatic) return
         // Bump lại requestId để trigger useEffect chạy lại logic load trang 1
         setError(null)
         const requestId = ++requestIdRef.current
         setLoading(true)
-        fetchData(buildParams(1))
+        fetchData!(buildParams(1))
             .then((result) => {
                 if (requestId !== requestIdRef.current) return
                 setItems(result.items)
@@ -229,6 +260,8 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                 if (requestId === requestIdRef.current) setLoading(false)
             })
     }
+
+    const displayItems = isStatic ? filteredStaticItems : items
 
     return (
         <div ref={containerRef} className={cn('relative', className)}>
@@ -293,7 +326,7 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                     )}
 
                     <ul ref={listRef} onScroll={handleScroll} className="max-h-64 overflow-y-auto py-1">
-                        {loading && items.length === 0 && !error && (
+                        {loading && (!displayItems || displayItems.length === 0) && !error && (
                             <li className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-slate-400">
                                 <SpinnerIcon /> Đang tải...
                             </li>
@@ -313,11 +346,11 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                             </li>
                         )}
 
-                        {!loading && !error && items.length === 0 && (
+                        {!loading && !error && (!displayItems || displayItems.length === 0) && (
                             <li className="px-3 py-6 text-center text-sm text-slate-400">{emptyText}</li>
                         )}
 
-                        {!error && items.map((item) => {
+                        {!error && displayItems && displayItems.map((item) => {
                             const id = getOptionId(item)
                             const isSelected = selectedIds.has(id)
                             return (
@@ -371,9 +404,15 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                         )}
                     </ul>
 
-                    {pageInfo && !error && (
+                    {pageInfo && !error && !isStatic && (
                         <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-400">
                             {items.length}/{pageInfo.totalRecords} kết quả
+                        </div>
+                    )}
+
+                    {isStatic && displayItems && itemsProp && (
+                        <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-400">
+                            {displayItems.length}/{itemsProp.length} kết quả
                         </div>
                     )}
                 </div>,
