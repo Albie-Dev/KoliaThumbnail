@@ -10,18 +10,18 @@ using Microsoft.EntityFrameworkCore;
 namespace Kolia.Thumbnail.API.AIs
 {
     /// <summary>
-    /// AIConfigurationService là một dịch vụ quản lý cấu hình kết nối đến các nhà cung cấp AI.
+    /// AIProviderConfigurationService là một dịch vụ quản lý cấu hình kết nối đến các nhà cung cấp AI.
     /// </summary>
-    public class AIConfigurationService : IAIConfigurationService
+    public class AIProviderConfigurationService : IAIProviderConfigurationService
     {
-        private readonly ILogger<AIConfigurationService> _logger;
+        private readonly ILogger<AIProviderConfigurationService> _logger;
         private readonly ThumbnailDbContext _dbContext;
-        private readonly AIConfigurationMapper _mapper;
+        private readonly AIProviderConfigurationMapper _mapper;
         private readonly IServiceProvider _serviceProvider;
-        public AIConfigurationService(
-            ILogger<AIConfigurationService> logger,
+        public AIProviderConfigurationService(
+            ILogger<AIProviderConfigurationService> logger,
             ThumbnailDbContext dbContext,
-            AIConfigurationMapper mapper,
+            AIProviderConfigurationMapper mapper,
             IServiceProvider serviceProvider
         )
         {
@@ -39,13 +39,13 @@ namespace Kolia.Thumbnail.API.AIs
         /// <param name="deletedOnly"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<PagedResponseDto<AIConfigurationDetailDto>> GetWithPagingAsync(
+        public async Task<PagedResponseDto<AIProviderConfigurationDetailDto>> GetWithPagingAsync(
             PagedRequestDto request,
             bool? includeDeleted = null,
             bool? deletedOnly = null,
             CancellationToken cancellationToken = default)
         {
-            IQueryable<AIConfigurationEntity> query = _dbContext.AIConfigurations
+            IQueryable<AIProviderConfigurationEntity> query = _dbContext.AIProviderConfigurations
                 .AsNoTracking()
                 .Include(x => x.AIProvider);
 
@@ -65,7 +65,7 @@ namespace Kolia.Thumbnail.API.AIs
 
             query = query.ApplyQuery(request);
 
-            return await query.ToPagedResponseAsync<AIConfigurationEntity, AIConfigurationDetailDto>(
+            return await query.ToPagedResponseAsync<AIProviderConfigurationEntity, AIProviderConfigurationDetailDto>(
                 request,
                 selector: x => _mapper.ToDetailDto(x),
                 cancellationToken);
@@ -80,14 +80,14 @@ namespace Kolia.Thumbnail.API.AIs
         /// <param name="includeDeleted"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<AIConfigurationEntity?> GetByIdAsync(
+        public async Task<AIProviderConfigurationEntity?> GetByIdAsync(
             Guid id,
             bool asNoTracking = true,
             bool includeDetails = false,
             bool includeDeleted = false,
             CancellationToken cancellationToken = default)
         {
-            IQueryable<AIConfigurationEntity> query = _dbContext.AIConfigurations;
+            IQueryable<AIProviderConfigurationEntity> query = _dbContext.AIProviderConfigurations;
 
             if (asNoTracking)
             {
@@ -115,7 +115,7 @@ namespace Kolia.Thumbnail.API.AIs
         /// <returns></returns>
         /// <exception cref="NotFoundException"></exception>
         /// <exception cref="BusinessException"></exception>
-        public async Task<AIConfigurationDetailDto> CreateAsync(
+        public async Task<AIProviderConfigurationDetailDto> CreateAsync(
             AIConfiurationCreateDto request,
             CancellationToken cancellationToken = default)
         {
@@ -129,7 +129,7 @@ namespace Kolia.Thumbnail.API.AIs
                     code: "AI_PROVIDER_NOT_FOUND");
             }
 
-            var duplicatedConfiguration = await _dbContext.AIConfigurations
+            var duplicatedConfiguration = await _dbContext.AIProviderConfigurations
                 .AsNoTracking()
                 .AnyAsync(x =>
                     x.AIProviderId == request.AIProviderId &&
@@ -148,7 +148,7 @@ namespace Kolia.Thumbnail.API.AIs
 
             if (request.IsDefault)
             {
-                var defaultConfigurations = await _dbContext.AIConfigurations
+                var defaultConfigurations = await _dbContext.AIProviderConfigurations
                     .Where(x =>
                         x.AIProviderId == request.AIProviderId
                         && x.IsDefault)
@@ -161,7 +161,7 @@ namespace Kolia.Thumbnail.API.AIs
             }
             else
             {
-                var hasAnyConfiguration = await _dbContext.AIConfigurations
+                var hasAnyConfiguration = await _dbContext.AIProviderConfigurations
                     .AnyAsync(x => x.AIProviderId == request.AIProviderId, cancellationToken);
 
                 if (!hasAnyConfiguration)
@@ -172,7 +172,7 @@ namespace Kolia.Thumbnail.API.AIs
 
             var entity = _mapper.ToEntity(request);
 
-            await _dbContext.AIConfigurations.AddAsync(entity, cancellationToken);
+            await _dbContext.AIProviderConfigurations.AddAsync(entity, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             entity.AIProvider = provider;
@@ -189,12 +189,12 @@ namespace Kolia.Thumbnail.API.AIs
         /// <returns></returns>
         /// <exception cref="NotFoundException"></exception>
         /// <exception cref="BusinessException"></exception>
-        public async Task<AIConfigurationDetailDto> UpdateAsync(
+        public async Task<AIProviderConfigurationDetailDto> UpdateAsync(
             Guid id,
-            AIConfigurationUpdateDto request,
+            AIProviderConfigurationUpdateDto request,
             CancellationToken cancellationToken = default)
         {
-            var existingConfiguration = await _dbContext.AIConfigurations
+            var existingConfiguration = await _dbContext.AIProviderConfigurations
                 .Include(x => x.AIProvider)
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -222,7 +222,7 @@ namespace Kolia.Thumbnail.API.AIs
                     code: "AI_PROVIDER_NOT_FOUND");
             }
 
-            var duplicatedConfiguration = await _dbContext.AIConfigurations
+            var duplicatedConfiguration = await _dbContext.AIProviderConfigurations
                 .AsNoTracking()
                 .AnyAsync(x =>
                     x.AIProviderId == request.AIProviderId &&
@@ -245,7 +245,7 @@ namespace Kolia.Thumbnail.API.AIs
 
             if (request.IsDefault)
             {
-                var defaultConfigurations = await _dbContext.AIConfigurations
+                var defaultConfigurations = await _dbContext.AIProviderConfigurations
                     .Where(x =>
                         x.AIProviderId == request.AIProviderId &&
                         x.IsDefault &&
@@ -275,11 +275,11 @@ namespace Kolia.Thumbnail.API.AIs
         /// <returns></returns>
         /// <exception cref="NotFoundException"></exception>
         /// <exception cref="BusinessException"></exception>
-        public async Task<AIConfigurationDetailDto> SetDefaultAsync(
+        public async Task<AIProviderConfigurationDetailDto> SetDefaultAsync(
             Guid id,
             CancellationToken cancellationToken = default)
         {
-            var configuration = await _dbContext.AIConfigurations
+            var configuration = await _dbContext.AIProviderConfigurations
                 .Include(x => x.AIProvider)
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -297,7 +297,7 @@ namespace Kolia.Thumbnail.API.AIs
                     code: "AI_CONFIGURATION_ALREADY_DEFAULT");
             }
 
-            var currentDefaultConfiguration = await _dbContext.AIConfigurations
+            var currentDefaultConfiguration = await _dbContext.AIProviderConfigurations
                 .Where(x =>
                     x.AIProviderId == configuration.AIProviderId &&
                     x.IsDefault &&
@@ -324,11 +324,11 @@ namespace Kolia.Thumbnail.API.AIs
         /// <returns></returns>
         /// <exception cref="NotFoundException"></exception>
         /// <exception cref="BusinessException"></exception>
-        public async Task<AIConfigurationDetailDto> DeleteAsync(
+        public async Task<AIProviderConfigurationDetailDto> DeleteAsync(
             Guid id,
             CancellationToken cancellationToken = default)
         {
-            var existingConfiguration = await _dbContext.AIConfigurations
+            var existingConfiguration = await _dbContext.AIProviderConfigurations
                 .Include(x => x.AIProvider)
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -346,7 +346,7 @@ namespace Kolia.Thumbnail.API.AIs
                     code: "AI_CONFIGURATION_DEFAULT_DELETE_NOT_ALLOWED");
             }
 
-            _dbContext.AIConfigurations.Remove(existingConfiguration);
+            _dbContext.AIProviderConfigurations.Remove(existingConfiguration);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 

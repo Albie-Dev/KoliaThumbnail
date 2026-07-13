@@ -22,7 +22,7 @@ namespace Kolia.Thumbnail.API.Security
     {
         // Purpose string nên bao gồm tên assembly + mục đích cụ thể để tránh đụng độ
         // nếu sau này có nhiều loại secret khác cũng dùng Data Protection trong cùng app.
-        private const string PurposeString = "Kolia.Thumbnail.API.AIConfiguration.ApiKey.v1";
+        private const string PurposeString = "Kolia.Thumbnail.API.AIProviderConfiguration.ApiKey.v1";
         private const string PayloadVersionPrefix = "v1:";
 
         private readonly IDataProtector _protector;

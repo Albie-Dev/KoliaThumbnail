@@ -4,12 +4,12 @@ using Kolia.Thumbnail.API.Models.Commons;
 
 namespace Kolia.Thumbnail.API.AIs
 {
-    public interface IAIConfigurationService
+    public interface IAIProviderConfigurationService
     {
         /// <summary>
         /// Lấy danh sách cấu hình AI có phân trang.
         /// </summary>
-        Task<PagedResponseDto<AIConfigurationDetailDto>> GetWithPagingAsync(
+        Task<PagedResponseDto<AIProviderConfigurationDetailDto>> GetWithPagingAsync(
             PagedRequestDto request,
             bool? includeDeleted = null,
             bool? deletedOnly = null,
@@ -18,7 +18,7 @@ namespace Kolia.Thumbnail.API.AIs
         /// <summary>
         /// Lấy thông tin cấu hình AI theo Id.
         /// </summary>
-        Task<AIConfigurationEntity?> GetByIdAsync(
+        Task<AIProviderConfigurationEntity?> GetByIdAsync(
             Guid id,
             bool asNoTracking = true,
             bool includeDetails = false,
@@ -28,16 +28,16 @@ namespace Kolia.Thumbnail.API.AIs
         /// <summary>
         /// Tạo mới cấu hình AI.
         /// </summary>
-        Task<AIConfigurationDetailDto> CreateAsync(
+        Task<AIProviderConfigurationDetailDto> CreateAsync(
             AIConfiurationCreateDto request,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Cập nhật cấu hình AI.
         /// </summary>
-        Task<AIConfigurationDetailDto> UpdateAsync(
+        Task<AIProviderConfigurationDetailDto> UpdateAsync(
             Guid id,
-            AIConfigurationUpdateDto request,
+            AIProviderConfigurationUpdateDto request,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -46,14 +46,14 @@ namespace Kolia.Thumbnail.API.AIs
         /// <param name="id"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task<AIConfigurationDetailDto> SetDefaultAsync(
+        Task<AIProviderConfigurationDetailDto> SetDefaultAsync(
             Guid id,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Xóa (soft delete) cấu hình AI.
         /// </summary>
-        Task<AIConfigurationDetailDto> DeleteAsync(
+        Task<AIProviderConfigurationDetailDto> DeleteAsync(
             Guid id,
             CancellationToken cancellationToken = default);
     }

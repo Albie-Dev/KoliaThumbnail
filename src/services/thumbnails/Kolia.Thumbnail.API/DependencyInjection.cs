@@ -11,6 +11,7 @@ using Kolia.Thumbnail.API.Middlewares;
 using Kolia.Thumbnail.API.Models.AIs;
 using Kolia.Thumbnail.API.Security;
 using Kolia.Thumbnail.API.Services.AIs;
+using Kolia.Thumbnail.API.Socials;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kolia.Thumbnail.API
@@ -44,12 +45,14 @@ namespace Kolia.Thumbnail.API
 
 
             services.AddScoped<IAIProviderService, AIProviderService>();
-            services.AddScoped<IAIConfigurationService, AIConfigurationService>();
+            services.AddScoped<IAIProviderConfigurationService, AIProviderConfigurationService>();
+
+            services.AddScoped<ISocialMediaProviderService, SocialMediaProviderService>();
 
             // Security - ApiKey protection
             services.AddDataProtection();
             services.AddScoped<IApiKeyProtector, ApiKeyProtector>();
-            services.AddScoped<AIConfigurationMapper>();
+            services.AddScoped<AIProviderConfigurationMapper>();
 
             // AI Engines — đăng ký typed HttpClient kèm interface để ResolveEngine hoạt động
             services.AddHttpClient<GeminiEngine>();

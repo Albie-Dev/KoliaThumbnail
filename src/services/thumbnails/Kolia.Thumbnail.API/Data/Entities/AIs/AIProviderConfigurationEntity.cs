@@ -5,7 +5,7 @@ namespace Kolia.Thumbnail.API.Data.Entities.AIs
     /// Cấu hình này chỉ chứa các thông tin kết nối và xác thực, không bao gồm
     /// các thiết lập suy luận như Model, Temperature hay Prompt.
     /// </summary>
-    public class AIConfigurationEntity : BaseEntity
+    public class AIProviderConfigurationEntity : BaseEntity
     {
         /// <summary>
         /// Tên hiển thị của cấu hình.

@@ -55,6 +55,6 @@ namespace Kolia.Thumbnail.API.Data.Entities.AIs
         /// <summary>
         /// Danh sách các cấu hình AI liên quan đến nhà cung cấp này
         /// </summary>
-        public virtual ICollection<AIConfigurationEntity> Configurations { get; set; } = new Collection<AIConfigurationEntity>();
+        public virtual ICollection<AIProviderConfigurationEntity> Configurations { get; set; } = new Collection<AIProviderConfigurationEntity>();
     }
 }

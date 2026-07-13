@@ -32,7 +32,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AIConfigurations",
+                name: "AIProviderConfigurations",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -56,9 +56,9 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AIConfigurations", x => x.Id);
+                    table.PrimaryKey("PK_AIProviderConfigurations", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AIConfigurations_AIProviders_AIProviderId",
+                        name: "FK_AIProviderConfigurations_AIProviders_AIProviderId",
                         column: x => x.AIProviderId,
                         principalTable: "AIProviders",
                         principalColumn: "Id",
@@ -66,14 +66,14 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AIConfigurations_AIProviderId_Name",
-                table: "AIConfigurations",
+                name: "IX_AIProviderConfigurations_AIProviderId_Name",
+                table: "AIProviderConfigurations",
                 columns: new[] { "AIProviderId", "Name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_AIConfigurations_Id_IsDeleted",
-                table: "AIConfigurations",
+                name: "IX_AIProviderConfigurations_Id_IsDeleted",
+                table: "AIProviderConfigurations",
                 columns: new[] { "Id", "IsDeleted" });
 
             migrationBuilder.CreateIndex(
@@ -98,7 +98,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AIConfigurations");
+                name: "AIProviderConfigurations");
 
             migrationBuilder.DropTable(
                 name: "AIProviders");

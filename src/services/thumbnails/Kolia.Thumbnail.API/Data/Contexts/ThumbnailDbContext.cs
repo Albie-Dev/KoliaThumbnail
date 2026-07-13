@@ -12,7 +12,10 @@ namespace Kolia.Thumbnail.API.Data.Contexts
 
         #region DbSets
         public DbSet<Entities.AIs.AIProviderEntity> AIProviders { get; set; } = null!;
-        public DbSet<Entities.AIs.AIConfigurationEntity> AIConfigurations { get; set; } = null!;
+        public DbSet<Entities.AIs.AIProviderConfigurationEntity> AIProviderConfigurations { get; set; } = null!;
+
+        public DbSet<Entities.Socials.SocialMediaProviderEntity> SocialMediaProviders { get; set; } = null!;
+        public DbSet<Entities.Socials.SocialMediaProviderConfigurationEntity> SocialMediaProviderConfigurations { get; set; } = null!;
         #endregion
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

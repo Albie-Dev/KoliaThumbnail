@@ -3,7 +3,7 @@ namespace Kolia.Thumbnail.API.Models.AIs
     /// <summary>
     /// DTO lưu trữ cấu hình kết nối đến một nhà cung cấp AI.
     /// </summary>
-    public class AIConfigurationDetailDto : AIConfigurationBaseDto
+    public class AIProviderConfigurationDetailDto : AIProviderConfigurationBaseDto
     {
         /// <summary>
         /// Id của cấu hình AI. Đây là một giá trị duy nhất để xác định cấu hình AI trong hệ thống.
@@ -59,7 +59,7 @@ namespace Kolia.Thumbnail.API.Models.AIs
     /// <summary>
     /// DTO dùng để tạo mới một cấu hình AI. Nó chứa các thông tin cần thiết để thêm một cấu hình AI vào hệ thống.
     /// </summary>
-    public class AIConfiurationCreateDto : AIConfigurationBaseDto
+    public class AIConfiurationCreateDto : AIProviderConfigurationBaseDto
     {
         
     }
@@ -67,15 +67,15 @@ namespace Kolia.Thumbnail.API.Models.AIs
     /// <summary>
     /// DTO dùng để cập nhật thông tin của một cấu hình AI hiện có. Nó chứa các thông tin cần thiết để thay đổi các thuộc tính của cấu hình AI trong hệ thống.
     /// </summary>
-    public class AIConfigurationUpdateDto : AIConfigurationBaseDto
+    public class AIProviderConfigurationUpdateDto : AIProviderConfigurationBaseDto
     {
         
     }
 
     /// <summary>
-    /// DTO cơ sở chứa các thuộc tính chung của cấu hình AI. Nó được sử dụng làm lớp cơ sở cho các DTO khác như AIConfigurationDetailDto, AIConfiurationCreateDto và AIConfigurationUpdateDto.
+    /// DTO cơ sở chứa các thuộc tính chung của cấu hình AI. Nó được sử dụng làm lớp cơ sở cho các DTO khác như AIProviderConfigurationDetailDto, AIConfiurationCreateDto và AIProviderConfigurationUpdateDto.
     /// </summary>
-    public class AIConfigurationBaseDto
+    public class AIProviderConfigurationBaseDto
     {
         /// <summary>
         /// Tên hiển thị của cấu hình.

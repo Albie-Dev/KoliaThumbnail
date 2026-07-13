@@ -7,10 +7,10 @@ namespace Kolia.Thumbnail.API.Validations.AIs
     /// <summary>
     /// Validator dùng chung cho các DTO của AI Configuration.
     /// </summary>
-    public class AIConfigurationBaseValidator<T> : AbstractValidator<T>
-        where T : AIConfigurationBaseDto
+    public class AIProviderConfigurationBaseValidator<T> : AbstractValidator<T>
+        where T : AIProviderConfigurationBaseDto
     {
-        public AIConfigurationBaseValidator()
+        public AIProviderConfigurationBaseValidator()
         {
             RuleFor(x => x.Name)
                 .NotEmpty()
@@ -75,16 +75,16 @@ namespace Kolia.Thumbnail.API.Validations.AIs
     /// <summary>
     /// Validator cho yêu cầu tạo mới AI Configuration.
     /// </summary>
-    public sealed class AIConfigurationCreateValidator
-        : AIConfigurationBaseValidator<AIConfiurationCreateDto>
+    public sealed class AIProviderConfigurationCreateValidator
+        : AIProviderConfigurationBaseValidator<AIConfiurationCreateDto>
     {
     }
 
     /// <summary>
     /// Validator cho yêu cầu cập nhật AI Configuration.
     /// </summary>
-    public sealed class AIConfigurationUpdateValidator
-        : AIConfigurationBaseValidator<AIConfigurationUpdateDto>
+    public sealed class AIProviderConfigurationUpdateValidator
+        : AIProviderConfigurationBaseValidator<AIProviderConfigurationUpdateDto>
     {
     }
 }

@@ -4,14 +4,14 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Kolia.Thumbnail.API.Data.Configurations.AIs
 {
-    public sealed class AIConfigurationEntityConfiguration
-        : BaseEntityConfiguration<AIConfigurationEntity>
+    public sealed class AIProviderConfigurationEntityConfiguration
+        : BaseEntityConfiguration<AIProviderConfigurationEntity>
     {
-        public override void Configure(EntityTypeBuilder<AIConfigurationEntity> builder)
+        public override void Configure(EntityTypeBuilder<AIProviderConfigurationEntity> builder)
         {
             base.Configure(builder);
 
-            builder.ToTable("AIConfigurations");
+            builder.ToTable("AIProviderConfigurations");
 
             builder.Property(x => x.Name)
                 .IsRequired()

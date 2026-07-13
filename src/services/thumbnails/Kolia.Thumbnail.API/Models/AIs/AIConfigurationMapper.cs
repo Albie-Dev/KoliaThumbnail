@@ -7,18 +7,18 @@ namespace Kolia.Thumbnail.API.Models.AIs
     /// Mapper chuyển đổi giữa Entity và DTO cho AI Configuration.
     /// Dùng IApiKeyProtector để mã hoá ApiKey khi lưu và giải mã/mask khi đọc.
     /// </summary>
-    public class AIConfigurationMapper
+    public class AIProviderConfigurationMapper
     {
         private readonly IApiKeyProtector _apiKeyProtector;
 
-        public AIConfigurationMapper(IApiKeyProtector apiKeyProtector)
+        public AIProviderConfigurationMapper(IApiKeyProtector apiKeyProtector)
         {
             _apiKeyProtector = apiKeyProtector;
         }
 
-        public AIConfigurationEntity ToEntity(AIConfiurationCreateDto dto)
+        public AIProviderConfigurationEntity ToEntity(AIConfiurationCreateDto dto)
         {
-            return new AIConfigurationEntity
+            return new AIProviderConfigurationEntity
             {
                 Name = dto.Name,
                 Description = dto.Description,
@@ -36,9 +36,9 @@ namespace Kolia.Thumbnail.API.Models.AIs
             };
         }
 
-        public AIConfigurationEntity ToEntity(
-            AIConfigurationUpdateDto dto,
-            AIConfigurationEntity existingEntity)
+        public AIProviderConfigurationEntity ToEntity(
+            AIProviderConfigurationUpdateDto dto,
+            AIProviderConfigurationEntity existingEntity)
         {
             existingEntity.Name = dto.Name;
             existingEntity.Description = dto.Description;
@@ -70,9 +70,9 @@ namespace Kolia.Thumbnail.API.Models.AIs
             return existingEntity;
         }
 
-        public AIConfigurationDetailDto ToDetailDto(AIConfigurationEntity entity)
+        public AIProviderConfigurationDetailDto ToDetailDto(AIProviderConfigurationEntity entity)
         {
-            return new AIConfigurationDetailDto
+            return new AIProviderConfigurationDetailDto
             {
                 Id = entity.Id,
                 Name = entity.Name,

@@ -6,7 +6,7 @@ namespace Kolia.Thumbnail.API.Models.Engines
     /// <summary>
     /// Ngữ cảnh thực thi cho một provider AI, bao gồm thông tin provider
     /// và danh sách cấu hình (API keys) được sắp xếp theo Priority.
-    /// Được tạo ra từ <see cref="AIProviderEntity"/> và <see cref="AIConfigurationEntity"/>.
+    /// Được tạo ra từ <see cref="AIProviderEntity"/> và <see cref="AIProviderConfigurationEntity"/>.
     /// </summary>
     public sealed class ProviderExecutionContext
     {

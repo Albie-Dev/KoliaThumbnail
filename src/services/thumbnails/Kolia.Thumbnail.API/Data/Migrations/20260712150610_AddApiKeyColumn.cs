@@ -13,15 +13,15 @@ namespace Kolia.Thumbnail.API.Data.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "BaseUrl",
-                table: "AIConfigurations");
+                table: "AIProviderConfigurations");
 
             migrationBuilder.DropColumn(
                 name: "Endpoint",
-                table: "AIConfigurations");
+                table: "AIProviderConfigurations");
 
             migrationBuilder.AlterColumn<string>(
                 name: "ApiKey",
-                table: "AIConfigurations",
+                table: "AIProviderConfigurations",
                 type: "character varying(2000)",
                 maxLength: 2000,
                 nullable: false,
@@ -31,20 +31,20 @@ namespace Kolia.Thumbnail.API.Data.Migrations
 
             migrationBuilder.AddColumn<string>(
                 name: "ApiKeyHash",
-                table: "AIConfigurations",
+                table: "AIProviderConfigurations",
                 type: "character varying(512)",
                 maxLength: 512,
                 nullable: true);
 
             migrationBuilder.AddColumn<DateTimeOffset>(
                 name: "LastTokenResetTime",
-                table: "AIConfigurations",
+                table: "AIProviderConfigurations",
                 type: "timestamp with time zone",
                 nullable: true);
 
             migrationBuilder.AddColumn<long>(
                 name: "TotalTokensUsed",
-                table: "AIConfigurations",
+                table: "AIProviderConfigurations",
                 type: "bigint",
                 nullable: false,
                 defaultValue: 0L);
@@ -55,19 +55,19 @@ namespace Kolia.Thumbnail.API.Data.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "ApiKeyHash",
-                table: "AIConfigurations");
+                table: "AIProviderConfigurations");
 
             migrationBuilder.DropColumn(
                 name: "LastTokenResetTime",
-                table: "AIConfigurations");
+                table: "AIProviderConfigurations");
 
             migrationBuilder.DropColumn(
                 name: "TotalTokensUsed",
-                table: "AIConfigurations");
+                table: "AIProviderConfigurations");
 
             migrationBuilder.AlterColumn<string>(
                 name: "ApiKey",
-                table: "AIConfigurations",
+                table: "AIProviderConfigurations",
                 type: "character varying(500)",
                 maxLength: 500,
                 nullable: false,
@@ -77,7 +77,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
 
             migrationBuilder.AddColumn<string>(
                 name: "BaseUrl",
-                table: "AIConfigurations",
+                table: "AIProviderConfigurations",
                 type: "character varying(500)",
                 maxLength: 500,
                 nullable: false,
@@ -85,7 +85,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
 
             migrationBuilder.AddColumn<string>(
                 name: "Endpoint",
-                table: "AIConfigurations",
+                table: "AIProviderConfigurations",
                 type: "character varying(500)",
                 maxLength: 500,
                 nullable: true);

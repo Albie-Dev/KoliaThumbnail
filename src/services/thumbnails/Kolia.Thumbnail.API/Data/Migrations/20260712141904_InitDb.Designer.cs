@@ -25,7 +25,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Kolia.Thumbnail.API.Data.Entities.AIs.AIConfigurationEntity", b =>
+            modelBuilder.Entity("Kolia.Thumbnail.API.Data.Entities.AIs.AIProviderConfigurationEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -110,7 +110,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
 
                     b.HasIndex("Id", "IsDeleted");
 
-                    b.ToTable("AIConfigurations", (string)null);
+                    b.ToTable("AIProviderConfigurations", (string)null);
                 });
 
             modelBuilder.Entity("Kolia.Thumbnail.API.Data.Entities.AIs.AIProviderEntity", b =>
@@ -170,7 +170,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                     b.ToTable("AIProviders", (string)null);
                 });
 
-            modelBuilder.Entity("Kolia.Thumbnail.API.Data.Entities.AIs.AIConfigurationEntity", b =>
+            modelBuilder.Entity("Kolia.Thumbnail.API.Data.Entities.AIs.AIProviderConfigurationEntity", b =>
                 {
                     b.HasOne("Kolia.Thumbnail.API.Data.Entities.AIs.AIProviderEntity", "AIProvider")
                         .WithMany("Configurations")
