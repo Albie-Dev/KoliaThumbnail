@@ -19,11 +19,11 @@ import { formatDateTime } from '../../lib/date-formatter'
 import { useSidebarContext } from '../../lib/sidebar-context'
 
 import {
-    deleteAIConfiguration,
-    fetchAIConfigurations,
-    setDefaultAIConfiguration,
-    type AIConfigurationBaseDto,
-    type AIConfigurationDetailDto,
+    deleteAIProviderConfiguration,
+    fetchAIProviderConfigurations,
+    setDefaultAIProviderConfiguration,
+    type AIProviderConfigurationBaseDto,
+    type AIProviderConfigurationDetailDto,
 } from './api'
 
 import {
@@ -56,14 +56,14 @@ export function AiConfigurationsPage() {
         useState<StatusFilter>('active')
 
     const [deleteTarget, setDeleteTarget] =
-        useState<AIConfigurationBaseDto | null>(null)
+        useState<AIProviderConfigurationBaseDto | null>(null)
 
     const {
         mutate: remove,
         isPending: isDeleting,
     } = useMutation({
         mutationFn: (id: string) =>
-            deleteAIConfiguration(id),
+            deleteAIProviderConfiguration(id),
 
         onSuccess: () => {
             toast.success('Đã xoá cấu hình AI.')
@@ -87,7 +87,7 @@ export function AiConfigurationsPage() {
         isPending: isSettingDefault,
     } = useMutation({
         mutationFn: (id: string) =>
-            setDefaultAIConfiguration(id),
+            setDefaultAIProviderConfiguration(id),
 
         onSuccess: () => {
             toast.success('Đã đặt cấu hình mặc định.')
@@ -238,7 +238,7 @@ export function AiConfigurationsPage() {
         ],
 
         queryFn: () =>
-            fetchAIConfigurations({
+            fetchAIProviderConfigurations({
                 pageNumber: page,
                 pageSize,
                 searchText: search || undefined,
@@ -256,7 +256,7 @@ export function AiConfigurationsPage() {
             {
                 key: 'provider',
                 header: 'Provider',
-                render: (item: AIConfigurationDetailDto) => (
+                render: (item: AIProviderConfigurationDetailDto) => (
                     <div className="flex items-center gap-3">
                         {item.aiProviderLogo ? (
                             <img
@@ -287,7 +287,7 @@ export function AiConfigurationsPage() {
                 key: 'name',
                 header: 'Tên',
                 sortable: true,
-                render: (item: AIConfigurationBaseDto) => (
+                render: (item: AIProviderConfigurationBaseDto) => (
                     <div>
                         <div className="font-medium">
                             {item.name}
@@ -306,7 +306,7 @@ export function AiConfigurationsPage() {
             //     key: 'priority',
             //     header: 'Priority',
             //     sortable: true,
-            //     render: (item: AIConfigurationBaseDto) => (
+            //     render: (item: AIProviderConfigurationBaseDto) => (
             //         <Badge variant="secondary">
             //             {item.priority}
             //         </Badge>
@@ -316,7 +316,7 @@ export function AiConfigurationsPage() {
             {
                 key: 'timeoutSeconds',
                 header: 'Timeout',
-                render: (item: AIConfigurationBaseDto) => (
+                render: (item: AIProviderConfigurationBaseDto) => (
                     <span>{item.timeoutSeconds}s</span>
                 ),
             },
@@ -324,14 +324,14 @@ export function AiConfigurationsPage() {
             {
                 key: 'retryCount',
                 header: 'Retry',
-                render: (item: AIConfigurationBaseDto) =>
+                render: (item: AIProviderConfigurationBaseDto) =>
                     item.retryCount,
             },
 
             {
                 key: 'apiKeyMasked',
                 header: 'API Key',
-                render: (item: AIConfigurationDetailDto) => (
+                render: (item: AIProviderConfigurationDetailDto) => (
                     <span className="font-mono text-xs text-slate-500" title={item.apiKey}>
                         {item.apiKeyMasked}
                     </span>
@@ -341,7 +341,7 @@ export function AiConfigurationsPage() {
             {
                 key: 'totalTokensUsed',
                 header: 'Tokens',
-                render: (item: AIConfigurationDetailDto) => (
+                render: (item: AIProviderConfigurationDetailDto) => (
                     <span className="text-xs text-slate-500">
                         {item.totalTokensUsed.toLocaleString()}
                     </span>
@@ -351,7 +351,7 @@ export function AiConfigurationsPage() {
             {
                 key: 'isEnabled',
                 header: 'Status',
-                render: (item: AIConfigurationBaseDto) =>
+                render: (item: AIProviderConfigurationBaseDto) =>
                     item.isEnabled ? (
                         <Badge variant="success" dot>Enabled</Badge>
                     ) : (
@@ -362,7 +362,7 @@ export function AiConfigurationsPage() {
             {
                 key: 'isDefault',
                 header: 'Default',
-                render: (item: AIConfigurationBaseDto) =>
+                render: (item: AIProviderConfigurationBaseDto) =>
                     item.isDefault ? (
                         <Badge>Default</Badge>
                     ) : (
@@ -382,7 +382,7 @@ export function AiConfigurationsPage() {
                 key: 'creationTime',
                 header: 'Tạo lúc',
                 sortable: true,
-                render: (item: AIConfigurationBaseDto) =>
+                render: (item: AIProviderConfigurationBaseDto) =>
                     formatDateTime(item.creationTime),
             },
 
@@ -390,7 +390,7 @@ export function AiConfigurationsPage() {
                 key: 'lastModificationTime',
                 header: 'Cập nhật',
                 sortable: true,
-                render: (item: AIConfigurationBaseDto) =>
+                render: (item: AIProviderConfigurationBaseDto) =>
                     formatDateTime(
                         item.lastModificationTime,
                     ),
@@ -399,7 +399,7 @@ export function AiConfigurationsPage() {
             {
                 key: 'actions',
                 header: '',
-                render: (item: AIConfigurationBaseDto) =>
+                render: (item: AIProviderConfigurationBaseDto) =>
                     item.isDeleted ? (
                         <span className="text-xs italic text-slate-400">
                             Đã xoá

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const createAIConfigurationSchema = z.object({
+export const createAIProviderConfigurationSchema = z.object({
     name: z
         .string()
         .trim()
@@ -53,14 +53,14 @@ export const createAIConfigurationSchema = z.object({
     ),
 })
 
-export type CreateAIConfigurationInput = z.infer<
-    typeof createAIConfigurationSchema
+export type CreateAIProviderConfigurationInput = z.infer<
+    typeof createAIProviderConfigurationSchema
 >
 
-export const updateAIConfigurationSchema = createAIConfigurationSchema.extend({
+export const updateAIProviderConfigurationSchema = createAIProviderConfigurationSchema.extend({
     apiKey: z.string().trim().optional().default(''),
 })
 
-export type UpdateAIConfigurationInput = z.infer<
-    typeof updateAIConfigurationSchema
+export type UpdateAIProviderConfigurationInput = z.infer<
+    typeof updateAIProviderConfigurationSchema
 >

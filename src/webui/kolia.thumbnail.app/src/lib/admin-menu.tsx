@@ -17,14 +17,15 @@ import {
   FolderOpen,
   Bell,
   Puzzle,
-  Cpu,
   Settings,
   Users,
   Shield,
-  Server,
   Brain,
-  SlidersHorizontal,
   type LucideIcon,
+  MessageCircle,
+  Share2,
+  Globe,
+  KeyRound,
 } from 'lucide-react'
 import type { AdminMenuGroup, AdminMenuItem } from '../types/admin-layout.types'
 
@@ -44,6 +45,10 @@ const AiConfigurationsPage = lazy(() =>
   import('../features/ai-configurations/ai-configuration-page').then((m) => ({
     default: m.AiConfigurationsPage,
   })),
+)
+
+const SocialMediaProvidersPage = lazy(() =>
+  import('../features/social-media-providers/social-media-providers-page').then((m) => ({ default: m.SocialMediaProvidersPage })),
 )
 
 const PlaceholderPage: ComponentType = () => {
@@ -203,6 +208,13 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         iconColor: '#8b5cf6', // violet-500
         component: PlaceholderPage,
       },
+      {
+        key: '/ai-chat',
+        label: 'Hỏi đáp AI',
+        icon: MessageCircle,
+        iconColor: '#3b82f6', // blue-500
+        component: PlaceholderPage,
+      },
     ],
   },
 
@@ -233,33 +245,48 @@ export const adminMenuGroups: AdminMenuGroup[] = [
     items: [
       {
         key: '/configuration/ai',
-        label: 'AI',
+        label: 'Cấu hình AI',
         icon: Brain,
         iconColor: '#06b6d4', // cyan-500
         children: [
           {
             key: '/configuration/ai/providers',
-            label: 'Providers',
-            icon: Server,
+            label: 'Nhà cung cấp',
+            icon: Globe,
             iconColor: '#0891b2', // cyan-600
             component: AiProvidersPage,
           },
           {
             key: '/configuration/ai/configurations',
-            label: 'Configurations',
-            icon: SlidersHorizontal,
+            label: 'Cấu hình Key',
+            icon: KeyRound,
             iconColor: '#0284c7', // sky-600
             component: AiConfigurationsPage,
           },
         ],
       },
       {
-        key: '/ai-config',
-        label: 'Cấu hình AI',
-        icon: Cpu,
-        iconColor: '#7c3aed', // violet-600
-        component: PlaceholderPage,
-      },
+        key: '/configuration/social-media',
+        label: 'Cấu hình Mạng xã hội',
+        icon: Share2,
+        iconColor: '#3b82f6', // blue-500
+        children: [
+          {
+            key: '/configuration/social-media/providers',
+            label: 'Nhà cung cấp',
+            icon: Globe,
+            iconColor: '#2563eb', // blue-600
+            component: SocialMediaProvidersPage,
+          },
+          {
+            key: '/configuration/social-media/configurations',
+            label: 'Cấu hình Key',
+            icon: KeyRound,
+            iconColor: '#f59e0b', // amber-500
+            component: AiConfigurationsPage,
+          },
+        ],
+      }
     ],
   },
 

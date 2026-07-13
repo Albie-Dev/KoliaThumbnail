@@ -6,11 +6,11 @@ import { toast } from 'sonner'
 import type { z } from 'zod'
 
 import {
-    updateAIConfiguration,
-    type AIConfigurationDetailDto,
-    type UpdateAIConfigurationInput,
+    updateAIProviderConfiguration,
+    type AIProviderConfigurationDetailDto,
+    type UpdateAIProviderConfigurationInput,
 } from './api'
-import { updateAIConfigurationSchema } from './schema'
+import { updateAIProviderConfigurationSchema } from './schema'
 
 import { Input } from '../../components/ui/input'
 import {
@@ -22,22 +22,22 @@ import {
 import { ApiError } from '../../lib/api/api-error'
 import { Checkbox } from '../../components/ui/checkbox';
 
-type FormValues = z.input<typeof updateAIConfigurationSchema>;
+type FormValues = z.input<typeof updateAIProviderConfigurationSchema>;
 
-interface EditAIConfigurationFormProps {
-    configuration: AIConfigurationDetailDto
+interface EditAIProviderConfigurationFormProps {
+    configuration: AIProviderConfigurationDetailDto
     onClose?: () => void
 }
 
-export interface EditAIConfigurationFormHandle {
+export interface EditAIProviderConfigurationFormHandle {
     submit: () => Promise<void>
     isSubmitting: boolean
 }
 
-export const EditAIConfigurationForm =
+export const EditAIProviderConfigurationForm =
     forwardRef<
-        EditAIConfigurationFormHandle,
-        EditAIConfigurationFormProps
+        EditAIProviderConfigurationFormHandle,
+        EditAIProviderConfigurationFormProps
     >(({ configuration, onClose }, ref) => {
         const queryClient = useQueryClient();
 
@@ -50,7 +50,7 @@ export const EditAIConfigurationForm =
             reset,
         } = useForm<FormValues>({
             resolver: zodResolver(
-                updateAIConfigurationSchema,
+                updateAIProviderConfigurationSchema,
             ),
             defaultValues: {
                 name: configuration.name,
@@ -95,7 +95,7 @@ export const EditAIConfigurationForm =
         }, [configuration, reset]);
 
         const { mutateAsync } = useMutation({
-            mutationFn: updateAIConfiguration,
+            mutationFn: updateAIProviderConfiguration,
 
             onError: (error) => {
                 if (
@@ -130,7 +130,7 @@ export const EditAIConfigurationForm =
                     id: configuration.id,
                     ...data,
                     apiKey: data.apiKey ?? '',
-                } as UpdateAIConfigurationInput)
+                } as UpdateAIProviderConfigurationInput)
                 toast.success('Cập nhật cấu hình AI thành công!')
                 onClose?.()
                 reset()
@@ -345,5 +345,5 @@ export const EditAIConfigurationForm =
         )
     })
 
-EditAIConfigurationForm.displayName =
-    'EditAIConfigurationForm'
+EditAIProviderConfigurationForm.displayName =
+    'EditAIProviderConfigurationForm'

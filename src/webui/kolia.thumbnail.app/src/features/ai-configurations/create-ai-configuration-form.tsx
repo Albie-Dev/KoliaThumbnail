@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { createAIConfiguration } from './api'
-import { createAIConfigurationSchema, type CreateAIConfigurationInput } from './schema'
+import { createAIProviderConfiguration } from './api'
+import { createAIProviderConfigurationSchema, type CreateAIProviderConfigurationInput } from './schema'
 import { Input } from '../../components/ui/input'
 import { FormField, FormGroup, FormLabel } from '../../components/ui/form'
 import { ApiError } from '../../lib/api/api-error'
@@ -17,19 +17,19 @@ import { FormSection } from '../../components/ui/form-section'
 import { Eye, EyeOff } from 'lucide-react'
 import { Textarea } from '../../components/ui/textarea'
 
-interface CreateAIConfigurationFormProps {
+interface CreateAIProviderConfigurationFormProps {
     onClose?: () => void
 }
 
-export interface CreateAIConfigurationFormHandle {
+export interface CreateAIProviderConfigurationFormHandle {
     submit: () => Promise<void>
     isSubmitting: boolean
 }
 
-export const CreateAIConfigurationForm =
+export const CreateAIProviderConfigurationForm =
     forwardRef<
-        CreateAIConfigurationFormHandle,
-        CreateAIConfigurationFormProps
+        CreateAIProviderConfigurationFormHandle,
+        CreateAIProviderConfigurationFormProps
     >(({ onClose }, ref) => {
         const queryClient = useQueryClient()
 
@@ -37,7 +37,7 @@ export const CreateAIConfigurationForm =
 
         const [provider, setProvider] = useState<AIProviderBaseDto | null>(null);
 
-        type FormValues = z.input<typeof createAIConfigurationSchema>;
+        type FormValues = z.input<typeof createAIProviderConfigurationSchema>;
 
         const [showApiKey, setShowApiKey] = useState(false);
 
@@ -52,7 +52,7 @@ export const CreateAIConfigurationForm =
             setValue,
         } = useForm<FormValues>({
             resolver: zodResolver(
-                createAIConfigurationSchema,
+                createAIProviderConfigurationSchema,
             ),
             defaultValues: {
                 name: '',
@@ -71,8 +71,8 @@ export const CreateAIConfigurationForm =
 
         const { mutateAsync } = useMutation({
             mutationFn: (
-                data: CreateAIConfigurationInput,
-            ) => createAIConfiguration(data),
+                data: CreateAIProviderConfigurationInput,
+            ) => createAIProviderConfiguration(data),
 
             onError: (error) => {
                 if (
@@ -82,7 +82,7 @@ export const CreateAIConfigurationForm =
                     error.errors?.forEach(
                         (validationError) => {
                             setError(
-                                validationError.property as keyof CreateAIConfigurationInput,
+                                validationError.property as keyof CreateAIProviderConfigurationInput,
                                 {
                                     message:
                                         validationError.message,
@@ -106,7 +106,7 @@ export const CreateAIConfigurationForm =
             setIsSubmitting(true)
 
             try {
-                await mutateAsync(data as CreateAIConfigurationInput)
+                await mutateAsync(data as CreateAIProviderConfigurationInput)
                 toast.success('Tạo cấu hình AI thành công!')
                 onClose?.()
                 reset()
@@ -343,5 +343,5 @@ export const CreateAIConfigurationForm =
         )
     })
 
-CreateAIConfigurationForm.displayName =
-    'CreateAIConfigurationForm'
+CreateAIProviderConfigurationForm.displayName =
+    'CreateAIProviderConfigurationForm'

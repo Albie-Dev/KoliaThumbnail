@@ -5,9 +5,9 @@ import type {
     PagedRequestParams,
     PagedResult,
 } from '../../types/paging.types'
-import type { CreateAIConfigurationInput } from './schema'
+import type { CreateAIProviderConfigurationInput } from './schema'
 
-export interface AIConfigurationBaseDto {
+export interface AIProviderConfigurationBaseDto {
     id: string
 
     name: string
@@ -32,7 +32,7 @@ export interface AIConfigurationBaseDto {
     lastModificationTime?: string | null
 }
 
-export interface AIConfigurationDetailDto extends AIConfigurationBaseDto {
+export interface AIProviderConfigurationDetailDto extends AIProviderConfigurationBaseDto {
     aiProviderShortName: string
     aiProviderName: string
     aiProviderLogo?: string | null
@@ -44,15 +44,15 @@ export interface AIConfigurationDetailDto extends AIConfigurationBaseDto {
     deletionTime?: string | null
 }
 
-export interface AIConfigurationPagedRequest
+export interface AIProviderConfigurationPagedRequest
     extends PagedRequestParams {
     includeDeleted?: boolean
     deletedOnly?: boolean
 }
 
 function toPagedResult(
-    payload: BackendPagedResponse<AIConfigurationDetailDto>,
-): PagedResult<AIConfigurationDetailDto> {
+    payload: BackendPagedResponse<AIProviderConfigurationDetailDto>,
+): PagedResult<AIProviderConfigurationDetailDto> {
     return {
         items: payload.items,
         pageNumber: payload.pageInfo.pageNumber,
@@ -65,9 +65,9 @@ function toPagedResult(
 /**
  * Get paging
  */
-export async function fetchAIConfigurations(
-    params: AIConfigurationPagedRequest,
-): Promise<PagedResult<AIConfigurationDetailDto>> {
+export async function fetchAIProviderConfigurations(
+    params: AIProviderConfigurationPagedRequest,
+): Promise<PagedResult<AIProviderConfigurationDetailDto>> {
     const {
         includeDeleted,
         deletedOnly,
@@ -90,7 +90,7 @@ export async function fetchAIConfigurations(
 
     const response =
         await httpClient.get<
-            BackendPagedResponse<AIConfigurationDetailDto>
+            BackendPagedResponse<AIProviderConfigurationDetailDto>
         >(`/api/v1/ai-configurations/paging?${query.toString()}`)
 
     return toPagedResult(response)
@@ -99,10 +99,10 @@ export async function fetchAIConfigurations(
 /**
  * Get by id
  */
-export async function getAIConfigurationById(
+export async function getAIProviderConfigurationById(
     id: string,
-): Promise<AIConfigurationDetailDto> {
-    return httpClient.get<AIConfigurationDetailDto>(
+): Promise<AIProviderConfigurationDetailDto> {
+    return httpClient.get<AIProviderConfigurationDetailDto>(
         `/api/v1/ai-configurations/${id}`,
     )
 }
@@ -110,10 +110,10 @@ export async function getAIConfigurationById(
 /**
  * Create
  */
-export async function createAIConfiguration(
-    data: CreateAIConfigurationInput,
-): Promise<AIConfigurationDetailDto> {
-    return httpClient.post<AIConfigurationDetailDto>(
+export async function createAIProviderConfiguration(
+    data: CreateAIProviderConfigurationInput,
+): Promise<AIProviderConfigurationDetailDto> {
+    return httpClient.post<AIProviderConfigurationDetailDto>(
         '/api/v1/ai-configurations',
         {
             name: data.name,
@@ -136,18 +136,18 @@ export async function createAIConfiguration(
     )
 }
 
-export interface UpdateAIConfigurationInput
-    extends CreateAIConfigurationInput {
+export interface UpdateAIProviderConfigurationInput
+    extends CreateAIProviderConfigurationInput {
     id: string
 }
 
 /**
  * Update
  */
-export async function updateAIConfiguration(
-    data: UpdateAIConfigurationInput,
-): Promise<AIConfigurationDetailDto> {
-    return httpClient.put<AIConfigurationDetailDto>(
+export async function updateAIProviderConfiguration(
+    data: UpdateAIProviderConfigurationInput,
+): Promise<AIProviderConfigurationDetailDto> {
+    return httpClient.put<AIProviderConfigurationDetailDto>(
         `/api/v1/ai-configurations/${data.id}`,
         {
             name: data.name,
@@ -173,10 +173,10 @@ export async function updateAIConfiguration(
 /**
  * Set default configuration
  */
-export async function setDefaultAIConfiguration(
+export async function setDefaultAIProviderConfiguration(
     id: string,
-): Promise<AIConfigurationDetailDto> {
-    return httpClient.patch<AIConfigurationDetailDto>(
+): Promise<AIProviderConfigurationDetailDto> {
+    return httpClient.patch<AIProviderConfigurationDetailDto>(
         `/api/v1/ai-configurations/${id}/set-default`,
     )
 }
@@ -184,7 +184,7 @@ export async function setDefaultAIConfiguration(
 /**
  * Delete
  */
-export async function deleteAIConfiguration(
+export async function deleteAIProviderConfiguration(
     id: string,
 ): Promise<void> {
     await httpClient.delete(`/api/v1/ai-configurations/${id}`)
