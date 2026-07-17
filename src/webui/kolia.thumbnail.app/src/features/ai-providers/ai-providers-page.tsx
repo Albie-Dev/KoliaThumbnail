@@ -161,7 +161,7 @@ export function AiProvidersPage() {
           item.imageUrl ? (
             <img src={item.imageUrl} alt={item.name} className="h-8 w-8 rounded object-cover" />
           ) : (
-            <span className="text-sm text-slate-400">—</span>
+            <span className="text-sm text-slate-400 dark:text-slate-500">—</span>
           ),
       },
       {
@@ -194,7 +194,7 @@ export function AiProvidersPage() {
         header: '',
         render: (item: AIProviderBaseDto) =>
           item.isDeleted ? (
-            <span className="text-xs text-slate-400 italic">Đã xoá</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 italic">Đã xoá</span>
           ) : (
             <div className="flex items-center gap-0.5">
               <Button
@@ -210,7 +210,7 @@ export function AiProvidersPage() {
                 size="icon"
                 onClick={() => setDeleteTarget(item)}
                 title="Xoá"
-                className="hover:bg-red-50 hover:text-red-600"
+                className="hover:bg-red-50 hover:dark:bg-red-950/40 hover:text-red-600 hover:dark:text-red-400"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -248,7 +248,7 @@ export function AiProvidersPage() {
 
       {/* Loại nhà cung cấp */}
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-slate-600">Loại nhà cung cấp</label>
+        <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Loại nhà cung cấp</label>
         <SelectDropdown<{ id: number; label: string }>
           items={AI_PROVIDER_TYPE_OPTIONS}
           getOptionId={(opt) => String(opt.id)}

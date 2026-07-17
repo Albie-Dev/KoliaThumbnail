@@ -50,13 +50,13 @@ export function ConfirmDialog({
   if (!open) return null
 
   const iconColors = {
-    danger: 'text-red-500 bg-red-50',
-    warning: 'text-amber-500 bg-amber-50',
+    danger: 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40',
+    warning: 'text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40',
   }
 
   const buttonColors = {
-    danger: 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-400',
-    warning: 'bg-amber-600 hover:bg-amber-700 focus-visible:ring-amber-400',
+    danger: 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-400 focus-visible:dark:ring-red-600',
+    warning: 'bg-amber-600 hover:bg-amber-700 focus-visible:ring-amber-400 focus-visible:dark:ring-amber-600',
   }
 
   return createPortal(
@@ -70,7 +70,7 @@ export function ConfirmDialog({
       {/* Dialog */}
       <div
         className={cn(
-          'relative z-10 w-full max-w-sm rounded-xl border border-slate-200 bg-white shadow-2xl animate-fade-in',
+          'relative z-10 w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl animate-fade-in',
         )}
         role="dialog"
         aria-modal="true"
@@ -79,7 +79,7 @@ export function ConfirmDialog({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          className="absolute right-3 top-3 rounded-lg p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-600 hover:dark:text-slate-300 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
@@ -97,12 +97,12 @@ export function ConfirmDialog({
           </div>
 
           {/* Title */}
-          <h3 className="mb-2 text-center text-lg font-semibold text-slate-900">
+          <h3 className="mb-2 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">
             {title}
           </h3>
 
           {/* Message */}
-          <div className="mb-6 text-center text-sm text-slate-500">
+          <div className="mb-6 text-center text-sm text-slate-500 dark:text-slate-400">
             {message}
           </div>
 

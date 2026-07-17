@@ -31,8 +31,8 @@ export const CheckboxField = forwardRef<HTMLButtonElement, CheckboxFieldProps>(
                 className="mt-0.5"
             />
             <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium leading-none text-slate-900">{label}</span>
-                {description && <span className="text-xs leading-snug text-slate-500">{description}</span>}
+                <span className="text-sm font-medium leading-none text-slate-900 dark:text-slate-100">{label}</span>
+                {description && <span className="text-xs leading-snug text-slate-500 dark:text-slate-400">{description}</span>}
             </span>
         </label>
     ),

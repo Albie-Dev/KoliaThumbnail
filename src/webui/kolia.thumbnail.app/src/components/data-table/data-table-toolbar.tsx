@@ -69,7 +69,7 @@ export function DataTableToolbar({
         {/* Search — h-9 khớp với Button size default */}
         {onSearchChange && (
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -80,7 +80,7 @@ export function DataTableToolbar({
               <button
                 type="button"
                 onClick={onSearchClear}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:dark:text-slate-300"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -102,8 +102,8 @@ export function DataTableToolbar({
             </Button>
 
             {columnsOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-1 shadow-lg">
+                <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                   Hiển thị cột
                 </p>
                 {columns.map((col) => {
@@ -114,16 +114,16 @@ export function DataTableToolbar({
                       type="button"
                       onClick={() => onToggleColumn(col.key)}
                       className={cn(
-                        'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-slate-50',
-                        isVisible ? 'text-slate-800' : 'text-slate-400',
+                        'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-slate-50 hover:dark:bg-slate-900',
+                        isVisible ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500',
                       )}
                     >
                       <span
                         className={cn(
                           'flex h-4 w-4 items-center justify-center rounded border transition-colors',
                           isVisible
-                            ? 'border-slate-900 bg-slate-900 text-white'
-                            : 'border-slate-300 bg-white',
+                            ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
+                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900',
                         )}
                       >
                         {isVisible && <Check className="h-3 w-3" />}

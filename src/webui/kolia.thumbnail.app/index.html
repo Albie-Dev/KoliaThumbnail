@@ -2,9 +2,33 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link id="favicon" rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kolia Thumbnail Engine</title>
+    <script>
+      // Áp dụng theme (sáng/tối) trước khi React render để tránh nhấp nháy
+      // sai theme (FOUC). Đọc từ localStorage, mặc định theo hệ điều hành.
+      ;(function () {
+        try {
+          var STORAGE_KEY = 'kolia-ui-theme'
+          var stored = localStorage.getItem(STORAGE_KEY)
+          var isDark =
+            stored === 'dark' ||
+            (stored !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', isDark)
+          document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
+
+          // Đổi favicon theo theme
+          var favicon = document.getElementById('favicon')
+          if (favicon) {
+            favicon.href = isDark ? '/favicon-dark.svg' : '/favicon.svg'
+          }
+        } catch (e) {
+          /* localStorage không khả dụng (SSR/privacy mode) — bỏ qua */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

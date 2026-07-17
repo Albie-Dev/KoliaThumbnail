@@ -184,7 +184,7 @@ export const CreateAIProviderConfigurationForm =
                                             {item.imageUrl ? (
                                                 <img src={item.imageUrl} className="h-6 w-6 rounded" />
                                             ) : (
-                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-slate-100 text-[10px] font-semibold">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold">
                                                     {item.shortName.substring(0, 2).toUpperCase()}
                                                 </div>
                                             )}
@@ -196,7 +196,7 @@ export const CreateAIProviderConfigurationForm =
                                             {item.imageUrl ? (
                                                 <img src={item.imageUrl} className="h-8 w-8 rounded" />
                                             ) : (
-                                                <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-100 text-xs font-semibold">
+                                                <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
                                                     {item.shortName.substring(0, 2).toUpperCase()}
                                                 </div>
                                             )}
@@ -233,7 +233,7 @@ export const CreateAIProviderConfigurationForm =
                             <button
                                 type="button"
                                 onClick={() => setShowApiKey((v) => !v)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:dark:text-slate-300"
                                 tabIndex={-1}
                             >
                                 {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

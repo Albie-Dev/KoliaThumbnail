@@ -4,8 +4,11 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { AdminMenuGroup, AdminMenuItem } from '../../types/admin-layout.types'
 import { adminMenuGroups } from '../../lib/admin-menu'
-import koliaIcon from '../../assets/logo/kolia-icon-only.svg'
-import koliaLogo from '../../assets/logo/kolia-primary-logo.svg'
+import { useTheme } from '../../lib/theme-provider'
+import koliaIconLight from '../../assets/logo/kolia-icon-only.svg'
+import koliaIconDark from '../../assets/logo/kolia-icon-only-dark-theme.svg'
+import koliaLogoLight from '../../assets/logo/kolia-primary-logo.svg'
+import koliaLogoDark from '../../assets/logo/kolia-primary-logo-dark-theme.svg'
 
 // ── Props ──────────────────────────────────────────────
 interface AdminSidebarProps {
@@ -76,8 +79,8 @@ function MenuItem({
           className={cn(
             'mx-auto flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
             isActive
-              ? 'bg-indigo-50 text-indigo-700'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-900 hover:dark:text-slate-100',
           )}
           title={item.label}
         >
@@ -95,8 +98,8 @@ function MenuItem({
         className={cn(
           'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
           isActive
-            ? 'bg-indigo-50 text-indigo-700'
-            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+            ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-900 hover:dark:text-slate-100',
         )}
         style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
@@ -114,7 +117,7 @@ function MenuItem({
         {hasChildren && (
           <ChevronDown
             className={cn(
-              'h-3.5 w-3.5 flex-shrink-0 text-slate-400 transition-transform duration-200',
+              'h-3.5 w-3.5 flex-shrink-0 text-slate-400 dark:text-slate-500 transition-transform duration-200',
               expanded && 'rotate-180',
             )}
           />
@@ -165,9 +168,9 @@ function MenuGroup({
     <div>
       {group.label && (
         collapsed ? (
-          <hr className="my-3 border-t border-slate-200" />
+          <hr className="my-3 border-t border-slate-200 dark:border-slate-700" />
         ) : (
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
             {group.label}
           </p>
         )
@@ -190,12 +193,15 @@ function MenuGroup({
 
 // ── Brand logo / app name ─────────────────────────────
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
   return (
-    <div className="flex h-14 items-center gap-3 border-b border-slate-200 px-4">
+    <div className="flex h-14 items-center gap-3 border-b border-slate-200 dark:border-slate-700 px-4">
       {collapsed ? (
-        <img src={koliaIcon} alt="Kolia" className="h-8 w-8" />
+        <img src={isDark ? koliaIconDark : koliaIconLight} alt="Kolia" className="h-8 w-8" />
       ) : (
-        <img src={koliaLogo} alt="Kolia Thumbnail Engine" className="h-8" />
+        <img src={isDark ? koliaLogoDark : koliaLogoLight} alt="Kolia Thumbnail Engine" className="h-8" />
       )}
     </div>
   )
@@ -216,7 +222,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out',
+        'fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-all duration-300 ease-in-out',
         collapsed ? 'w-16' : 'w-64',
       )}
     >
@@ -239,15 +245,15 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
       </nav>
 
       {/* Collapse toggle — fixed-height footer */}
-      <div className="relative flex h-10 items-center border-t border-slate-200">
+      <div className="relative flex h-10 items-center border-t border-slate-200 dark:border-slate-700">
         <button
           type="button"
           onClick={onToggle}
           className={cn(
-            'flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors',
+            'flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-700 hover:dark:text-slate-200 transition-colors',
             collapsed
               ? 'mx-auto my-2 h-8 w-8'
-              : 'absolute -right-3 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full border border-slate-200 bg-white shadow-sm',
+              : 'absolute -right-3 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm',
           )}
           title={collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
         >

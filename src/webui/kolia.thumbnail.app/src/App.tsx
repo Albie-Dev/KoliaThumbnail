@@ -13,7 +13,7 @@ import { flattenMenuItems, adminMenuGroups } from './lib/admin-menu'
 // trong admin-menu.tsx) đang được tải xuống.
 function RouteLoadingFallback() {
   return (
-    <div className="flex h-full items-center justify-center text-slate-400">
+    <div className="flex h-full items-center justify-center text-slate-400 dark:text-slate-500">
       <p className="text-sm">Đang tải…</p>
     </div>
   )
@@ -54,7 +54,7 @@ function App() {
                 <Route
                   path="*"
                   element={
-                    <div className="flex h-full items-center justify-center text-slate-400">
+                    <div className="flex h-full items-center justify-center text-slate-400 dark:text-slate-500">
                       <p className="text-lg">404 — Trang không tồn tại</p>
                     </div>
                   }

@@ -41,8 +41,8 @@ export function DataTableFilterSidebar({
           children
         ) : (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-            <SlidersHorizontal className="h-10 w-10 text-slate-300" />
-            <p className="text-sm text-slate-400">Không có bộ lọc nào.</p>
+            <SlidersHorizontal className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+            <p className="text-sm text-slate-400 dark:text-slate-500">Không có bộ lọc nào.</p>
           </div>
         )}
       </SidebarBody>

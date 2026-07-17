@@ -158,9 +158,9 @@ export function DataTable<T>({
         </DataTableFilterSidebar>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
         {/* ── Header ─────────────────────────────────── */}
-        <div className="border-b border-slate-100 px-6 py-4">
+        <div className="border-b border-slate-100 dark:border-slate-800 px-6 py-4">
           <DataTableToolbar
             actions={actions}
             onRefresh={onRetry}
@@ -183,15 +183,15 @@ export function DataTable<T>({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead>
-                <tr className="bg-slate-50 text-left text-sm font-semibold text-slate-700">
+                <tr className="bg-slate-50 dark:bg-slate-900 text-left text-sm font-semibold text-slate-700 dark:text-slate-200">
                   {displayedColumns.map((column) => (
                     <th
                       key={column.key}
                       className={cn(
                         'px-4 py-3',
-                        column.sortable && 'cursor-pointer select-none hover:bg-slate-100 transition-colors',
+                        column.sortable && 'cursor-pointer select-none hover:bg-slate-100 hover:dark:bg-slate-800 transition-colors',
                       )}
                       onClick={() => column.sortable && onSort?.(column.key)}
                     >
@@ -199,9 +199,9 @@ export function DataTable<T>({
                         <span>{column.header}</span>
                         {column.sortable && sortBy === column.key && (
                           sortOrder === 'asc' ? (
-                            <ArrowUp className="h-4 w-4 text-blue-600" />
+                            <ArrowUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           ) : (
-                            <ArrowDown className="h-4 w-4 text-blue-600" />
+                            <ArrowDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           )
                         )}
                       </div>
@@ -209,9 +209,9 @@ export function DataTable<T>({
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {data.map((item, index) => (
-                  <tr key={index} className="text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                  <tr key={index} className="text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 hover:dark:bg-slate-900 transition-colors">
                     {displayedColumns.map((column) => (
                       <td key={column.key} className="px-4 py-3">
                         {column.render ? column.render(item) : null}
@@ -229,7 +229,7 @@ export function DataTable<T>({
           typeof pageSize === 'number' &&
           typeof totalPages === 'number' &&
           typeof totalCount === 'number' ? (
-          <div className="border-t border-slate-100 px-6 py-4">
+          <div className="border-t border-slate-100 dark:border-slate-800 px-6 py-4">
             <DataTablePagination
               page={page}
               pageSize={pageSize}

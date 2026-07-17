@@ -57,7 +57,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {enableViewModes && (
             <div
               className={cn(
-                'absolute right-1.5 top-1.5 z-10 flex items-center gap-0.5 rounded-md border border-slate-200 bg-white/90 p-0.5 opacity-40 shadow-sm backdrop-blur-sm transition-opacity',
+                'absolute right-1.5 top-1.5 z-10 flex items-center gap-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 p-0.5 opacity-40 shadow-sm backdrop-blur-sm transition-opacity',
                 'group-hover:opacity-100 group-focus-within:opacity-100',
                 previewMode && 'opacity-100',
               )}
@@ -74,8 +74,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                     className={cn(
                       'rounded p-1 transition-colors',
                       contentType === t
-                        ? 'bg-slate-100 text-slate-900'
-                        : 'text-slate-400 hover:text-slate-600',
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:dark:text-slate-300',
                     )}
                   >
                     <Icon className="h-3 w-3" />
@@ -83,7 +83,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 )
               })}
 
-              <span className="mx-0.5 h-3 w-px bg-slate-200" />
+              <span className="mx-0.5 h-3 w-px bg-slate-200 dark:bg-slate-700" />
 
               <button
                 type="button"
@@ -91,8 +91,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 onClick={() => setPreviewMode((p) => !p)}
                 disabled={contentType === 'json' && !jsonResult.valid}
                 className={cn(
-                  'rounded p-1 text-slate-400 transition-colors hover:text-slate-600',
-                  previewMode && 'bg-slate-100 text-slate-700',
+                  'rounded p-1 text-slate-400 dark:text-slate-500 transition-colors hover:text-slate-600 hover:dark:text-slate-300',
+                  previewMode && 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200',
                   contentType === 'json' && !jsonResult.valid && 'cursor-not-allowed opacity-40',
                 )}
               >
@@ -106,7 +106,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
               className={cn(
                 'w-full overflow-auto rounded-md border px-3 py-2 pr-16 text-[13px] leading-5',
                 contentType === 'text'
-                  ? 'border-slate-300 bg-white text-slate-900'
+                  ? 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100'
                   : 'border-slate-700 bg-slate-900 text-slate-100 font-mono',
               )}
               style={{ minHeight: '80px' }}
@@ -117,7 +117,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 <pre className="whitespace-pre-wrap">{currentValue}</pre>
               ) : (
                 <p className="whitespace-pre-wrap">
-                  {currentValue || <span className="text-slate-400">Không có nội dung</span>}
+                  {currentValue || <span className="text-slate-400 dark:text-slate-500">Không có nội dung</span>}
                 </p>
               )}
             </div>
@@ -128,12 +128,12 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
               onChange={handleChange}
               spellCheck={contentType === 'text' ? props.spellCheck : false}
               className={cn(
-                'flex w-full rounded-md border bg-white px-3 py-2 pr-16 text-sm text-slate-900 shadow-sm transition-colors',
+                'flex w-full rounded-md border bg-white dark:bg-slate-900 px-3 py-2 pr-16 text-sm text-slate-900 dark:text-slate-100 shadow-sm transition-colors',
                 (contentType === 'json' || contentType === 'code') && 'font-mono text-[13px] leading-5',
-                contentType === 'json' && !jsonResult.valid ? 'border-red-300' : 'border-slate-300',
-                'placeholder:text-[13px] placeholder:font-normal placeholder:text-slate-400',
-                'focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100',
-                'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400',
+                contentType === 'json' && !jsonResult.valid ? 'border-red-300 dark:border-red-700' : 'border-slate-300 dark:border-slate-600',
+                'placeholder:text-[13px] placeholder:font-normal placeholder:text-slate-400 placeholder:dark:text-slate-500',
+                'focus:outline-none focus:border-slate-400 focus:dark:border-slate-500 focus:ring-2 focus:ring-slate-100 focus:dark:ring-slate-800',
+                'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:dark:bg-slate-900 disabled:text-slate-400 disabled:dark:text-slate-500',
                 className,
               )}
               {...props}
@@ -142,7 +142,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         </div>
 
         {!previewMode && contentType === 'json' && !jsonResult.valid && (
-          <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
+          <p className="mt-1 flex items-center gap-1 text-xs text-red-500 dark:text-red-400">
             <AlertCircle className="h-3 w-3" /> {jsonResult.error}
           </p>
         )}

@@ -20,7 +20,7 @@ export function FormSection({
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   return (
-    <div className="rounded-xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/50">
+    <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/70 bg-white dark:bg-slate-900 shadow-sm shadow-slate-200/50 dark:shadow-slate-700/50">
       <button
         type="button"
         onClick={() => collapsible && setIsOpen((v) => !v)}
@@ -31,16 +31,16 @@ export function FormSection({
         )}
       >
         <div className="text-left">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">
             {title}
           </span>
-          {description && <p className="mt-1 text-xs text-slate-400">{description}</p>}
+          {description && <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{description}</p>}
         </div>
 
         {collapsible && (
           <ChevronDown
             className={cn(
-              'mt-0.5 h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200',
+              'mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500 transition-transform duration-200',
               isOpen && 'rotate-180',
             )}
           />

@@ -6,11 +6,20 @@
   font-weight: 400;
 }
 
+.dark:root {
+  color: #e2e8f0;
+  background: #0b1220;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.dark body {
+  background: linear-gradient(135deg, #0b1220 0%, #0f1729 100%);
 }
 
 * {

@@ -214,7 +214,7 @@ export function DateTimePicker({
       {label && (
         <label
           htmlFor={inputId}
-          className="mb-1 block text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+          className="mb-1 block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest"
         >
           {label}
         </label>
@@ -241,26 +241,26 @@ export function DateTimePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
-          'group flex h-8 w-full items-center gap-2 rounded-md border bg-white px-2.5 text-left shadow-sm transition-all duration-150',
+          'group flex h-8 w-full items-center gap-2 rounded-md border bg-white dark:bg-slate-900 px-2.5 text-left shadow-sm transition-all duration-150',
           open
-            ? 'border-indigo-400 ring-1 ring-indigo-200'
-            : 'border-slate-200 hover:border-slate-300',
+            ? 'border-indigo-400 dark:border-indigo-600 ring-1 ring-indigo-200 dark:ring-indigo-800'
+            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:dark:border-slate-600',
           disabled && 'cursor-not-allowed opacity-60',
           className,
         )}
       >
-        <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+        <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
         <span
           className={cn(
             'flex-1 truncate text-xs leading-none',
-            selectedDate ? 'text-slate-700' : 'text-slate-300',
+            selectedDate ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600',
           )}
         >
           {selectedDate ? `${displayDate}  ${displayTime}` : (placeholder ?? 'dd/mm/yyyy hh:mm')}
         </span>
         {selectedDate && !disabled && (
           <X
-            className="h-3 w-3 flex-shrink-0 text-slate-300 opacity-0 transition-opacity hover:text-slate-500 group-hover:opacity-100"
+            className="h-3 w-3 flex-shrink-0 text-slate-300 dark:text-slate-600 opacity-0 transition-opacity hover:text-slate-500 hover:dark:text-slate-400 group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation()
               clear()
@@ -272,7 +272,7 @@ export function DateTimePicker({
       {open && (
         <div
           role="dialog"
-          className="absolute left-0 top-full z-50 mt-1.5 w-[264px] rounded-lg border border-slate-200 bg-white p-3 shadow-lg shadow-slate-900/5"
+          className="absolute left-0 top-full z-50 mt-1.5 w-[264px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-lg shadow-slate-900/5"
         >
           <div className="mb-2 flex items-center justify-between">
             <button
@@ -280,11 +280,11 @@ export function DateTimePicker({
               onClick={() =>
                 setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))
               }
-              className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 dark:text-slate-500 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-600 hover:dark:text-slate-300"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <span className="text-xs font-semibold capitalize text-slate-700">
+            <span className="text-xs font-semibold capitalize text-slate-700 dark:text-slate-200">
               {monthLabel}
             </span>
             <button
@@ -292,7 +292,7 @@ export function DateTimePicker({
               onClick={() =>
                 setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))
               }
-              className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 dark:text-slate-500 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-600 hover:dark:text-slate-300"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -302,7 +302,7 @@ export function DateTimePicker({
             {WEEKDAYS_VI.map((wd) => (
               <div
                 key={wd}
-                className="flex h-6 items-center justify-center text-[10px] font-medium uppercase text-slate-400"
+                className="flex h-6 items-center justify-center text-[10px] font-medium uppercase text-slate-400 dark:text-slate-500"
               >
                 {wd}
               </div>
@@ -320,9 +320,9 @@ export function DateTimePicker({
                     isSelected
                       ? 'bg-gradient-to-br from-indigo-500 to-violet-600 font-semibold text-white shadow-sm'
                       : inMonth
-                        ? 'text-slate-700 hover:bg-slate-100'
-                        : 'text-slate-300 hover:bg-slate-50',
-                    !isSelected && isToday && 'ring-1 ring-inset ring-indigo-300 font-semibold text-indigo-600',
+                        ? 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:dark:bg-slate-800'
+                        : 'text-slate-300 dark:text-slate-600 hover:bg-slate-50 hover:dark:bg-slate-900',
+                    !isSelected && isToday && 'ring-1 ring-inset ring-indigo-300 dark:ring-indigo-700 font-semibold text-indigo-600 dark:text-indigo-400',
                   )}
                 >
                   {date.getDate()}
@@ -331,14 +331,14 @@ export function DateTimePicker({
             })}
           </div>
 
-          <div className="mt-3 flex items-center justify-center gap-3 border-t border-slate-100 pt-3">
-            <Clock className="h-3.5 w-3.5 text-slate-400" />
+          <div className="mt-3 flex items-center justify-center gap-3 border-t border-slate-100 dark:border-slate-800 pt-3">
+            <Clock className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
             <TimeStepper
               value={selectedDate ? selectedDate.getHours() : 0}
               onIncrement={() => adjustTime('hours', 1)}
               onDecrement={() => adjustTime('hours', -1)}
             />
-            <span className="text-sm font-semibold text-slate-400">:</span>
+            <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">:</span>
             <TimeStepper
               value={selectedDate ? selectedDate.getMinutes() : 0}
               onIncrement={() => adjustTime('minutes', 5)}
@@ -346,19 +346,19 @@ export function DateTimePicker({
             />
           </div>
 
-          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2.5">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={goToday}
-                className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 hover:underline"
+                className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:dark:text-indigo-300 hover:underline"
               >
                 Hôm nay
               </button>
               <button
                 type="button"
                 onClick={goNow}
-                className="text-[11px] font-medium text-slate-400 hover:text-slate-600 hover:underline"
+                className="text-[11px] font-medium text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:dark:text-slate-300 hover:underline"
               >
                 Bây giờ
               </button>
@@ -391,17 +391,17 @@ function TimeStepper({
       <button
         type="button"
         onClick={onIncrement}
-        className="flex h-3.5 w-6 items-center justify-center text-slate-300 hover:text-indigo-600"
+        className="flex h-3.5 w-6 items-center justify-center text-slate-300 dark:text-slate-600 hover:text-indigo-600 hover:dark:text-indigo-400"
       >
         <ChevronUp className="h-3 w-3" />
       </button>
-      <span className="w-6 text-center text-sm font-semibold tabular-nums text-slate-700">
+      <span className="w-6 text-center text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-200">
         {pad(value)}
       </span>
       <button
         type="button"
         onClick={onDecrement}
-        className="flex h-3.5 w-6 items-center justify-center text-slate-300 hover:text-indigo-600"
+        className="flex h-3.5 w-6 items-center justify-center text-slate-300 dark:text-slate-600 hover:text-indigo-600 hover:dark:text-indigo-400"
       >
         <ChevronDown className="h-3 w-3" />
       </button>

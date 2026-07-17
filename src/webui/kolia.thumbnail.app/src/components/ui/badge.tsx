@@ -10,21 +10,21 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-slate-900 text-white',
-  secondary: 'bg-slate-100 text-slate-600',
-  success: 'bg-emerald-50 text-emerald-700',
-  warning: 'bg-amber-50 text-amber-700',
-  destructive: 'bg-rose-50 text-rose-700',
-  outline: 'border border-slate-200 text-slate-600 bg-transparent',
+  default: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900',
+  secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+  success: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300',
+  warning: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+  destructive: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300',
+  outline: 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-transparent',
 }
 
 const dotClasses: Record<BadgeVariant, string> = {
-  default: 'bg-white',
-  secondary: 'bg-slate-400',
+  default: 'bg-white dark:bg-slate-900',
+  secondary: 'bg-slate-400 dark:bg-slate-500',
   success: 'bg-emerald-500',
   warning: 'bg-amber-500',
   destructive: 'bg-rose-500',
-  outline: 'bg-slate-400',
+  outline: 'bg-slate-400 dark:bg-slate-500',
 }
 
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(

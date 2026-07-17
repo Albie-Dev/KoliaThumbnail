@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+/*
+ * Kích hoạt dark mode theo class `.dark` trên <html> thay vì theo
+ * prefers-color-scheme mặc định của Tailwind. Nhờ đó người dùng có thể
+ * chủ động chọn Sáng / Tối / Theo hệ thống (xem src/lib/theme-provider.tsx).
+ * BẮT BUỘC: mọi màu sắc thêm mới trong dự án phải có cặp `dark:` tương ứng
+ * — xem RULES.md và .agent/skills/theming.skill.md ở gốc dự án.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer utilities {
   @keyframes slideInRight {
     from {
@@ -66,6 +75,12 @@
   --scrollbar-thumb-hover: #94a3b8;
 }
 
+.dark {
+  --scrollbar-track: #1e293b;
+  --scrollbar-thumb: #475569;
+  --scrollbar-thumb-hover: #64748b;
+}
+
 /* WebKit (Chrome, Edge, Safari) */
 ::-webkit-scrollbar {
   width: var(--scrollbar-width);
@@ -103,6 +118,13 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+.dark {
+  color: #e2e8f0;
+  background-color: #0b1220;
+  color-scheme: dark;
 }
 
 body {
@@ -110,6 +132,11 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #0b1220 0%, #0f1729 100%);
 }
 
 button,

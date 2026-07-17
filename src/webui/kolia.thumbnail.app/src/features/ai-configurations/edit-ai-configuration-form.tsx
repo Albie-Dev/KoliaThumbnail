@@ -184,7 +184,7 @@ export const EditAIProviderConfigurationForm =
                     </FormLabel>
 
                     <div className="space-y-1.5">
-                        <p className="text-xs text-slate-400 font-mono">{configuration.apiKeyMasked}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{configuration.apiKeyMasked}</p>
                         <Input
                             id="edit-apiKey"
                             placeholder="Để trống nếu không đổi key"

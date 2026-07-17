@@ -162,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div
         style={{ width: `${width}px` }}
         className={cn(
-          'fixed top-0 z-50 h-screen bg-white shadow-2xl flex flex-col',
+          'fixed top-0 z-50 h-screen bg-white dark:bg-slate-900 shadow-2xl flex flex-col',
           side === 'right' ? 'right-0' : 'left-0',
           // Khi đang resize thì bỏ transition để thanh sidebar bám theo chuột tức thời,
           // không bị "trễ" do easing của transition mở/đóng.
@@ -208,10 +208,10 @@ interface SidebarHeaderProps {
 export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, onClose }) => {
   return (
     <div className="flex items-center justify-between border-b px-6 py-4">
-      <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
       <button
         onClick={onClose}
-        className="inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none"
+        className="inline-flex items-center justify-center rounded-md p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-900 hover:dark:text-slate-100 focus:outline-none"
       >
         <X className="h-5 w-5" />
       </button>

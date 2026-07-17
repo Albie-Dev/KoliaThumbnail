@@ -271,55 +271,55 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                 disabled={disabled}
                 onClick={() => setIsOpen((o) => !o)}
                 className={cn(
-                    'flex min-h-[36px] w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-left text-sm transition-colors',
-                    disabled ? 'cursor-not-allowed bg-slate-50 text-slate-400' : 'hover:border-slate-300',
-                    isOpen && 'border-slate-400 ring-2 ring-slate-100',
+                    'flex min-h-[36px] w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-left text-sm transition-colors',
+                    disabled ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500' : 'hover:border-slate-300 hover:dark:border-slate-600',
+                    isOpen && 'border-slate-400 dark:border-slate-500 ring-2 ring-slate-100 dark:ring-slate-800',
                 )}
             >
                 <div className="flex flex-1 flex-wrap items-center gap-1 overflow-hidden">
-                    {selectedList.length === 0 && <span className="text-[13px] font-normal text-slate-400">{placeholder}</span>}
+                    {selectedList.length === 0 && <span className="text-[13px] font-normal text-slate-400 dark:text-slate-500">{placeholder}</span>}
 
                     {!multiple && selectedList[0] && (
                         renderValue ? renderValue(selectedList[0]) : (
-                            <span className="truncate text-slate-900">{getOptionLabel(selectedList[0])}</span>
+                            <span className="truncate text-slate-900 dark:text-slate-100">{getOptionLabel(selectedList[0])}</span>
                         )
                     )}
 
                     {multiple && selectedList.slice(0, 3).map((item) => (
                         <span
                             key={getOptionId(item)}
-                            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700"
+                            className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-200"
                         >
                             {getOptionLabel(item)}
-                            <span onClick={(e) => handleRemove(getOptionId(item), e)} className="text-slate-400 hover:text-slate-600">
+                            <span onClick={(e) => handleRemove(getOptionId(item), e)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:dark:text-slate-300">
                                 <XIcon />
                             </span>
                         </span>
                     ))}
 
                     {multiple && selectedList.length > 3 && (
-                        <span className="text-xs font-medium text-slate-500">+{selectedList.length - 3}</span>
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">+{selectedList.length - 3}</span>
                     )}
                 </div>
-                <ChevronIcon className={cn('shrink-0 text-slate-400 transition-transform', isOpen && 'rotate-180')} />
+                <ChevronIcon className={cn('shrink-0 text-slate-400 dark:text-slate-500 transition-transform', isOpen && 'rotate-180')} />
             </button>
 
             {isOpen && menuStyle && createPortal(
                 <div
                     id={menuIdRef.current}
-                    className="z-50 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                    className="z-50 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg"
                     style={{ position: 'fixed', top: menuStyle.top, left: menuStyle.left, width: menuStyle.width }}
                 >
                     {allowSearch && (
-                        <div className="border-b border-slate-100 p-2">
-                            <div className="flex items-center gap-2 rounded-md bg-slate-50 px-2 py-1.5">
-                                <SearchIcon className="shrink-0 text-slate-400" />
+                        <div className="border-b border-slate-100 dark:border-slate-800 p-2">
+                            <div className="flex items-center gap-2 rounded-md bg-slate-50 dark:bg-slate-900 px-2 py-1.5">
+                                <SearchIcon className="shrink-0 text-slate-400 dark:text-slate-500" />
                                 <input
                                     autoFocus
                                     value={searchText}
                                     onChange={(e) => setSearchText(e.target.value)}
                                     placeholder={searchPlaceholder}
-                                    className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-[13px] placeholder:font-normal placeholder:text-slate-400"
+                                    className="w-full bg-transparent text-sm text-slate-900 dark:text-slate-100 outline-none placeholder:text-[13px] placeholder:font-normal placeholder:text-slate-400 placeholder:dark:text-slate-500"
                                 />
                             </div>
                         </div>
@@ -327,19 +327,19 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
 
                     <ul ref={listRef} onScroll={handleScroll} className="max-h-64 overflow-y-auto py-1">
                         {loading && (!displayItems || displayItems.length === 0) && !error && (
-                            <li className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-slate-400">
+                            <li className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-slate-400 dark:text-slate-500">
                                 <SpinnerIcon /> Đang tải...
                             </li>
                         )}
 
                         {!loading && error && (
                             <li className="flex flex-col items-center gap-2 px-3 py-6 text-center">
-                                <AlertIcon className="text-rose-400" />
-                                <span className="text-sm text-rose-600">{error}</span>
+                                <AlertIcon className="text-rose-400 dark:text-rose-400" />
+                                <span className="text-sm text-rose-600 dark:text-rose-400">{error}</span>
                                 <button
                                     type="button"
                                     onClick={handleRetry}
-                                    className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                                    className="rounded-md border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:dark:bg-slate-900"
                                 >
                                     Thử lại
                                 </button>
@@ -347,7 +347,7 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                         )}
 
                         {!loading && !error && (!displayItems || displayItems.length === 0) && (
-                            <li className="px-3 py-6 text-center text-sm text-slate-400">{emptyText}</li>
+                            <li className="px-3 py-6 text-center text-sm text-slate-400 dark:text-slate-500">{emptyText}</li>
                         )}
 
                         {!error && displayItems && displayItems.map((item) => {
@@ -360,17 +360,19 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                                         onClick={() => handleSelect(item)}
                                         className={cn(
                                             'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors',
-                                            isSelected ? 'bg-slate-50 text-slate-900' : 'text-slate-700 hover:bg-slate-50',
+                                            isSelected ? 'bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 hover:dark:bg-slate-900',
                                         )}
                                     >
                                         {multiple && (
                                             <span
                                                 className={cn(
                                                     'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                                                    isSelected ? 'border-slate-900 bg-slate-900' : 'border-slate-300 bg-white',
+                                                    isSelected
+                                                        ? 'border-slate-900 bg-slate-900 dark:border-slate-100 dark:bg-slate-100'
+                                                        : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900',
                                                 )}
                                             >
-                                                {isSelected && <CheckIcon className="h-3 w-3 text-white" />}
+                                                {isSelected && <CheckIcon className="h-3 w-3 text-white dark:text-slate-900" />}
                                             </span>
                                         )}
 
@@ -378,25 +380,25 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                                             {renderOption ? renderOption(item, isSelected) : getOptionLabel(item)}
                                         </span>
 
-                                        {!multiple && isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-slate-900" />}
+                                        {!multiple && isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-slate-900 dark:text-slate-100" />}
                                     </button>
                                 </li>
                             )
                         })}
 
                         {loadingMore && (
-                            <li className="flex items-center justify-center gap-2 px-3 py-3 text-xs text-slate-400">
+                            <li className="flex items-center justify-center gap-2 px-3 py-3 text-xs text-slate-400 dark:text-slate-500">
                                 <SpinnerIcon /> Đang tải thêm...
                             </li>
                         )}
 
                         {loadMoreError && (
                             <li className="flex flex-col items-center gap-1.5 px-3 py-3">
-                                <span className="text-xs text-rose-600">{loadMoreError}</span>
+                                <span className="text-xs text-rose-600 dark:text-rose-400">{loadMoreError}</span>
                                 <button
                                     type="button"
                                     onClick={loadMore}
-                                    className="rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                                    className="rounded-md border border-slate-200 dark:border-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:dark:bg-slate-900"
                                 >
                                     Thử lại
                                 </button>
@@ -405,13 +407,13 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
                     </ul>
 
                     {pageInfo && !error && !isStatic && (
-                        <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-400">
+                        <div className="border-t border-slate-100 dark:border-slate-800 px-3 py-1.5 text-[11px] text-slate-400 dark:text-slate-500">
                             {items.length}/{pageInfo.totalRecords} kết quả
                         </div>
                     )}
 
                     {isStatic && displayItems && itemsProp && (
-                        <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-400">
+                        <div className="border-t border-slate-100 dark:border-slate-800 px-3 py-1.5 text-[11px] text-slate-400 dark:text-slate-500">
                             {displayItems.length}/{itemsProp.length} kết quả
                         </div>
                     )}

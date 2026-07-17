@@ -265,7 +265,7 @@ export function AiConfigurationsPage() {
                                 className="h-8 w-8 rounded object-cover"
                             />
                         ) : (
-                            <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-100 text-xs font-semibold">
+                            <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
                                 {item.aiProviderShortName.substring(0, 2).toUpperCase()}
                             </div>
                         )}
@@ -275,7 +275,7 @@ export function AiConfigurationsPage() {
                                 {item.aiProviderName}
                             </div>
 
-                            <div className="text-xs text-slate-500">
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
                                 {item.aiProviderShortName}
                             </div>
                         </div>
@@ -294,7 +294,7 @@ export function AiConfigurationsPage() {
                         </div>
 
                         {item.description && (
-                            <div className="text-xs text-slate-500 line-clamp-2">
+                            <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                                 {item.description}
                             </div>
                         )}
@@ -332,7 +332,7 @@ export function AiConfigurationsPage() {
                 key: 'apiKeyMasked',
                 header: 'API Key',
                 render: (item: AIProviderConfigurationDetailDto) => (
-                    <span className="font-mono text-xs text-slate-500" title={item.apiKey}>
+                    <span className="font-mono text-xs text-slate-500 dark:text-slate-400" title={item.apiKey}>
                         {item.apiKeyMasked}
                     </span>
                 ),
@@ -342,7 +342,7 @@ export function AiConfigurationsPage() {
                 key: 'totalTokensUsed',
                 header: 'Tokens',
                 render: (item: AIProviderConfigurationDetailDto) => (
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                         {item.totalTokensUsed.toLocaleString()}
                     </span>
                 ),
@@ -401,7 +401,7 @@ export function AiConfigurationsPage() {
                 header: '',
                 render: (item: AIProviderConfigurationBaseDto) =>
                     item.isDeleted ? (
-                        <span className="text-xs italic text-slate-400">
+                        <span className="text-xs italic text-slate-400 dark:text-slate-500">
                             Đã xoá
                         </span>
                     ) : (
@@ -424,7 +424,7 @@ export function AiConfigurationsPage() {
                                 variant="ghost"
                                 size="icon"
                                 title="Xoá"
-                                className="hover:bg-red-50 hover:text-red-600"
+                                className="hover:bg-red-50 hover:dark:bg-red-950/40 hover:text-red-600 hover:dark:text-red-400"
                                 onClick={() =>
                                     setDeleteTarget(item)
                                 }

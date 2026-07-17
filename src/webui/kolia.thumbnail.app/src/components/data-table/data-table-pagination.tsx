@@ -43,10 +43,10 @@ export function DataTablePagination({
   return (
     <div className="flex flex-col items-center justify-between gap-4 py-1.5 sm:flex-row">
       {/* Left side: details */}
-      <div className="flex items-center gap-3 text-sm text-slate-500">
-        <span className="font-medium text-slate-700">Tổng số {totalCount} mục</span>
+      <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+        <span className="font-medium text-slate-700 dark:text-slate-200">Tổng số {totalCount} mục</span>
         {onPageSizeChange && (
-          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+          <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-700 pl-3">
             <span className="text-xs">Hiển thị</span>
             <SelectDropdown<number>
               items={[10, 20, 50, 100]}
@@ -91,7 +91,7 @@ export function DataTablePagination({
           {pages.map((p, idx) => {
             if (p === '...') {
               return (
-                <span key={`dots-${idx}`} className="px-2 text-sm text-slate-400">
+                <span key={`dots-${idx}`} className="px-2 text-sm text-slate-400 dark:text-slate-500">
                   ...
                 </span>
               )
@@ -104,7 +104,9 @@ export function DataTablePagination({
                 variant={isCurrent ? 'default' : 'outline'}
                 size="sm"
                 className={`h-8 w-8 p-0 text-xs font-semibold ${
-                  isCurrent ? 'bg-slate-900 text-white hover:bg-slate-900' : 'text-slate-700 hover:bg-slate-50'
+                  isCurrent
+                    ? 'bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 hover:dark:bg-slate-900'
                 }`}
                 onClick={() => onPageChange(Number(p))}
               >

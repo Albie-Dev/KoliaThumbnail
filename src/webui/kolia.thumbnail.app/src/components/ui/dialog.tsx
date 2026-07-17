@@ -38,13 +38,13 @@ export function DialogContent({ children, className }: { children: React.ReactNo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className={cn('relative w-full max-w-md rounded-lg border border-slate-200 bg-white shadow-lg', className)}>
+      <div className={cn('relative w-full max-w-md rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg', className)}>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="absolute right-4 top-4 rounded-md hover:bg-slate-100"
+          className="absolute right-4 top-4 rounded-md hover:bg-slate-100 hover:dark:bg-slate-800"
         >
-          <X className="h-4 w-4 text-slate-500" />
+          <X className="h-4 w-4 text-slate-500 dark:text-slate-400" />
         </button>
         <div className="p-6">{children}</div>
       </div>
@@ -57,9 +57,9 @@ export function DialogHeader({ children, className }: { children: React.ReactNod
 }
 
 export function DialogTitle({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <h2 className={cn('text-lg font-semibold text-slate-900', className)}>{children}</h2>
+  return <h2 className={cn('text-lg font-semibold text-slate-900 dark:text-slate-100', className)}>{children}</h2>
 }
 
 export function DialogDescription({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <p className={cn('mt-1 text-sm text-slate-500', className)}>{children}</p>
+  return <p className={cn('mt-1 text-sm text-slate-500 dark:text-slate-400', className)}>{children}</p>
 }

@@ -1,0 +1,14 @@
+---
+description: Quy tắc bắt buộc về theme sáng/tối và màu sắc cho toàn bộ dự án Kolia Thumbnail Engine
+alwaysApply: true
+---
+
+Trước khi sửa bất kỳ className/màu sắc nào trong `src/`, đọc và tuân theo:
+
+- `/RULES.md` (gốc dự án) — quy tắc bắt buộc + bảng ánh xạ màu light/dark
+- `/.agent/skills/theming.skill.md` — chi tiết kỹ thuật + ví dụ
+
+Tóm tắt quy tắc quan trọng nhất: MỌI class Tailwind chỉ định màu (bg-/text-/border-/
+ring-/divide-) phải có class `dark:` tương ứng đi kèm ngay trong cùng className,
+trừ 3 ngoại lệ liệt kê ở RULES.md mục 4 (overlay đen, pattern nút/badge "nền đặc
+lật ngược", khối preview dạng code luôn tối).

@@ -40,20 +40,20 @@ export const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
                 onKeyDown={handleKeyDown}
                 className={cn(
                     'peer flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-150',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-1',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 dark:focus-visible:ring-slate-100/20 focus-visible:ring-offset-1',
                     disabled
-                        ? 'cursor-not-allowed border-slate-200 bg-slate-50'
+                        ? 'cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'
                         : isChecked || isIndeterminate
-                            ? 'border-slate-900 bg-slate-900 hover:bg-slate-800'
-                            : 'border-slate-300 bg-white hover:border-slate-400',
+                            ? 'border-slate-900 bg-slate-900 hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:hover:bg-slate-300'
+                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-slate-400 hover:dark:border-slate-500',
                     className,
                 )}
                 {...props}
             >
                 {isIndeterminate ? (
-                    <Minus className="h-3 w-3 text-white" strokeWidth={3} />
+                    <Minus className="h-3 w-3 text-white dark:text-slate-900" strokeWidth={3} />
                 ) : isChecked ? (
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                    <Check className="h-3 w-3 text-white dark:text-slate-900" strokeWidth={3} />
                 ) : null}
             </button>
         )

@@ -54,9 +54,9 @@ const SocialMediaProvidersPage = lazy(() =>
 const PlaceholderPage: ComponentType = () => {
   const path = useLocation().pathname
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
+    <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500">
       <p className="text-lg">🚧 Trang đang được phát triển</p>
-      <p className="text-xs text-slate-300">{path}</p>
+      <p className="text-xs text-slate-300 dark:text-slate-600">{path}</p>
     </div>
   )
 }

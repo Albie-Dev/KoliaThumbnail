@@ -1,0 +1,8 @@
+<svg width="120" height="120" viewBox="-6 -6 112 112" xmlns="http://www.w3.org/2000/svg">
+  <title>Kolia Icon Only (Dark)</title>
+  <line x1="32" y1="18" x2="32" y2="82" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round"/>
+  <line x1="32" y1="50" x2="74" y2="18" stroke="#38BDF8" stroke-width="13" stroke-linecap="round"/>
+  <line x1="32" y1="50" x2="74" y2="82" stroke="#A78BFA" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="74" cy="18" r="10" fill="#22D3EE"/>
+  <circle cx="74" cy="82" r="10" fill="#22D3EE"/>
+</svg>
