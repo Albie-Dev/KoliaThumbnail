@@ -1,4 +1,5 @@
 using Kolia.Thumbnail.API.Exceptions;
+using Kolia.Thumbnail.API.Models;
 using Kolia.Thumbnail.API.Models.Commons;
 using Kolia.Thumbnail.API.Models.Projects;
 using Kolia.Thumbnail.API.Projects;
@@ -37,7 +38,8 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet("paging")]
-        public async Task<IActionResult> GetPagingAsync(
+        [ProducesResponseType(typeof(PagedResponseDto<ProjectDetailDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponseDto<ProjectDetailDto>>> GetPagingAsync(
             [FromQuery] PagedRequestDto request,
             [FromQuery] bool? includeDeleted = null,
             [FromQuery] bool? deletedOnly = null,
@@ -62,7 +64,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <returns></returns>
         /// <exception cref="NotFoundException"></exception>
         [HttpGet("{projectId:guid}")]
-        public async Task<IActionResult> GetByIdAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProjectDetailDto>> GetByIdAsync(
             [FromRoute] Guid projectId,
             [FromQuery] bool includeDeleted = false,
             [FromQuery] bool includeSteps = false,
@@ -93,7 +97,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<IActionResult> CreateAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ProjectDetailDto>> CreateAsync(
             [FromBody] ProjectCreateDto request,
             CancellationToken cancellationToken = default)
         {
@@ -114,7 +120,10 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPut("{projectId:guid}")]
-        public async Task<IActionResult> UpdateAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ProjectDetailDto>> UpdateAsync(
             [FromRoute] Guid projectId,
             [FromBody] ProjectUpdateDto request,
             CancellationToken cancellationToken = default)
@@ -134,7 +143,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpDelete("{projectId:guid}")]
-        public async Task<IActionResult> DeleteAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProjectDetailDto>> DeleteAsync(
             [FromRoute] Guid projectId,
             CancellationToken cancellationToken = default)
         {
@@ -155,7 +166,8 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet("{projectId:guid}/steps")]
-        public async Task<IActionResult> GetStepsAsync(
+        [ProducesResponseType(typeof(IReadOnlyList<ProjectStepDetailDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IReadOnlyList<ProjectStepDetailDto>>> GetStepsAsync(
             [FromRoute] Guid projectId,
             CancellationToken cancellationToken = default)
         {
@@ -174,7 +186,8 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet("{projectId:guid}/steps/tree")]
-        public async Task<IActionResult> GetStepTreeAsync(
+        [ProducesResponseType(typeof(IReadOnlyList<ProjectStepTreeNodeDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IReadOnlyList<ProjectStepTreeNodeDto>>> GetStepTreeAsync(
             [FromRoute] Guid projectId,
             CancellationToken cancellationToken = default)
         {
@@ -194,7 +207,10 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPatch("{projectId:guid}/steps/{stepDefinitionId:guid}")]
-        public async Task<IActionResult> UpdateStepAsync(
+        [ProducesResponseType(typeof(ProjectStepDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ProjectStepDetailDto>> UpdateStepAsync(
             [FromRoute] Guid projectId,
             [FromRoute] Guid stepDefinitionId,
             [FromBody] ProjectStepUpdateDto request,
@@ -218,7 +234,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPatch("{projectId:guid}/start")]
-        public async Task<IActionResult> StartAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProjectDetailDto>> StartAsync(
             [FromRoute] Guid projectId,
             CancellationToken cancellationToken = default)
         {
@@ -236,7 +254,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPatch("{projectId:guid}/pause")]
-        public async Task<IActionResult> PauseAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProjectDetailDto>> PauseAsync(
             [FromRoute] Guid projectId,
             CancellationToken cancellationToken = default)
         {
@@ -254,7 +274,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPatch("{projectId:guid}/resume")]
-        public async Task<IActionResult> ResumeAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProjectDetailDto>> ResumeAsync(
             [FromRoute] Guid projectId,
             CancellationToken cancellationToken = default)
         {
@@ -273,7 +295,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPatch("{projectId:guid}/cancel")]
-        public async Task<IActionResult> CancelAsync(
+        [ProducesResponseType(typeof(ProjectDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProjectDetailDto>> CancelAsync(
             [FromRoute] Guid projectId,
             [FromBody] CancelProjectDto? request,
             CancellationToken cancellationToken = default)
@@ -297,7 +321,8 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet("dashboard/statistics")]
-        public async Task<IActionResult> GetDashboardStatisticsAsync(
+        [ProducesResponseType(typeof(ProjectDashboardStatisticsDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ProjectDashboardStatisticsDto>> GetDashboardStatisticsAsync(
             [FromQuery] DashboardStatisticsRequestDto request,
             CancellationToken cancellationToken = default)
         {

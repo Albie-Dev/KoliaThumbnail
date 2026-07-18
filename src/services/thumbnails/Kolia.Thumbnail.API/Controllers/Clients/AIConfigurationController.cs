@@ -1,5 +1,6 @@
 using Kolia.Thumbnail.API.AIs;
 using Kolia.Thumbnail.API.Exceptions;
+using Kolia.Thumbnail.API.Models;
 using Kolia.Thumbnail.API.Models.AIs;
 using Kolia.Thumbnail.API.Models.Commons;
 using Microsoft.AspNetCore.Mvc;
@@ -37,7 +38,8 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet("paging")]
-        public async Task<IActionResult> GetPagingAsync(
+        [ProducesResponseType(typeof(PagedResponseDto<AIProviderConfigurationDetailDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponseDto<AIProviderConfigurationDetailDto>>> GetPagingAsync(
             [FromQuery] PagedRequestDto request,
             [FromQuery] bool? includeDeleted = null,
             [FromQuery] bool? deletedOnly = null,
@@ -60,7 +62,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <returns></returns>
         /// <exception cref="NotFoundException"></exception>
         [HttpGet("{aiProviderConfigurationId:guid}")]
-        public async Task<IActionResult> GetByIdAsync(
+        [ProducesResponseType(typeof(AIProviderConfigurationDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<AIProviderConfigurationDetailDto>> GetByIdAsync(
             [FromRoute] Guid aiProviderConfigurationId,
             CancellationToken cancellationToken = default)
         {
@@ -87,7 +91,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<IActionResult> CreateAsync(
+        [ProducesResponseType(typeof(AIProviderConfigurationDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<AIProviderConfigurationDetailDto>> CreateAsync(
             [FromBody] AIConfiurationCreateDto request,
             CancellationToken cancellationToken = default)
         {
@@ -106,7 +112,10 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPut("{aiProviderConfigurationId:guid}")]
-        public async Task<IActionResult> UpdateAsync(
+        [ProducesResponseType(typeof(AIProviderConfigurationDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<AIProviderConfigurationDetailDto>> UpdateAsync(
             [FromRoute] Guid aiProviderConfigurationId,
             [FromBody] AIProviderConfigurationUpdateDto request,
             CancellationToken cancellationToken = default)
@@ -126,7 +135,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpPatch("{aiProviderConfigurationId:guid}/set-default")]
-        public async Task<IActionResult> SetDefaultAsync(
+        [ProducesResponseType(typeof(AIProviderConfigurationDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<AIProviderConfigurationDetailDto>> SetDefaultAsync(
             [FromRoute] Guid aiProviderConfigurationId,
             CancellationToken cancellationToken = default)
         {
@@ -144,7 +155,9 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpDelete("{aiProviderConfigurationId:guid}")]
-        public async Task<IActionResult> DeleteAsync(
+        [ProducesResponseType(typeof(AIProviderConfigurationDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<AIProviderConfigurationDetailDto>> DeleteAsync(
             [FromRoute] Guid aiProviderConfigurationId,
             CancellationToken cancellationToken = default)
         {
