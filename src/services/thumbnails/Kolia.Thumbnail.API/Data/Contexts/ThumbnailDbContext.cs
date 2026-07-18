@@ -16,6 +16,10 @@ namespace Kolia.Thumbnail.API.Data.Contexts
 
         public DbSet<Entities.Socials.SocialMediaProviderEntity> SocialMediaProviders { get; set; } = null!;
         public DbSet<Entities.Socials.SocialMediaProviderConfigurationEntity> SocialMediaProviderConfigurations { get; set; } = null!;
+
+        public DbSet<Entities.Projects.ProjectEntity> Projects { get; set; } = null!;
+        public DbSet<Entities.Projects.ProjectStepEntity> ProjectSteps { get; set; } = null!;
+        public DbSet<Entities.Projects.StepDefinitionEntity> StepDefinitions { get; set; } = null!;
         #endregion
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

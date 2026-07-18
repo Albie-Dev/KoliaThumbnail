@@ -10,7 +10,7 @@ namespace Kolia.Thumbnail.API.Data.Entities
         /// <summary>
         /// Id của entity, được sử dụng để định danh duy nhất cho mỗi entity
         /// </summary>
-        public Guid Id { get; private set; } = Guid.CreateVersion7(DateTimeOffset.UtcNow);
+        public Guid Id { get; protected set; } = Guid.CreateVersion7(DateTimeOffset.UtcNow);
         /// <summary>
         /// Thời gian tạo của entity, được sử dụng để theo dõi khi nào entity được tạo ra
         /// </summary>
@@ -19,7 +19,7 @@ namespace Kolia.Thumbnail.API.Data.Entities
             RangeFilterable = true,
             Sortable = true
         )]
-        public DateTimeOffset CreationTime { get; private set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset CreationTime { get; protected set; } = DateTimeOffset.UtcNow;
         /// <summary>
         /// Thời gian sửa đổi cuối cùng của entity, được sử dụng để theo dõi khi nào entity được sửa đổi lần cuối
         /// </summary>
