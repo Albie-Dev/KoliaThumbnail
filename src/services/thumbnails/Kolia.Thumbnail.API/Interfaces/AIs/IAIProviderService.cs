@@ -10,6 +10,8 @@ namespace Kolia.Thumbnail.API.AIs
         /// Lấy danh sách các nhà cung cấp AI với phân trang dựa trên yêu cầu được cung cấp. Trả về một đối tượng PagedResponseDto chứa danh sách các nhà cung cấp AI và thông tin phân trang.
         /// </summary>
         /// <param name="request"></param>
+        /// <param name="includeDeleted">Bao gồm cả bản ghi đã xoá mềm.</param>
+        /// <param name="deletedOnly">Chỉ lấy bản ghi đã xoá mềm.</param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         Task<PagedResponseDto<AIProviderDetailDto>> GetWithPagingAsync(

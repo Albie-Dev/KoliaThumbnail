@@ -26,6 +26,8 @@ namespace Kolia.Thumbnail.API.AIs
         /// Trả về một đối tượng PagedResponseDto chứa danh sách các nhà cung cấp AI và thông tin phân trang.
         /// </summary>
         /// <param name="request"></param>
+        /// <param name="includeDeleted">Bao gồm cả bản ghi đã xoá mềm.</param>
+        /// <param name="deletedOnly">Chỉ lấy bản ghi đã xoá mềm.</param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public async Task<PagedResponseDto<AIProviderDetailDto>> GetWithPagingAsync(
@@ -91,6 +93,7 @@ namespace Kolia.Thumbnail.API.AIs
         /// <param name="id"></param>
         /// <param name="asNoTracking"></param>
         /// <param name="includeDetails"></param>
+        /// <param name="includeDeleted">Bao gồm cả bản ghi đã xoá mềm.</param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public async Task<AIProviderEntity?> GetByIdAsync(Guid id,

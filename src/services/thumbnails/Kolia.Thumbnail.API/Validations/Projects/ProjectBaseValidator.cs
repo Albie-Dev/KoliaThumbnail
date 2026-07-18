@@ -58,15 +58,21 @@ namespace Kolia.Thumbnail.API.Validations.Projects
 
     /// <summary>
     /// Validator cho yêu cầu tạo mới Project.
+    /// Client chỉ gửi Name + Description; các field khác do backend tự set.
     /// </summary>
-    public sealed class ProjectCreateValidator
-        : ProjectBaseValidator<ProjectCreateDto>
+    public sealed class ProjectCreateValidator : AbstractValidator<ProjectCreateDto>
     {
         public ProjectCreateValidator()
         {
-            RuleFor(x => x.CreatedByUserId)
+            RuleFor(x => x.Name)
                 .NotEmpty()
-                .WithMessage("Id người tạo không được để trống.");
+                .WithMessage("Tên dự án không được để trống.")
+                .MaximumLength(200)
+                .WithMessage("Tên dự án không được vượt quá 200 ký tự.");
+
+            RuleFor(x => x.Description)
+                .MaximumLength(1000)
+                .WithMessage("Mô tả không được vượt quá 1000 ký tự.");
         }
     }
 

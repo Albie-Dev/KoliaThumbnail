@@ -909,6 +909,18 @@ namespace Kolia.Thumbnail.API.Extensions
             var (sortedQuery, wasSorted) = ApplySortingCore(query, request.Sorts);
             query = wasSorted ? sortedQuery : ApplyDefaultSorting(query);
 
+            return query;
+        }
+
+        /// <summary>
+        /// Áp dụng Skip/Take cho một query đã được filter + sort.
+        /// Dùng trong <c>ToPagedResponseAsync</c> — tách khỏi <see cref="ApplyQuery"/>
+        /// nhằm đảm bảo <c>CountAsync</c> luôn chạy trước paging, tránh total-records bị sai.
+        /// </summary>
+        private static IQueryable<TEntity> ApplyQueryPaging<TEntity>(
+            this IQueryable<TEntity> query,
+            PagedRequestDto request)
+        {
             if (request.PageSize > 0)
             {
                 query = query.ApplyPaging(request);
@@ -929,6 +941,7 @@ namespace Kolia.Thumbnail.API.Extensions
 
             if (request.IncludeTotalCount)
             {
+                // Count trước — trên query đã filter/sort nhưng chưa Skip/Take
                 totalRecords = await query.CountAsync(cancellationToken);
             }
 
@@ -936,7 +949,10 @@ namespace Kolia.Thumbnail.API.Extensions
 
             if (request.IncludeItems)
             {
-                List<TEntity> entities = await query
+                // Paging sau khi đã count xong
+                var pagedQuery = query.ApplyQueryPaging(request);
+
+                List<TEntity> entities = await pagedQuery
                     .ToListAsync(cancellationToken);
 
                 items = entities

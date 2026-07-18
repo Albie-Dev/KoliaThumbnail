@@ -9,18 +9,7 @@ namespace Kolia.Thumbnail.API.Models.Projects
             return new ProjectEntity
             {
                 Name = dto.Name,
-                Code = dto.Code,
                 Description = dto.Description,
-                CreatedByUserId = dto.CreatedByUserId,
-                StartedAt = dto.StartedAt,
-                CompletedAt = dto.CompletedAt,
-                FailedAt = dto.FailedAt,
-                ErrorMessage = dto.ErrorMessage,
-                ErrorDetail = dto.ErrorDetail,
-                Status = dto.Status,
-                Progress = dto.Progress,
-                TotalSteps = dto.TotalSteps,
-                CompletedSteps = dto.CompletedSteps
             };
         }
 

@@ -70,6 +70,12 @@ namespace Kolia.Thumbnail.API.Projects
         {
             var project = projectCreateDto.ToEntity();
 
+            // ── Backend tự set các field còn lại ──
+            project.Code = await GenerateProjectCodeAsync(cancellationToken);
+            project.CreatedByUserId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // TODO: replace with real auth
+            project.CreatedByUserName = "System";                                       // TODO: replace with real auth
+            project.Status = CProjectStatus.Draft;
+
             // Seed ProjectStep cho mọi StepDefinition có IsTrackable = true, lấy từ cache
             // (bảng StepDefinition gần như không đổi, không cần query lại mỗi lần tạo project).
             var trackableStepIds = await GetTrackableStepDefinitionIdsAsync(cancellationToken);
@@ -95,11 +101,13 @@ namespace Kolia.Thumbnail.API.Projects
                 // trùng lúc; unique index ở DB (đã tạo ở ProjectEntityConfiguration) là chốt chặn
                 // cuối cùng — convert lỗi DB thành BusinessException dễ hiểu cho client.
                 throw new BusinessException(
-                    message: $"Dự án có mã '{projectCreateDto.Code}' hoặc tên '{projectCreateDto.Name}' đã tồn tại.",
+                    message: $"Dự án có mã '{project.Code}' hoặc tên '{projectCreateDto.Name}' đã tồn tại.",
                     code: "PROJECT_CODE_OR_NAME_ALREADY_EXISTS");
             }
 
-            _logger.LogInformation("Created project {ProjectId} with {StepCount} steps", project.Id, trackableStepIds.Count);
+            _logger.LogInformation(
+                "Created project {ProjectId} [{Code}] with {StepCount} steps",
+                project.Id, project.Code, trackableStepIds.Count);
 
             return project.ToDetailDto();
         }
@@ -383,6 +391,40 @@ namespace Kolia.Thumbnail.API.Projects
             var exists = await _dbContext.Projects.AsNoTracking().AnyAsync(p => p.Id == projectId, cancellationToken);
             if (!exists)
                 throw new NotFoundException($"Không tìm thấy dự án với Id '{projectId}'.", "PROJECT_NOT_FOUND");
+        }
+
+        /// <summary>
+        /// Sinh mã dự án tự động theo chuẩn enterprise.
+        /// <para/>
+        /// Format: <c>Kolia.yyyyMMdd.nnn</c> — với yyyyMMdd là ngày tạo và nnn là số thứ tự
+        /// trong ngày (001, 002, …). Cơ chế daily-reset giúp mã ngắn gọn, dễ nhìn, dễ search
+        /// theo ngày, và tránh tràn số theo thời gian.
+        /// <para/>
+        /// Ví dụ: <c>Kolia.20260718.001</c>, <c>Kolia.20260718.042</c>.
+        /// </summary>
+        private async Task<string> GenerateProjectCodeAsync(CancellationToken cancellationToken = default)
+        {
+            var today = DateTimeOffset.UtcNow.ToString("yyyyMMdd");
+            var prefix = $"Kolia.{today}.";
+
+            // Tìm số thứ tự lớn nhất trong ngày hôm nay
+            var maxSeq = await _dbContext.Projects.AsNoTracking()
+                .Where(p => EF.Functions.Like(p.Code, $"{prefix}%"))
+                .Select(p => p.Code)
+                .ToListAsync(cancellationToken);
+
+            var nextNumber = 1;
+            if (maxSeq.Count > 0)
+            {
+                foreach (var code in maxSeq)
+                {
+                    var suffix = code[prefix.Length..]; // phần "001", "002", ...
+                    if (int.TryParse(suffix, out var seq) && seq >= nextNumber)
+                        nextNumber = seq + 1;
+                }
+            }
+
+            return $"{prefix}{nextNumber:D3}";
         }
 
         private async Task<List<Guid>> GetTrackableStepDefinitionIdsAsync(CancellationToken cancellationToken)

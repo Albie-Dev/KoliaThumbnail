@@ -26,6 +26,8 @@ namespace Kolia.Thumbnail.API.Socials
         /// Trả về một đối tượng PagedResponseDto chứa danh sách các nhà cung cấp SOCIAL_MEDIA và thông tin phân trang.
         /// </summary>
         /// <param name="request"></param>
+        /// <param name="includeDeleted"></param>
+        /// <param name="deletedOnly"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public async Task<PagedResponseDto<SocialMediaProviderDetailDto>> GetWithPagingAsync(
@@ -91,6 +93,7 @@ namespace Kolia.Thumbnail.API.Socials
         /// <param name="id"></param>
         /// <param name="asNoTracking"></param>
         /// <param name="includeDetails"></param>
+        /// <param name="includeDeleted"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public async Task<SocialMediaProviderEntity?> GetByIdAsync(Guid id,

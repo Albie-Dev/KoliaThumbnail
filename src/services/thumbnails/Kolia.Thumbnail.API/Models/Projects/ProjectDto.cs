@@ -3,14 +3,21 @@ using Kolia.Thumbnail.API.Enums;
 namespace Kolia.Thumbnail.API.Models.Projects
 {
     /// <summary>
-    /// DTO dùng để tạo mới một dự án. Nó chứa các thông tin cơ bản cần thiết để định nghĩa một dự án trong hệ thống.
+    /// DTO dùng để tạo mới một dự án.
+    /// Client chỉ cần gửi tên và mô tả; các trường còn lại (Code, Status, CreatedByUserId, …)
+    /// được backend tự động sinh/default trong <c>ProjectService.CreateAsync</c>.
     /// </summary>
-    public record ProjectCreateDto : ProjectBaseDto
+    public record ProjectCreateDto
     {
         /// <summary>
-        /// Id của người dùng tạo dự án.
+        /// Tên của dự án.
         /// </summary>
-        public Guid CreatedByUserId { get; set; }
+        public string Name { get; set; } = null!;
+
+        /// <summary>
+        /// Mô tả về dự án.
+        /// </summary>
+        public string? Description { get; set; }
     }
 
     /// <summary>
