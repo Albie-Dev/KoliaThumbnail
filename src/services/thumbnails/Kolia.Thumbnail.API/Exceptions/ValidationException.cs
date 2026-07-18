@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace Kolia.Thumbnail.API.Exceptions
 {
     public sealed class ValidationException : AppException

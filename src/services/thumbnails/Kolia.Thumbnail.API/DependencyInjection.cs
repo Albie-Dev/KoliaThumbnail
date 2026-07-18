@@ -6,6 +6,8 @@ using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Interceptors;
 using Kolia.Thumbnail.API.Engines;
 using Kolia.Thumbnail.API.Engines.Providers;
+using Kolia.Thumbnail.API.Engines.Providers.Socials;
+using Kolia.Thumbnail.API.Engines.Providers.Socials.Youtube;
 using Kolia.Thumbnail.API.Extensions;
 using Kolia.Thumbnail.API.Middlewares;
 using Kolia.Thumbnail.API.Models.AIs;
@@ -69,6 +71,18 @@ namespace Kolia.Thumbnail.API
             services.AddScoped<ITextToSpeechCapableEngine>(sp => sp.GetRequiredService<GroqEngine>());
 
             services.AddScoped<IAIExecutorService, AIExecutorService>();
+
+            // Social Media Engines — YoutubeEngine không cần typed HttpClient vì
+            // Google.Apis.YouTube.v3 tự quản lý HttpClient nội bộ theo từng credentials
+            // (mỗi request OAuth/ApiKey có thể dùng 1 bộ credentials khác nhau).
+            services.AddScoped<YoutubeEngine>();
+            services.AddScoped<ISocialEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
+            services.AddScoped<IChannelManagementCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
+            services.AddScoped<IVideoManagementCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
+            services.AddScoped<IPlaylistManagementCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
+            services.AddScoped<ICommentManagementCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
+            services.AddScoped<ILiveStreamingCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
+            services.AddScoped<ISubscriptionManagementCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
 
             // FluentValidation
             services.AddFluentValidationAutoValidation();

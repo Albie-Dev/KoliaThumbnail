@@ -1,3 +1,5 @@
+using System;
+
 namespace Kolia.Thumbnail.API.Exceptions
 {
     /// <summary>
