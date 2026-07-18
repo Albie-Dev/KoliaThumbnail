@@ -46,6 +46,7 @@ namespace Kolia.Thumbnail.API
                     .GetRequiredService<AuditEntityInterceptor>());
             });
 
+            services.AddMemoryCache();
 
             services.AddScoped<IAIProviderService, AIProviderService>();
             services.AddScoped<IAIProviderConfigurationService, AIProviderConfigurationService>();
