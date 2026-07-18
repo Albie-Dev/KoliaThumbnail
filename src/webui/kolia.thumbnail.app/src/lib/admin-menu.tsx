@@ -406,6 +406,10 @@ const SocialMediaProvidersPage = lazy(() =>
   import('../features/social-media-providers/social-media-providers-page').then((m) => ({ default: m.SocialMediaProvidersPage })),
 )
 
+const ProjectsPage = lazy(() =>
+  import('../features/projects/projects-page').then((m) => ({ default: m.ProjectsPage })),
+)
+
 const PlaceholderPage: ComponentType = () => {
   const path = useLocation().pathname
   return (
@@ -458,7 +462,7 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         label: 'Kho lưu trữ',
         icon: Archive,
         iconColor: '#8b5cf6', // violet-500
-        component: PlaceholderPage,
+        component: ProjectsPage,
       },
     ],
   },
