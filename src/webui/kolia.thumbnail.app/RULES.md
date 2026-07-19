@@ -127,3 +127,23 @@ có phần nào của UI được miễn trừ.
 Không dùng styled-components theme, không dùng CSS-in-JS theme provider khác, không
 thêm Tailwind config riêng cho theme. Toàn bộ dự án dùng **một** cơ chế duy nhất mô
 tả ở đây và ở `.agent/skills/theming.skill.md`.
+
+## 9. Global API Error Handling — không toast.error ở page
+
+Dự án đã có **global error handler** trong `src/lib/query-client.ts`:
+- `QueryCache.onError` và `MutationCache.onError` tự động toast lỗi cho mọi
+  `ApiError` (ngoại trừ validation error).
+- **Không gọi `toast.error()`** trong `onError` của `useMutation` / `useQuery` ở
+  mỗi page — global handler đã làm việc đó.
+- Chỉ giữ logic nghiệp vụ trong `onError` nếu cần (vd: `invalidateQueries` để
+  refresh UI, `setError` để map validation error vào form field).
+- `onSuccess` vẫn gọi `toast.success()` bình thường.
+
+## 10. React Query Key Convention
+
+- Dùng prefix `['tên-feature']` làm base key (vd: `['projects']`,
+  `['ai-configurations']`, `['ai-function-configs']`).
+- Sau base key, thêm các params (page, pageSize, search, filter, sort...).
+- Khi invalidate: dùng `queryClient.invalidateQueries({ queryKey: ['tên-feature'] })`
+  — react-query v5 invalidate tất cả queries bắt đầu bằng prefix đó.
+- **Không** dùng `qk.xxx.yyy(...)` khi invalidate vì dễ mismatch key.

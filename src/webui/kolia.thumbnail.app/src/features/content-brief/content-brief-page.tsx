@@ -11,7 +11,7 @@ import { DialogProvider, DialogContent, DialogHeader, DialogTitle } from '../../
 import { FormField, FormGroup, FormLabel } from '../../components/ui/form'
 import { useActiveProjectId, EmptyProjectState } from '../../lib/project-context'
 import { useStepGuard } from '../../lib/use-step-guard'
-import { getBrief, saveManualBrief, importBrief, analyzeBrief, confirmBrief } from './api'
+import { getBrief, saveManualBrief, importBrief, importAndAnalyzeBrief, importFileAndAnalyzeBrief, analyzeBrief, confirmBrief, type ContentBriefDto } from './api'
 import { saveManualBriefSchema, type SaveManualBriefInput } from './schema'
 import { qk } from '../../lib/query-keys'
 import { CImportContentSource, IMPORT_CONTENT_SOURCE_OPTIONS } from '../../types/enums/pipeline.enums'
@@ -57,6 +57,22 @@ export function ContentBriefPage() {
   const [importSource, setImportSource] = useState<CImportContentSource>(CImportContentSource.PasteText)
   const [importText, setImportText] = useState('')
   const [importUrl, setImportUrl] = useState('')
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importFileError, setImportFileError] = useState('')
+
+  // ── File validation constants ────────────────────────────────────────
+  const ALLOWED_TEXT_EXTENSIONS = ['.txt', '.csv', '.md', '.json', '.xml', '.yaml', '.yml', '.log', '.ini', '.cfg', '.conf', '.env']
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
+  const validateFile = (file: File | null): string => {
+    if (!file) return ''
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!ALLOWED_TEXT_EXTENSIONS.includes(ext))
+      return `Chỉ hỗ trợ file text: ${ALLOWED_TEXT_EXTENSIONS.join(', ')}`
+    if (file.size > MAX_FILE_SIZE)
+      return `Dung lượng file tối đa 5MB. File hiện tại: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+    return ''
+  }
 
   // ── Manual prompt state ──────────────────────────────────────────────
   const [showManualPrompt, setShowManualPrompt] = useState(false)
@@ -112,22 +128,40 @@ export function ContentBriefPage() {
   })
 
   const { mutate: doImport, isPending: isImporting } = useMutation({
-    mutationFn: () =>
-      importBrief(activeProjectId!, {
+    mutationFn: async (): Promise<ContentBriefDto | void> => {
+      // Khi nguồn là PasteText: gọi AI Agent phân tích toàn bộ 6 trường nội dung
+      if (importSource === CImportContentSource.PasteText) {
+        return importAndAnalyzeBrief(activeProjectId!, importText)
+      }
+      if (importSource === CImportContentSource.File && importFile) {
+        // Gửi file trực tiếp lên backend -> AI Agent đọc + phân tích
+        return importFileAndAnalyzeBrief(activeProjectId!, importFile)
+      }
+      // Nguồn ExternalLink: import thuần (lưu raw, không AI)
+      await importBrief(activeProjectId!, {
         source: importSource,
-        rawText: importSource === CImportContentSource.PasteText ? importText : undefined,
-        fileUrl: importSource === CImportContentSource.File ? importUrl : undefined,
-        externalLink: importSource === CImportContentSource.ExternalLink ? importUrl : undefined,
-      }),
-    onSuccess: () => {
-      toast.success('Đã nhập thông tin thành công!')
+        externalLink: importUrl,
+      })
+    },
+    onSuccess: async (result) => {
+      // Nếu là PasteText hoặc File, result chứa ContentBriefDto với đầy đủ 6 trường
+      if ((importSource === CImportContentSource.PasteText || importSource === CImportContentSource.File) && result) {
+        queryClient.setQueryData(qk.brief(activeProjectId!), result)
+        await queryClient.refetchQueries({ queryKey: qk.brief(activeProjectId!) })
+        toast.success('AI đã phân tích và điền đầy đủ thông tin!')
+      } else {
+        toast.success('Đã nhập thông tin thành công!')
+        await queryClient.invalidateQueries({ queryKey: qk.brief(activeProjectId!) })
+      }
       setImportDialogOpen(false)
       setImportText('')
       setImportUrl('')
-      queryClient.invalidateQueries({ queryKey: qk.brief(activeProjectId!) })
+      setImportFile(null)
+      setImportFileError('')
     },
-    onError: () => {
+    onError: (error) => {
       queryClient.invalidateQueries({ queryKey: qk.brief(activeProjectId!) })
+      toast.error(error instanceof Error ? error.message : 'Nhập thông tin thất bại!')
     },
   })
 
@@ -363,6 +397,8 @@ export function ContentBriefPage() {
                     setImportSource(option.id)
                     setImportText('')
                     setImportUrl('')
+                    setImportFile(null)
+                    setImportFileError('')
                   }}
                 >
                   {option.label}
@@ -383,7 +419,42 @@ export function ContentBriefPage() {
               </FormGroup>
             )}
 
-            {(importSource === CImportContentSource.File || importSource === CImportContentSource.ExternalLink) && (
+            {/* File upload */}
+            {importSource === CImportContentSource.File && (
+              <FormGroup>
+                <FormLabel>Chọn file text</FormLabel>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept={ALLOWED_TEXT_EXTENSIONS.join(',')}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null
+                      setImportFile(file)
+                      setImportFileError(validateFile(file))
+                    }}
+                    className="block w-full text-sm text-slate-500 dark:text-slate-400
+                      file:mr-3 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-medium
+                      file:bg-slate-100 file:text-slate-700
+                      dark:file:bg-slate-800 dark:file:text-slate-200
+                      hover:file:bg-slate-200 dark:hover:file:bg-slate-700
+                      cursor-pointer"
+                  />
+                  {importFile && !importFileError && (
+                    <div className="rounded-md bg-slate-50 dark:bg-slate-800 p-2 text-xs text-slate-600 dark:text-slate-300">
+                      <p className="font-medium">{importFile.name}</p>
+                      <p>{(importFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  )}
+                  {importFileError && (
+                    <p className="text-xs text-red-600 dark:text-red-400">{importFileError}</p>
+                  )}
+                </div>
+              </FormGroup>
+            )}
+
+            {importSource === CImportContentSource.ExternalLink && (
               <FormGroup>
                 <FormLabel>URL</FormLabel>
                 <input
@@ -391,11 +462,7 @@ export function ContentBriefPage() {
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
                   className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-slate-100/20"
-                  placeholder={
-                    importSource === CImportContentSource.File
-                      ? 'Nhập URL file...'
-                      : 'Nhập link ngoài...'
-                  }
+                  placeholder="Nhập link ngoài..."
                 />
               </FormGroup>
             )}
@@ -406,7 +473,7 @@ export function ContentBriefPage() {
               </Button>
               <Button
                 onClick={() => doImport()}
-                disabled={isImporting || (importSource === CImportContentSource.PasteText ? !importText.trim() : !importUrl.trim())}
+                disabled={isImporting || !!importFileError || (importSource === CImportContentSource.PasteText ? !importText.trim() : importSource === CImportContentSource.File ? !importFile : !importUrl.trim())}
               >
                 {isImporting ? 'Đang nhập…' : 'Nhập'}
               </Button>

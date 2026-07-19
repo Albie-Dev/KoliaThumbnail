@@ -1,5 +1,5 @@
 import { httpClient } from '../../lib/api/http-client'
-import type { CImportContentSource } from '../../types/enums/pipeline.enums'
+import { CImportContentSource } from '../../types/enums/pipeline.enums'
 
 // ── DTOs ──────────────────────────────────────────────────────────────────
 
@@ -42,6 +42,47 @@ export async function importBrief(
   },
 ): Promise<void> {
   await httpClient.post(`/api/v1/projects/${projectId}/brief/import`, data)
+}
+
+/**
+ * Import dữ liệu từ PasteText và tự động gọi AI Agent để phân tích,
+ * trích xuất toàn bộ 6 trường nội dung ngay trong một lần gọi.
+ */
+export async function importAndAnalyzeBrief(
+  projectId: string,
+  rawText: string,
+): Promise<ContentBriefDto> {
+  return httpClient.post<ContentBriefDto>(
+    `/api/v1/projects/${projectId}/brief/import-and-analyze`,
+    { source: CImportContentSource.PasteText, rawText },
+  )
+}
+
+/**
+ * Upload file text và tự động gọi AI Agent để phân tích,
+ * trích xuất toàn bộ 6 trường nội dung.
+ * Gửi trực tiếp file dưới dạng multipart/form-data.
+ */
+export async function importFileAndAnalyzeBrief(
+  projectId: string,
+  file: File,
+): Promise<ContentBriefDto> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'}/api/v1/projects/${projectId}/brief/import-file`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  const text = await res.text()
+  const body = text ? JSON.parse(text) : null
+
+  if (!res.ok) {
+    throw new Error(body?.message ?? 'Upload file thất bại!')
+  }
+
+  return body as ContentBriefDto
 }
 
 export async function analyzeBrief(projectId: string, manualPrompt?: string): Promise<ContentBriefDto> {

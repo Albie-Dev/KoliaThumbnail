@@ -108,14 +108,20 @@ export const EditAIFunctionConfigForm = forwardRef<
   useEffect(() => {
     watchedItems.forEach((item) => {
       if (!item.aiProviderId || !item.aiProviderConfigurationId) return
-      if (modelsByItem[item.key]) return
+
+      // Tạo cache key dựa trên provider+config để tránh dùng sai cache khi đổi provider
+      const cacheKey = `${item.key}_${item.aiProviderId}_${item.aiProviderConfigurationId}`
+      if (modelsByItem[cacheKey]) {
+        // Đã fetch cho cặp provider+config này rồi, không fetch lại
+        return
+      }
 
       const doFetch = async () => {
         setLoadingModels((prev) => ({ ...prev, [item.key]: true }))
         setModelErrors((prev) => ({ ...prev, [item.key]: '' }))
         try {
           const models = await getProviderModels(item.aiProviderId, item.aiProviderConfigurationId)
-          setModelsByItem((prev) => ({ ...prev, [item.key]: models }))
+          setModelsByItem((prev) => ({ ...prev, [cacheKey]: models }))
         } catch {
           setModelErrors((prev) => ({ ...prev, [item.key]: 'Không thể tải models' }))
         } finally {
@@ -219,7 +225,8 @@ export const EditAIFunctionConfigForm = forwardRef<
 
         {watchedItems.map((item, index) => {
           const filteredConfigs = getConfigsForProvider(item.aiProviderId)
-          const itemModels = modelsByItem[item.key] ?? []
+          const modelsCacheKey = `${item.key}_${item.aiProviderId}_${item.aiProviderConfigurationId}`
+          const itemModels = modelsByItem[modelsCacheKey] ?? []
 
           return (
             <div
