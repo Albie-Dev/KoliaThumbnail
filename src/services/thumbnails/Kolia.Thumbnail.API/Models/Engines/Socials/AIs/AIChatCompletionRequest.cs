@@ -47,6 +47,12 @@ namespace Kolia.Thumbnail.API.Engines
         public List<ChatImageAttachment>? Images { get; set; }
 
         /// <summary>
+        /// Danh sách file đính kèm (PDF, Word, text, ...) - dùng cho model đa phương thức
+        /// như Gemini. File có thể được upload lên provider (fileUri) hoặc gửi dạng base64.
+        /// </summary>
+        public List<ChatFileAttachment>? Files { get; set; }
+
+        /// <summary>
         /// Nếu Role = "tool": id của tool call tương ứng đang phản hồi.
         /// </summary>
         public string? ToolCallId { get; set; }
@@ -65,6 +71,27 @@ namespace Kolia.Thumbnail.API.Engines
         public ChatImageSourceType SourceType { get; set; } = ChatImageSourceType.Url;
 
         public string? MimeType { get; set; }
+    }
+
+    /// <summary>
+    /// File đính kèm trong chat message.
+    /// </summary>
+    public class ChatFileAttachment
+    {
+        /// <summary>Đường dẫn file trên server hoặc tên file để log.</summary>
+        public string FileName { get; set; } = default!;
+
+        /// <summary>Nội dung file dạng base64 (nếu gửi inline).</summary>
+        public string? Base64Content { get; set; }
+
+        /// <summary>MIME type của file (ví dụ: application/pdf, text/plain).</summary>
+        public string MimeType { get; set; } = "application/octet-stream";
+
+        /// <summary>
+        /// URI của file sau khi upload lên provider (Gemini File API, ...).
+        /// Nếu có, Base64Content sẽ được bỏ qua.
+        /// </summary>
+        public string? FileUri { get; set; }
     }
 
     public enum ChatImageSourceType

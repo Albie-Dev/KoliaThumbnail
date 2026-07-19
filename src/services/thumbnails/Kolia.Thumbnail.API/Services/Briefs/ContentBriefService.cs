@@ -1,5 +1,6 @@
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Entities.Briefs;
+using Kolia.Thumbnail.API.Engines;
 using Kolia.Thumbnail.API.Engines.AI;
 using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Services.Projects;
@@ -68,6 +69,125 @@ namespace Kolia.Thumbnail.API.Services.Briefs
             brief.ImportedExternalLink = externalLink;
             brief.LastModificationTime = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
+        }
+
+        /// <summary>
+        /// Các đuôi file text được hỗ trợ upload.
+        /// </summary>
+        private static readonly HashSet<string> AllowedTextExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".txt", ".csv", ".md", ".json", ".xml", ".yaml", ".yml",
+            ".log", ".ini", ".cfg", ".conf", ".env", ".text", ".tsv"
+        };
+
+        /// <summary>
+        /// Dung lượng file tối đa: 10MB
+        /// </summary>
+        private const long MaxFileSize = 10 * 1024 * 1024;
+
+        public async Task<ContentBriefEntity> ImportFileAndAnalyzeAsync(Guid projectId,
+            IFormFile file, CancellationToken ct = default)
+        {
+            // Validate file
+            if (file.Length == 0)
+                throw new ArgumentException("File rỗng.");
+
+            if (file.Length > MaxFileSize)
+                throw new ArgumentException($"Dung lượng file tối đa {MaxFileSize / 1024 / 1024}MB. File hiện tại: {file.Length / 1024.0 / 1024.0:F2}MB.");
+
+            var ext = Path.GetExtension(file.FileName);
+            if (!AllowedTextExtensions.Contains(ext))
+                throw new ArgumentException($"Đuôi file '{ext}' không được hỗ trợ. Các định dạng hỗ trợ: {string.Join(", ", AllowedTextExtensions)}");
+
+            // Đọc file thành base64 để gửi trực tiếp lên AI (inline_data)
+            byte[] fileBytes;
+            using (var ms = new MemoryStream())
+            {
+                await file.CopyToAsync(ms, ct);
+                fileBytes = ms.ToArray();
+            }
+
+            var mimeType = GetMimeTypeForExtension(ext);
+            var base64Content = Convert.ToBase64String(fileBytes);
+
+            var brief = await GetOrCreateAsync(projectId, ct);
+            if (brief.IsConfirmed)
+                throw new InvalidOperationException("Brief đã được xác nhận, không thể sửa.");
+
+            // Lưu thông tin file
+            brief.ImportSource = CImportContentSource.File;
+            brief.ImportedRawText = $"[File: {file.FileName} ({file.Length} bytes)]";
+            brief.LastModificationTime = DateTimeOffset.UtcNow;
+
+            // Gửi file trực tiếp lên AI Agent -> AI tự đọc và phân tích 6 trường
+            var fileAttachment = new ChatFileAttachment
+            {
+                FileName = file.FileName,
+                Base64Content = base64Content,
+                MimeType = mimeType
+            };
+
+            var result = await _analysisEngine.AnalyzeFromFilesAsync(
+                new List<ChatFileAttachment> { fileAttachment }, ct);
+
+            // Ghi đè tất cả 6 trường nội dung
+            brief.OverviewInput = result.OverviewInput;
+            brief.ViewpointInput = result.ViewpointInput;
+            brief.KeyDataInput = result.KeyDataInput;
+            brief.TopicOutput = result.Topic;
+            brief.MainMessageOutput = result.MainMessage;
+            brief.HighlightDataOutput = result.HighlightData;
+            brief.SuggestedKeywordsJson = System.Text.Json.JsonSerializer.Serialize(result.SuggestedKeywords);
+
+            await _db.SaveChangesAsync(ct);
+            return brief;
+        }
+
+        private static string GetMimeTypeForExtension(string ext)
+        {
+            return ext.ToLowerInvariant() switch
+            {
+                ".txt" => "text/plain",
+                ".csv" => "text/csv",
+                ".md" => "text/markdown",
+                ".json" => "application/json",
+                ".xml" => "application/xml",
+                ".yaml" or ".yml" => "text/yaml",
+                ".log" => "text/plain",
+                ".ini" or ".cfg" or ".conf" => "text/plain",
+                ".env" => "text/plain",
+                ".text" => "text/plain",
+                ".tsv" => "text/tab-separated-values",
+                _ => "application/octet-stream"
+            };
+        }
+
+        public async Task<ContentBriefEntity> ImportAndAnalyzeFromPasteAsync(Guid projectId,
+            string rawText, CancellationToken ct = default)
+        {
+            var brief = await GetOrCreateAsync(projectId, ct);
+            if (brief.IsConfirmed)
+                throw new InvalidOperationException("Brief đã được xác nhận, không thể sửa.");
+
+            // Bước 1: Lưu raw text
+            brief.ImportSource = CImportContentSource.PasteText;
+            brief.ImportedRawText = rawText;
+            brief.LastModificationTime = DateTimeOffset.UtcNow;
+
+            // Bước 2: Gọi AI Agent phân tích văn bản paste -> trích xuất 6 trường
+            var result = await _analysisEngine.AnalyzeFromPastedTextAsync(rawText, ct);
+
+            // Bước 3: Ghi đè tất cả 6 trường nội dung
+            brief.OverviewInput = result.OverviewInput;
+            brief.ViewpointInput = result.ViewpointInput;
+            brief.KeyDataInput = result.KeyDataInput;
+            brief.TopicOutput = result.Topic;
+            brief.MainMessageOutput = result.MainMessage;
+            brief.HighlightDataOutput = result.HighlightData;
+            brief.SuggestedKeywordsJson = System.Text.Json.JsonSerializer.Serialize(result.SuggestedKeywords);
+
+            await _db.SaveChangesAsync(ct);
+            return brief;
         }
 
         public async Task<ContentBriefEntity> AnalyzeWithAIAsync(Guid projectId,

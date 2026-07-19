@@ -27,6 +27,21 @@ namespace Kolia.Thumbnail.API.Services.Briefs
             CancellationToken ct = default);
 
         /// <summary>
+        /// Import dữ liệu từ PasteText và tự động gọi AI Agent để phân tích,
+        /// trích xuất toàn bộ 6 trường nội dung (overview, viewpoint, keyData,
+        /// topic, mainMessage, highlightData) ngay trong một lần gọi.
+        /// </summary>
+        Task<ContentBriefEntity> ImportAndAnalyzeFromPasteAsync(Guid projectId, string rawText,
+            CancellationToken ct = default);
+
+        /// <summary>
+        /// Upload file text và tự động gọi AI Agent để phân tích,
+        /// trích xuất toàn bộ 6 trường nội dung — hỗ trợ .txt, .csv, .md, .json, .xml, ...
+        /// </summary>
+        Task<ContentBriefEntity> ImportFileAndAnalyzeAsync(Guid projectId, IFormFile file,
+            CancellationToken ct = default);
+
+        /// <summary>
         /// Gọi AI để phân tích brief và sinh ra TopicOutput, MainMessageOutput, HighlightDataOutput.
         /// </summary>
         Task<ContentBriefEntity> AnalyzeWithAIAsync(Guid projectId, string? manualPrompt = null, CancellationToken ct = default);

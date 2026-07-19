@@ -1,4 +1,5 @@
 using Kolia.Thumbnail.API.DTOs.Briefs;
+using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Exceptions;
 using Kolia.Thumbnail.API.Models;
 using Kolia.Thumbnail.API.Services.Briefs;
@@ -82,6 +83,80 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         {
             await _briefService.ImportAsync(projectId, request.Source, request.RawText, request.FileUrl, request.ExternalLink, ct);
             return NoContent();
+        }
+
+        /// <summary>
+        /// Import dữ liệu từ PasteText và tự động gọi AI Agent để phân tích,
+        /// trích xuất toàn bộ 6 trường nội dung (overview, viewpoint, keyData,
+        /// topic, mainMessage, highlightData) ngay trong một lần gọi.
+        /// </summary>
+        /// <param name="projectId">Id dự án</param>
+        /// <param name="request">Thông tin nguồn import (bắt buộc RawText)</param>
+        /// <param name="ct">CancellationToken</param>
+        /// <returns>ContentBriefDto sau khi AI đã phân tích đầy đủ 6 trường</returns>
+        /// <exception cref="InvalidOperationException">Ném ra khi brief đã được confirm khóa</exception>
+        [HttpPost("import-and-analyze")]
+        [ProducesResponseType(typeof(ContentBriefDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ContentBriefDto>> ImportAndAnalyze(Guid projectId,
+            [FromBody] ImportBriefRequest request,
+            CancellationToken ct = default)
+        {
+            if (request.Source != CImportContentSource.PasteText)
+                throw new ArgumentException("import-and-analyze chỉ hỗ trợ nguồn PasteText.");
+
+            var brief = await _briefService.ImportAndAnalyzeFromPasteAsync(projectId, request.RawText!, ct);
+            var dto = new ContentBriefDto(
+                brief.Id,
+                brief.ProjectId,
+                brief.ImportSource,
+                brief.ImportedExternalLink,
+                brief.ExternalSheetUrl,
+                brief.LastSheetSyncTime,
+                brief.OverviewInput,
+                brief.ViewpointInput,
+                brief.KeyDataInput,
+                brief.TopicOutput,
+                brief.MainMessageOutput,
+                brief.HighlightDataOutput,
+                brief.IsConfirmed,
+                brief.ConfirmedAt);
+
+            return Ok(dto);
+        }
+
+        /// <summary>
+        /// Upload file text và tự động gọi AI Agent để phân tích,
+        /// trích xuất toàn bộ 6 trường nội dung.
+        /// </summary>
+        /// <param name="projectId">Id dự án</param>
+        /// <param name="file">File text cần upload (.txt, .csv, .md, .json, .xml, ...)</param>
+        /// <param name="ct">CancellationToken</param>
+        /// <returns>ContentBriefDto sau khi AI đã phân tích đầy đủ 6 trường</returns>
+        [HttpPost("import-file")]
+        [ProducesResponseType(typeof(ContentBriefDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ContentBriefDto>> ImportFile(Guid projectId,
+            IFormFile file, CancellationToken ct = default)
+        {
+            var brief = await _briefService.ImportFileAndAnalyzeAsync(projectId, file, ct);
+            var dto = new ContentBriefDto(
+                brief.Id,
+                brief.ProjectId,
+                brief.ImportSource,
+                brief.ImportedExternalLink,
+                brief.ExternalSheetUrl,
+                brief.LastSheetSyncTime,
+                brief.OverviewInput,
+                brief.ViewpointInput,
+                brief.KeyDataInput,
+                brief.TopicOutput,
+                brief.MainMessageOutput,
+                brief.HighlightDataOutput,
+                brief.IsConfirmed,
+                brief.ConfirmedAt);
+
+            return Ok(dto);
         }
 
         /// <summary>

@@ -19,6 +19,36 @@ namespace Kolia.Thumbnail.API.Engines
             );
             return Task.FromResult(result);
         }
+
+        public Task<BriefAnalysisFromPasteResult> AnalyzeFromPastedTextAsync(
+            string rawText, CancellationToken ct = default)
+        {
+            var result = new BriefAnalysisFromPasteResult(
+                OverviewInput: "Tổng quan: thị trường crypto đang có nhiều biến động tích cực nhờ các chính sách vĩ mô mới.",
+                ViewpointInput: "Quan điểm: cần tập trung vào các altcoin tiềm năng và xu hướng DeFi đang nổi lên.",
+                KeyDataInput: "BTC: $85,000; ETH: $4,200; TVL DeFi: $120B; Fed hạ lãi suất 50bps.",
+                Topic: "Chủ đề livestream: Tương lai thị trường Crypto 2026",
+                MainMessage: "Thị trường sẽ bứt phá nhờ dòng tiền lớn và chính sách nới lỏng.",
+                HighlightData: "Fed hạ lãi suất 50 điểm cơ bản; dòng vốn ETF đạt kỷ lục.",
+                SuggestedKeywords: new List<string> { "Crypto 2026", "Fed hạ lãi suất", "ETF Crypto", "Bitcoin bứt phá" }
+            );
+            return Task.FromResult(result);
+        }
+
+        public Task<BriefAnalysisFromPasteResult> AnalyzeFromFilesAsync(
+            List<ChatFileAttachment> files, CancellationToken ct = default)
+        {
+            var result = new BriefAnalysisFromPasteResult(
+                OverviewInput: "Tổng quan từ file: nội dung đã được phân tích từ file đính kèm.",
+                ViewpointInput: "Quan điểm: file cung cấp nhiều dữ liệu đầu tư quan trọng.",
+                KeyDataInput: "Dữ liệu được trích xuất từ file.",
+                Topic: "Chủ đề từ file: Phân tích thị trường",
+                MainMessage: "Thông điệp chính từ file.",
+                HighlightData: "Dữ liệu nổi bật từ file.",
+                SuggestedKeywords: new List<string> { "Phân tích", "Đầu tư", "Thị trường" }
+            );
+            return Task.FromResult(result);
+        }
     }
 
     public class MockNewsScoringEngine : INewsScoringEngine

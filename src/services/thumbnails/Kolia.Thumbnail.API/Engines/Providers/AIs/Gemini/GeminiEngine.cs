@@ -154,6 +154,10 @@ namespace Kolia.Thumbnail.API.Engines.Providers
 
         public async Task<ChatCompletionResult> ChatCompletionAsync(ChatCompletionRequest request)
         {
+            // Nếu có file attachments, dùng native API (hỗ trợ inline_data/file_data)
+            if (request.Messages.Any(m => m.Files is { Count: > 0 }))
+                return await ChatCompletionNativeAsync(request);
+
             var wireRequest = BuildChatRequestWire(request, stream: false);
 
             using var httpRequest = CreateOpenAiCompatJsonRequest(HttpMethod.Post, "/chat/completions", request.ApiKey, wireRequest);
@@ -180,6 +184,142 @@ namespace Kolia.Thumbnail.API.Engines.Providers
                     ToolName = tc.Function.Name,
                     ArgumentsJson = tc.Function.Arguments
                 }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Chat completion qua Gemini native generateContent API — hỗ trợ file đính kèm
+        /// (inline_data cho base64, file_data cho file đã upload lên Gemini File API).
+        /// </summary>
+        private async Task<ChatCompletionResult> ChatCompletionNativeAsync(ChatCompletionRequest request)
+        {
+            var nativeRequest = new GeminiNativeRequestWire
+            {
+                Contents = new List<GeminiNativeContentWire>(),
+                GenerationConfig = new GeminiNativeConfigWire
+                {
+                    Temperature = request.Temperature,
+                    MaxOutputTokens = request.MaxTokens,
+                    TopP = request.TopP,
+                    StopSequences = request.StopSequences
+                }
+            };
+
+            foreach (var msg in request.Messages)
+            {
+                if (msg.Role == "system")
+                {
+                    // Gemini native: system instruction là field riêng, không nằm trong contents
+                    nativeRequest.SystemInstruction = new GeminiNativeContentWire
+                    {
+                        Parts = new List<GeminiNativePartWire>
+                        {
+                            new() { Text = msg.Content }
+                        }
+                    };
+                    continue;
+                }
+
+                var parts = new List<GeminiNativePartWire>();
+
+                // Text content
+                if (!string.IsNullOrWhiteSpace(msg.Content))
+                    parts.Add(new GeminiNativePartWire { Text = msg.Content });
+
+                // Images
+                if (msg.Images is { Count: > 0 })
+                {
+                    foreach (var img in msg.Images)
+                    {
+                        parts.Add(new GeminiNativePartWire
+                        {
+                            InlineData = new GeminiNativeInlineDataWire
+                            {
+                                MimeType = img.MimeType ?? "image/png",
+                                Data = img.SourceType == ChatImageSourceType.Base64
+                                    ? img.Source
+                                    : Convert.ToBase64String(await _httpClient.GetByteArrayAsync(img.Source).ConfigureAwait(false))
+                            }
+                        });
+                    }
+                }
+
+                // Files
+                if (msg.Files is { Count: > 0 })
+                {
+                    foreach (var file in msg.Files)
+                    {
+                        if (!string.IsNullOrWhiteSpace(file.FileUri))
+                        {
+                            // File đã upload lên Gemini File API
+                            parts.Add(new GeminiNativePartWire
+                            {
+                                FileData = new GeminiNativeFileDataWire
+                                {
+                                    FileUri = file.FileUri,
+                                    MimeType = file.MimeType
+                                }
+                            });
+                        }
+                        else if (!string.IsNullOrWhiteSpace(file.Base64Content))
+                        {
+                            // File gửi dạng base64 inline
+                            parts.Add(new GeminiNativePartWire
+                            {
+                                InlineData = new GeminiNativeInlineDataWire
+                                {
+                                    MimeType = file.MimeType,
+                                    Data = file.Base64Content
+                                }
+                            });
+                        }
+                    }
+                }
+
+                if (parts.Count > 0)
+                {
+                    nativeRequest.Contents.Add(new GeminiNativeContentWire
+                    {
+                        Role = msg.Role == "assistant" ? "model" : msg.Role,
+                        Parts = parts
+                    });
+                }
+            }
+
+            var modelId = request.Model;
+            // Nếu modelId chưa có "models/" prefix, thêm vào
+            if (!modelId.StartsWith("models/", StringComparison.Ordinal))
+                modelId = $"models/{modelId}";
+
+            using var httpRequest = CreateNativeJsonRequest(
+                HttpMethod.Post,
+                $"/{modelId}:generateContent",
+                request.ApiKey,
+                nativeRequest);
+
+            using var response = await _httpClient.SendAsync(httpRequest).ConfigureAwait(false);
+            await EnsureSuccessAsync(response, nameof(ChatCompletionNativeAsync), request.Model).ConfigureAwait(false);
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var wire = JsonSerializer.Deserialize<GeminiNativeResponseWire>(json, JsonOptions)
+                ?? throw new InvalidOperationException("Gemini native API trả về phản hồi rỗng.");
+
+            var candidate = wire.Candidates?.FirstOrDefault()
+                ?? throw new InvalidOperationException("Gemini native API không trả về candidate nào.");
+
+            var textContent = candidate.Content?.Parts
+                ?.Where(p => p.Text != null)
+                .Select(p => p.Text)
+                .FirstOrDefault() ?? string.Empty;
+
+            return new ChatCompletionResult
+            {
+                Content = textContent,
+                PromptTokens = wire.UsageMetadata?.PromptTokenCount ?? 0,
+                CompletionTokens = wire.UsageMetadata?.CandidatesTokenCount ?? 0,
+                FinishReason = candidate.FinishReason,
+                ModelUsed = request.Model,
+                ToolCalls = null // Native generateContent không hỗ trợ tool calls qua format này
             };
         }
 
@@ -530,6 +670,19 @@ namespace Kolia.Thumbnail.API.Engines.Providers
         {
             var request = new HttpRequestMessage(method, $"{_baseUrlOpenAiCompat}{path}");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            var json = JsonSerializer.Serialize(body, JsonOptions);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            return request;
+        }
+
+        /// <summary>
+        /// Request tới native REST API (/v1beta/...) với body JSON — xác thực bằng
+        /// header "x-goog-api-key" theo đúng chuẩn của Gemini native API.
+        /// </summary>
+        private HttpRequestMessage CreateNativeJsonRequest<T>(HttpMethod method, string path, string apiKey, T body)
+        {
+            var request = new HttpRequestMessage(method, $"{_baseUrlNative}{path}");
+            request.Headers.Add("x-goog-api-key", apiKey);
             var json = JsonSerializer.Serialize(body, JsonOptions);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             return request;

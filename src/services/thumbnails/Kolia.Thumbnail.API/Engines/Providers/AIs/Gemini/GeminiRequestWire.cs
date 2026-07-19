@@ -400,4 +400,107 @@ namespace Kolia.Thumbnail.API.Engines.Providers
     }
 
     #endregion
+
+    #region Native GenerateContent API (/v1beta/models/{model}:generateContent)
+
+    /// <summary>
+    /// Request cho Gemini native generateContent API — hỗ trợ file attachments (inline_data, file_data).
+    /// </summary>
+    internal sealed class GeminiNativeRequestWire
+    {
+        [JsonPropertyName("contents")]
+        public List<GeminiNativeContentWire> Contents { get; set; } = new();
+
+        [JsonPropertyName("systemInstruction")]
+        public GeminiNativeContentWire? SystemInstruction { get; set; }
+
+        [JsonPropertyName("generationConfig")]
+        public GeminiNativeConfigWire? GenerationConfig { get; set; }
+    }
+
+    internal sealed class GeminiNativeContentWire
+    {
+        [JsonPropertyName("role")]
+        public string? Role { get; set; }
+
+        [JsonPropertyName("parts")]
+        public List<GeminiNativePartWire> Parts { get; set; } = new();
+    }
+
+    internal sealed class GeminiNativePartWire
+    {
+        [JsonPropertyName("text")]
+        public string? Text { get; set; }
+
+        [JsonPropertyName("inline_data")]
+        public GeminiNativeInlineDataWire? InlineData { get; set; }
+
+        [JsonPropertyName("file_data")]
+        public GeminiNativeFileDataWire? FileData { get; set; }
+    }
+
+    internal sealed class GeminiNativeInlineDataWire
+    {
+        [JsonPropertyName("mime_type")]
+        public string MimeType { get; set; } = default!;
+
+        [JsonPropertyName("data")]
+        public string Data { get; set; } = default!;
+    }
+
+    internal sealed class GeminiNativeFileDataWire
+    {
+        [JsonPropertyName("file_uri")]
+        public string FileUri { get; set; } = default!;
+
+        [JsonPropertyName("mime_type")]
+        public string MimeType { get; set; } = default!;
+    }
+
+    internal sealed class GeminiNativeConfigWire
+    {
+        [JsonPropertyName("temperature")]
+        public double? Temperature { get; set; }
+
+        [JsonPropertyName("maxOutputTokens")]
+        public int? MaxOutputTokens { get; set; }
+
+        [JsonPropertyName("topP")]
+        public double? TopP { get; set; }
+
+        [JsonPropertyName("stopSequences")]
+        public List<string>? StopSequences { get; set; }
+    }
+
+    internal sealed class GeminiNativeResponseWire
+    {
+        [JsonPropertyName("candidates")]
+        public List<GeminiNativeCandidateWire>? Candidates { get; set; }
+
+        [JsonPropertyName("usageMetadata")]
+        public GeminiNativeUsageWire? UsageMetadata { get; set; }
+    }
+
+    internal sealed class GeminiNativeCandidateWire
+    {
+        [JsonPropertyName("content")]
+        public GeminiNativeContentWire? Content { get; set; }
+
+        [JsonPropertyName("finishReason")]
+        public string? FinishReason { get; set; }
+    }
+
+    internal sealed class GeminiNativeUsageWire
+    {
+        [JsonPropertyName("promptTokenCount")]
+        public int PromptTokenCount { get; set; }
+
+        [JsonPropertyName("candidatesTokenCount")]
+        public int CandidatesTokenCount { get; set; }
+
+        [JsonPropertyName("totalTokenCount")]
+        public int TotalTokenCount { get; set; }
+    }
+
+    #endregion
 }

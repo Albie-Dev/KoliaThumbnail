@@ -143,7 +143,7 @@ namespace Kolia.Thumbnail.API.Engines.Providers
 
             return new ChatCompletionResult
             {
-                Content = choice.Message.Content ?? string.Empty,
+                Content = CleanupResponseContent(choice.Message.Content),
                 PromptTokens = wire.Usage?.PromptTokens ?? 0,
                 CompletionTokens = wire.Usage?.CompletionTokens ?? 0,
                 FinishReason = choice.FinishReason,
@@ -155,6 +155,47 @@ namespace Kolia.Thumbnail.API.Engines.Providers
                     ArgumentsJson = tc.Function.Arguments
                 }).ToList()
             };
+        }
+
+        /// <summary>
+        /// Dọn dẹp response content từ Groq API — xoá &lt;think&gt;...&lt;/think&gt;
+        /// (một số model reasoning như DeepSeek R1) và markdown code block ```...```.
+        /// Việc này nằm ở engine để không ảnh hưởng đến các provider khác.
+        /// </summary>
+        private static string CleanupResponseContent(string? content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return string.Empty;
+
+            var result = content.Trim();
+
+            // Xoá <think>...</think> (reasoning block của DeepSeek R1, v.v.)
+            var thinkStart = result.IndexOf("<think>", StringComparison.OrdinalIgnoreCase);
+            while (thinkStart >= 0)
+            {
+                var thinkEnd = result.IndexOf("</think>", thinkStart, StringComparison.OrdinalIgnoreCase);
+                if (thinkEnd < 0)
+                {
+                    result = result[..thinkStart].Trim();
+                    break;
+                }
+                result = (result[..thinkStart] + result[(thinkEnd + "</think>".Length)..]).Trim();
+                thinkStart = result.IndexOf("<think>", StringComparison.OrdinalIgnoreCase);
+            }
+
+            // Xoá markdown code block ``` ... ```
+            if (result.StartsWith("```"))
+            {
+                var start = result.IndexOf('\n');
+                if (start > 0)
+                    result = result[(start + 1)..];
+
+                var end = result.LastIndexOf("```");
+                if (end >= 0)
+                    result = result[..end];
+            }
+
+            return result.Trim();
         }
 
         public async IAsyncEnumerable<ChatCompletionChunk> ChatCompletionStreamAsync(
@@ -419,12 +460,16 @@ namespace Kolia.Thumbnail.API.Engines.Providers
         };
 
         /// <summary>
-        /// Trả về string đơn giản nếu message không có ảnh đính kèm, hoặc List&lt;object&gt;
+        /// Trả về string đơn giản nếu message không có ảnh/file đính kèm, hoặc List&lt;object&gt;
         /// (content parts kiểu OpenAI-compatible) nếu có ảnh - phục vụ các model Llama vision trên Groq.
+        /// File text được đọc nội dung và thêm dạng text part.
         /// </summary>
         private static object BuildMessageContent(ChatMessage message)
         {
-            if (message.Images is not { Count: > 0 })
+            var hasImages = message.Images is { Count: > 0 };
+            var hasFiles = message.Files is { Count: > 0 };
+
+            if (!hasImages && !hasFiles)
                 return message.Content;
 
             var parts = new List<object>();
@@ -432,13 +477,57 @@ namespace Kolia.Thumbnail.API.Engines.Providers
             if (!string.IsNullOrEmpty(message.Content))
                 parts.Add(new { type = "text", text = message.Content });
 
-            foreach (var image in message.Images)
+            // Xử lý ảnh đính kèm
+            if (hasImages)
             {
-                var url = image.SourceType == ChatImageSourceType.Base64
-                    ? $"data:{image.MimeType ?? "image/png"};base64,{image.Source}"
-                    : image.Source;
+                foreach (var image in message.Images!)
+                {
+                    var url = image.SourceType == ChatImageSourceType.Base64
+                        ? $"data:{image.MimeType ?? "image/png"};base64,{image.Source}"
+                        : image.Source;
 
-                parts.Add(new { type = "image_url", image_url = new { url } });
+                    parts.Add(new { type = "image_url", image_url = new { url } });
+                }
+            }
+
+            // Xử lý file đính kèm (Groq không hỗ trợ file_data như Gemini)
+            if (hasFiles)
+            {
+                var imageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp" };
+
+                foreach (var file in message.Files!)
+                {
+                    var ext = Path.GetExtension(file.FileName);
+
+                    if (imageExtensions.Contains(ext) && !string.IsNullOrWhiteSpace(file.Base64Content))
+                    {
+                        // File ảnh -> gửi dạng image_url base64
+                        parts.Add(new
+                        {
+                            type = "image_url",
+                            image_url = new { url = $"data:{file.MimeType};base64,{file.Base64Content}" }
+                        });
+                    }
+                    else if (!string.IsNullOrWhiteSpace(file.Base64Content))
+                    {
+                        // File text -> decode base64 và thêm vào text content
+                        try
+                        {
+                            var bytes = Convert.FromBase64String(file.Base64Content);
+                            var text = System.Text.Encoding.UTF8.GetString(bytes);
+                            parts.Add(new { type = "text", text = $"[Nội dung file: {file.FileName}]\n{text}" });
+                        }
+                        catch
+                        {
+                            parts.Add(new { type = "text", text = $"[File: {file.FileName} - không thể đọc nội dung text]" });
+                        }
+                    }
+                    else
+                    {
+                        parts.Add(new { type = "text", text = $"[File: {file.FileName} - không có nội dung để xử lý]" });
+                    }
+                }
             }
 
             return parts;
