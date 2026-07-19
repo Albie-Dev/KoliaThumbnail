@@ -11,7 +11,6 @@ using Kolia.Thumbnail.API.Engines.Providers.Socials.Youtube;
 using Kolia.Thumbnail.API.Extensions;
 using Kolia.Thumbnail.API.Middlewares;
 using Kolia.Thumbnail.API.Models.AIs;
-using Kolia.Thumbnail.API.Projects;
 using Kolia.Thumbnail.API.Security;
 using Kolia.Thumbnail.API.Services.AIs;
 using Kolia.Thumbnail.API.Socials;
@@ -50,7 +49,6 @@ namespace Kolia.Thumbnail.API
 
             services.AddScoped<IAIProviderService, AIProviderService>();
             services.AddScoped<IAIProviderConfigurationService, AIProviderConfigurationService>();
-            services.AddScoped<IProjectService, ProjectService>();
 
             services.AddScoped<ISocialMediaProviderService, SocialMediaProviderService>();
 

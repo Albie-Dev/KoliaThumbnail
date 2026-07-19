@@ -406,9 +406,9 @@ const SocialMediaProvidersPage = lazy(() =>
   import('../features/social-media-providers/social-media-providers-page').then((m) => ({ default: m.SocialMediaProvidersPage })),
 )
 
-const ProjectsPage = lazy(() =>
-  import('../features/projects/projects-page').then((m) => ({ default: m.ProjectsPage })),
-)
+// const ProjectsPage = lazy(() =>
+//   import('../features/projects/projects-page').then((m) => ({ default: m.ProjectsPage })),
+// )
 
 const PlaceholderPage: ComponentType = () => {
   const path = useLocation().pathname
@@ -421,23 +421,6 @@ const PlaceholderPage: ComponentType = () => {
 }
 
 // ── Menu configuration ─────────────────────────────────
-// Supports N-level nesting. Each leaf item can have a `component`.
-// Groups are separated visually in the sidebar.
-//
-// Cấu trúc menu rút gọn gồm:
-//   1. Tổng quan            – trang tổng quan hệ thống
-//   2. Kho lưu trữ          – nơi lưu trữ dữ liệu/tài nguyên
-//   3. Generate Thumbnail & Title – PIPELINE 6 bước tạo nội dung, đi từ
-//      thu thập dữ liệu (video, tin tức) → tham khảo/tạo thumbnail →
-//      tạo title → đóng gói bộ hoàn chỉnh. Icon + iconColor của từng bước
-//      được chọn theo 1 dải màu chuyển dần (đỏ → cam → vàng → xanh lá →
-//      xanh dương → chàm) để người dùng cảm nhận được thứ tự luồng xử lý
-//      (workflow) ngay trên sidebar.
-//   4. Cảnh báo & Tích hợp, Cấu hình, Quản trị – giữ nguyên như cũ.
-//
-// LƯU Ý: mỗi item (kể cả item con) có thêm `iconColor` (mã hex) để icon
-// được tô màu riêng thay vì dùng chung 1 màu mặc định.
-
 export const adminMenuGroups: AdminMenuGroup[] = [
   // ── Group: Tổng quan ───────────────────────────────
   {
@@ -462,7 +445,7 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         label: 'Kho lưu trữ',
         icon: Archive,
         iconColor: '#8b5cf6', // violet-500
-        component: ProjectsPage,
+        component: PlaceholderPage,
       },
     ],
   },
