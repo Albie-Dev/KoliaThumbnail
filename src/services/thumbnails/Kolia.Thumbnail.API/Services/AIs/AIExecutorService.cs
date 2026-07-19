@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Kolia.Thumbnail.API.AIs;
 using Kolia.Thumbnail.API.Data.Contexts;
+using Kolia.Thumbnail.API.Data.Entities.AIs;
 using Kolia.Thumbnail.API.Engines;
 using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Exceptions;
@@ -273,8 +274,165 @@ namespace Kolia.Thumbnail.API.Services.AIs
         }
 
         // ============================================================
+        // Function-based execution (dùng AIFunctionConfig)
+        // ============================================================
+
+        /// <inheritdoc />
+        public async Task<ChatCompletionResult> ChatCompletionWithFunctionAsync(
+            CAIFunctionType functionType,
+            ChatCompletionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return await ExecuteWithFunctionFallbackAsync(
+                functionType, request,
+                async (itemConfig, ctx, ct) =>
+                {
+                    var engine = ResolveEngine<IChatCapableEngine>(itemConfig.ProviderType);
+                    var configCtx = new ConfigurationContext
+                    {
+                        ConfigurationId = itemConfig.ConfigurationId,
+                        ApiKey = itemConfig.ApiKey,
+                    };
+                    ApplyConfigToRequest(request, configCtx, ctx);
+                    request.Model = itemConfig.Model ?? request.Model;
+                    if (itemConfig.Temperature.HasValue) request.Temperature = itemConfig.Temperature.Value;
+                    if (itemConfig.MaxTokens.HasValue) request.MaxTokens = itemConfig.MaxTokens.Value;
+                    return await engine.ChatCompletionAsync(request).ConfigureAwait(false);
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public async Task<ImageGenerationResult> GenerateImageWithFunctionAsync(
+            CAIFunctionType functionType,
+            ImageGenerationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return await ExecuteWithFunctionFallbackAsync(
+                functionType, request,
+                async (itemConfig, ctx, ct) =>
+                {
+                    var engine = ResolveEngine<IImageGenerationCapableEngine>(itemConfig.ProviderType);
+                    var configCtx = new ConfigurationContext
+                    {
+                        ConfigurationId = itemConfig.ConfigurationId,
+                        ApiKey = itemConfig.ApiKey,
+                    };
+                    ApplyConfigToRequest(request, configCtx, ctx);
+                    request.Model = itemConfig.Model ?? request.Model;
+                    return await engine.GenerateImageAsync(request).ConfigureAwait(false);
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        // ============================================================
         // Private helpers
         // ============================================================
+
+        /// <summary>
+        /// Cấu hình đã giải mã cho một item trong function config.
+        /// </summary>
+        private sealed record FunctionItemConfig(
+            Guid ConfigurationId,
+            string ApiKey,
+            CAIProviderType ProviderType,
+            string? Model,
+            double? Temperature,
+            int? MaxTokens);
+
+        /// <summary>
+        /// Load danh sách items từ <see cref="AIFunctionConfigEntity"/> cho function type.
+        /// Trả về danh sách rỗng nếu chưa được cấu hình (chưa có items).
+        /// </summary>
+        private async Task<List<FunctionItemConfig>> LoadFunctionConfigItemsAsync(
+            CAIFunctionType functionType,
+            CancellationToken ct)
+        {
+            var config = await _dbContext.AIFunctionConfigs
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .Include(x => x.Items.Where(i => !i.IsDeleted && i.IsEnabled))
+                    .ThenInclude(i => i.AIProvider)
+                .Include(x => x.Items.Where(i => !i.IsDeleted && i.IsEnabled))
+                    .ThenInclude(i => i.AIProviderConfiguration)
+                .FirstOrDefaultAsync(x => x.FunctionType == functionType && !x.IsDeleted, ct)
+                .ConfigureAwait(false);
+
+            if (config?.Items is null || config.Items.Count == 0)
+                return new();
+
+            return config.Items
+                .OrderBy(i => i.Priority)
+                .Select(i => new FunctionItemConfig(
+                    ConfigurationId: i.Id,
+                    ApiKey: _apiKeyProtector.Unprotect(i.AIProviderConfiguration.ApiKey),
+                    ProviderType: i.AIProvider.ProviderType,
+                    Model: i.Model ?? config.Model,
+                    Temperature: i.Temperature ?? config.Temperature,
+                    MaxTokens: i.MaxTokens ?? config.MaxTokens))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Thực thi tác vụ AI với fallback theo function config items.
+        /// Thử primary (Priority=0) trước, nếu lỗi retryable → fallback sang item tiếp theo.
+        /// </summary>
+        private async Task<TResult> ExecuteWithFunctionFallbackAsync<TRequest, TResult>(
+            CAIFunctionType functionType,
+            TRequest request,
+            Func<FunctionItemConfig, ProviderExecutionContext?, CancellationToken, Task<TResult>> execute,
+            CancellationToken cancellationToken)
+        {
+            var items = await LoadFunctionConfigItemsAsync(functionType, cancellationToken).ConfigureAwait(false);
+
+            if (items.Count == 0)
+            {
+                // Chưa có cấu hình function → throw lỗi hướng dẫn người dùng cấu hình
+                throw new BusinessException(
+                    $"Chức năng '{functionType}' chưa được cấu hình provider và model. " +
+                    $"Vui lòng vào Cấu hình AI → Cấu hình chức năng để thiết lập.",
+                    "FUNCTION_NOT_CONFIGURED");
+            }
+
+            List<Exception> errors = new();
+
+            foreach (var item in items)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                try
+                {
+                    ProviderExecutionContext? ctx = new()
+                    {
+                        ProviderType = item.ProviderType,
+                    };
+
+                    return await execute(item, ctx, cancellationToken).ConfigureAwait(false);
+                }
+                catch (AiProviderException ex) when (IsRetryable(ex.ProviderStatusCode))
+                {
+                    errors.Add(ex);
+                    _logger.LogWarning(ex,
+                        "Function config call failed for {FunctionType} item {ConfigId} (HTTP {StatusCode}), trying next item.",
+                        functionType, item.ConfigurationId, ex.ProviderStatusCode);
+                }
+                catch (HttpRequestException ex)
+                {
+                    errors.Add(ex);
+                    _logger.LogWarning(ex,
+                        "Function config call failed for {FunctionType} item {ConfigId} (network error), trying next item.",
+                        functionType, item.ConfigurationId);
+                }
+            }
+
+            _logger.LogError("All {Total} function config item(s) failed for {FunctionType}. Errors: {ErrorCount}",
+                items.Count, functionType, errors.Count);
+
+            throw new ExternalServiceException(
+                $"Tất cả {items.Count} cấu hình cho chức năng {functionType} đều thất bại. " +
+                $"Vui lòng kiểm tra lại cấu hình trong AI Function Configs.");
+        }
 
         /// <summary>
         /// Lấy danh sách config cần thử, gồm:
@@ -311,7 +469,9 @@ namespace Kolia.Thumbnail.API.Services.AIs
         }
 
         /// <summary>
-        /// Thực thi một tác vụ AI với fallback qua các config.
+        /// Thực thi một tác vụ AI với retry (có backoff) + fallback qua các config.
+        /// Khi gặp lỗi retryable (429, 5xx...), sẽ retry chính config đó với exponential backoff
+        /// tối đa <see cref="ConfigurationContext.RetryCount"/> lần trước khi chuyển sang config tiếp theo.
         /// </summary>
         private async Task<TResult> ExecuteWithFallbackAsync<TResult>(
             ProviderExecutionContext? ctx,
@@ -342,32 +502,91 @@ namespace Kolia.Thumbnail.API.Services.AIs
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                try
+                int maxRetries = Math.Max(0, config.RetryCount);
+                int attempt = 0;
+
+                while (attempt <= maxRetries)
                 {
-                    return await execute(config, cancellationToken).ConfigureAwait(false);
-                }
-                catch (AiProviderException ex) when (IsRetryable(ex.ProviderStatusCode))
-                {
-                    errors.Add(ex);
-                    _logger.LogWarning(ex,
-                        "AI call failed for {ProviderType} config {ConfigId} (HTTP {StatusCode}, code: {ErrorCode}), trying next config. Attempt {Attempt}/{Total}.",
-                        providerType, config.ConfigurationId, ex.ProviderStatusCode, ex.ProviderErrorCode ?? "N/A",
-                        errors.Count, configs.Count);
-                }
-                catch (HttpRequestException ex)
-                {
-                    errors.Add(ex);
-                    _logger.LogWarning(ex,
-                        "AI call failed for {ProviderType} config {ConfigId} (network error), trying next config. Attempt {Attempt}/{Total}.",
-                        providerType, config.ConfigurationId, errors.Count, configs.Count);
-                }
-                catch (TaskCanceledException)
-                {
-                    // Timeout — có thể thử config khác
-                    errors.Add(new TimeoutException($"Request timed out for {providerType} config {config.ConfigurationId}."));
-                    _logger.LogWarning(
-                        "AI call timed out for {ProviderType} config {ConfigId}, trying next config. Attempt {Attempt}/{Total}.",
-                        providerType, config.ConfigurationId, errors.Count, configs.Count);
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
+                    try
+                    {
+                        return await execute(config, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (AiProviderException ex) when (IsRetryable(ex.ProviderStatusCode))
+                    {
+                        attempt++;
+                        errors.Add(ex);
+
+                        if (attempt <= maxRetries)
+                        {
+                            // Exponential backoff: 1s, 2s, 4s, 8s, ...
+                            int delayMs = Math.Min(1000 * (int)Math.Pow(2, attempt - 1), 30_000);
+                            _logger.LogWarning(ex,
+                                "AI call failed for {ProviderType} config {ConfigId} (HTTP {StatusCode}), " +
+                                "retrying in {DelayMs}ms (attempt {Attempt}/{MaxRetries}).",
+                                providerType, config.ConfigurationId, ex.ProviderStatusCode,
+                                delayMs, attempt, maxRetries);
+
+                            await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(ex,
+                                "AI call failed for {ProviderType} config {ConfigId} (HTTP {StatusCode}, code: {ErrorCode}), " +
+                                "exhausted {MaxRetries} retries, trying next config.",
+                                providerType, config.ConfigurationId, ex.ProviderStatusCode,
+                                ex.ProviderErrorCode ?? "N/A", maxRetries);
+                        }
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        attempt++;
+                        errors.Add(ex);
+
+                        if (attempt <= maxRetries)
+                        {
+                            int delayMs = Math.Min(1000 * (int)Math.Pow(2, attempt - 1), 30_000);
+                            _logger.LogWarning(ex,
+                                "AI call failed for {ProviderType} config {ConfigId} (network error), " +
+                                "retrying in {DelayMs}ms (attempt {Attempt}/{MaxRetries}).",
+                                providerType, config.ConfigurationId, delayMs, attempt, maxRetries);
+
+                            await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(ex,
+                                "AI call failed for {ProviderType} config {ConfigId} (network error), " +
+                                "exhausted {MaxRetries} retries, trying next config.",
+                                providerType, config.ConfigurationId, maxRetries);
+                        }
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        attempt++;
+                        var timeoutEx = new TimeoutException($"Request timed out for {providerType} config {config.ConfigurationId}.");
+                        errors.Add(timeoutEx);
+
+                        if (attempt <= maxRetries)
+                        {
+                            int delayMs = Math.Min(1000 * (int)Math.Pow(2, attempt - 1), 30_000);
+                            _logger.LogWarning(
+                                "AI call timed out for {ProviderType} config {ConfigId}, " +
+                                "retrying in {DelayMs}ms (attempt {Attempt}/{MaxRetries}).",
+                                providerType, config.ConfigurationId, delayMs, attempt, maxRetries);
+
+                            await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "AI call timed out for {ProviderType} config {ConfigId}, " +
+                                "exhausted {MaxRetries} retries, trying next config.",
+                                providerType, config.ConfigurationId, maxRetries);
+                        }
+                    }
                 }
             }
 
@@ -375,10 +594,22 @@ namespace Kolia.Thumbnail.API.Services.AIs
             _logger.LogError("All {Total} config(s) failed for {ProviderType}. Errors: {ErrorCount}",
                 configs.Count, providerType, errors.Count);
 
-            throw new AggregateException(
+            // Xác định exception type phù hợp dựa vào loại lỗi gốc
+            var allRateLimited = errors.All(e =>
+                e is AiProviderException aiEx && aiEx.ProviderStatusCode == 429);
+
+            if (allRateLimited)
+            {
+                throw new TooManyRequestsException(
+                    $"Tất cả {configs.Count} cấu hình cho {providerType} đều đã hết quota/hạn mức. " +
+                    $"Vui lòng thử lại sau hoặc kiểm tra API key.",
+                    new AggregateException(errors));
+            }
+
+            throw new ExternalServiceException(
                 $"Tất cả {configs.Count} cấu hình cho {providerType} đều thất bại. " +
                 $"Đã thử {errors.Count} lần, vui lòng kiểm tra lại API key hoặc thử lại sau.",
-                errors);
+                new AggregateException(errors));
         }
 
         /// <summary>

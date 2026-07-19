@@ -86,27 +86,43 @@ namespace Kolia.Thumbnail.API.Exceptions
                     using var doc = JsonDocument.Parse(rawResponse);
                     var root = doc.RootElement;
 
-                    // Parse định dạng OpenAI-compatible (được dùng bởi OpenAI, Groq, Anthropic-shim, v.v.)
-                    if (root.TryGetProperty("error", out var errorEl))
+                    // Nếu root là Array, lấy phần tử đầu tiên để parse
+                    if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
                     {
-                        if (errorEl.ValueKind == JsonValueKind.Object)
+                        root = root[0];
+                    }
+
+                    if (root.ValueKind == JsonValueKind.Object)
+                    {
+                        // Parse định dạng OpenAI-compatible (được dùng bởi OpenAI, Groq, Anthropic-shim, v.v.)
+                        if (root.TryGetProperty("error", out var errorEl))
                         {
-                            if (errorEl.TryGetProperty("message", out var msgEl))
-                                parsedMsg = msgEl.GetString();
-
-                            if (errorEl.TryGetProperty("code", out var codeEl))
-                                errorCode = codeEl.ValueKind == JsonValueKind.Number ? codeEl.ToString() : codeEl.GetString();
-
-                            if (errorEl.TryGetProperty("type", out var typeEl))
-                                errorType = typeEl.GetString();
-
-                            if (errorEl.TryGetProperty("param", out var paramEl))
-                                errorParam = paramEl.GetString();
+                            if (errorEl.ValueKind == JsonValueKind.Object)
+                            {
+                                TryGetStringProperty(errorEl, "message", out parsedMsg);
+                                TryGetStringProperty(errorEl, "code", out errorCode);
+                                TryGetStringProperty(errorEl, "type", out errorType);
+                                TryGetStringProperty(errorEl, "param", out errorParam);
+                            }
+                            else if (errorEl.ValueKind == JsonValueKind.String)
+                            {
+                                parsedMsg = errorEl.GetString();
+                            }
                         }
-                        else if (errorEl.ValueKind == JsonValueKind.String)
+
+                        // Parse định dạng Gemini native: { "code": 400, "message": "...", "status": "..." }
+                        if (parsedMsg == null && root.TryGetProperty("message", out var msgEl2))
                         {
-                            parsedMsg = errorEl.GetString();
+                            parsedMsg = msgEl2.GetString();
+                            TryGetStringProperty(root, "status", out errorType);
+
+                            if (root.TryGetProperty("code", out var codeEl2))
+                                errorCode = codeEl2.ValueKind == JsonValueKind.Number ? codeEl2.ToString() : codeEl2.GetString();
                         }
+                    }
+                    else if (root.ValueKind == JsonValueKind.String)
+                    {
+                        parsedMsg = root.GetString();
                     }
                 }
                 catch (JsonException)
@@ -118,6 +134,26 @@ namespace Kolia.Thumbnail.API.Exceptions
             var displayMessage = parsedMsg ?? (string.IsNullOrWhiteSpace(rawResponse) ? "No response body" : rawResponse);
             var codePart = errorCode != null ? $" [Code: {errorCode}]" : string.Empty;
             return $"{providerType} API error (HTTP {providerStatusCode}): {displayMessage}{codePart}";
+        }
+
+        /// <summary>
+        /// An toàn khi đọc string property từ JsonElement — không throw nếu property không tồn tại
+        /// hoặc value không phải string.
+        /// </summary>
+        private static void TryGetStringProperty(JsonElement element, string propertyName, out string? result)
+        {
+            result = null;
+            if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out var prop))
+            {
+                result = prop.ValueKind switch
+                {
+                    JsonValueKind.String => prop.GetString(),
+                    JsonValueKind.Number => prop.ToString(),
+                    JsonValueKind.True => "true",
+                    JsonValueKind.False => "false",
+                    _ => null
+                };
+            }
         }
 
         private static string MapToBusinessCode(int statusCode, string? errorCode)

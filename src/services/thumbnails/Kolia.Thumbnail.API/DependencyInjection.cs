@@ -5,7 +5,12 @@ using Kolia.Thumbnail.API.AIs;
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Interceptors;
 using Kolia.Thumbnail.API.Engines;
+using Kolia.Thumbnail.API.Engines.AI;
+using Kolia.Thumbnail.API.BackgroundJobs;
+using Kolia.Thumbnail.API.Engines.Providers.Domain;
+using Kolia.Thumbnail.API.Engines.Social;
 using Kolia.Thumbnail.API.Engines.Providers;
+using Kolia.Thumbnail.API.Engines.Providers.Sheets;
 using Kolia.Thumbnail.API.Engines.Providers.Socials;
 using Kolia.Thumbnail.API.Engines.Providers.Socials.Youtube;
 using Kolia.Thumbnail.API.Extensions;
@@ -13,6 +18,15 @@ using Kolia.Thumbnail.API.Middlewares;
 using Kolia.Thumbnail.API.Models.AIs;
 using Kolia.Thumbnail.API.Security;
 using Kolia.Thumbnail.API.Services.AIs;
+using Kolia.Thumbnail.API.Services.Projects;
+using Kolia.Thumbnail.API.Services.Briefs;
+using Kolia.Thumbnail.API.Services.News;
+using Kolia.Thumbnail.API.Services.Thumbnails;
+using Kolia.Thumbnail.API.Services.DisplayTexts;
+using Kolia.Thumbnail.API.Services.ThumbnailGeneration;
+using Kolia.Thumbnail.API.Services.VideoTitles;
+using Kolia.Thumbnail.API.Services.CompletePackages;
+using Kolia.Thumbnail.API.Services.Characters;
 using Kolia.Thumbnail.API.Socials;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,6 +63,7 @@ namespace Kolia.Thumbnail.API
 
             services.AddScoped<IAIProviderService, AIProviderService>();
             services.AddScoped<IAIProviderConfigurationService, AIProviderConfigurationService>();
+            services.AddScoped<IAIFunctionConfigService, AIFunctionConfigService>();
 
             services.AddScoped<ISocialMediaProviderService, SocialMediaProviderService>();
 
@@ -84,6 +99,43 @@ namespace Kolia.Thumbnail.API
             services.AddScoped<ICommentManagementCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
             services.AddScoped<ILiveStreamingCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
             services.AddScoped<ISubscriptionManagementCapableEngine>(sp => sp.GetRequiredService<YoutubeEngine>());
+
+            // ── Register Real Domain Engines ──────────────────────────────
+            // AI-powered engines sử dụng AIExecutorService với Gemini/Groq thật
+            services.AddScoped<IBriefAnalysisEngine, AiBriefAnalysisEngine>();
+            services.AddScoped<INewsScoringEngine, AiNewsScoringEngine>();
+            services.AddScoped<INewsDeepAnalysisEngine, AiNewsDeepAnalysisEngine>();
+            services.AddScoped<IThumbnailAnalysisEngine, AiThumbnailAnalysisEngine>();
+            services.AddScoped<IDisplayTextGenerationEngine, AiDisplayTextGenerationEngine>();
+            services.AddScoped<IThumbnailImageGenerationEngine, AiThumbnailImageGenerationEngine>();
+            services.AddScoped<IVideoTitleGenerationEngine, AiVideoTitleGenerationEngine>();
+            services.AddScoped<IContentRelevanceFilterEngine, AiContentRelevanceFilterEngine>();
+
+            // Social engines thật
+            services.AddHttpClient<RealRssNewsSourceEngine>();
+            services.AddScoped<IRssNewsSourceEngine, RealRssNewsSourceEngine>();
+            services.AddHttpClient<RealYouTubeSearchEngine>();
+            services.AddScoped<IYouTubeSearchEngine, RealYouTubeSearchEngine>();
+
+            // Sheet import engine thật (Google Sheet CSV export)
+            services.AddHttpClient<GoogleSheetImportEngine>();
+            services.AddScoped<ISheetImportEngine, GoogleSheetImportEngine>();
+
+            // ── Register Domain Services ──────────────────────────────────
+            services.AddScoped<IProjectService, ProjectService>();
+            services.AddScoped<IContentBriefService, ContentBriefService>();
+            services.AddScoped<INewsService, NewsService>();
+            services.AddScoped<IThumbnailLibraryService, ThumbnailLibraryService>();
+            services.AddScoped<IDisplayTextService, DisplayTextService>();
+            services.AddScoped<IThumbnailGenerationService, ThumbnailGenerationService>();
+            services.AddScoped<IVideoTitleService, VideoTitleService>();
+            services.AddScoped<ICompletePackageService, CompletePackageService>();
+            services.AddScoped<ICharacterService, CharacterService>();
+            services.AddScoped<ISocialExecutorService, SocialExecutorService>();
+            services.AddScoped<IProjectStepGuard, ProjectStepGuard>();
+
+            // Background Jobs
+            services.AddHostedService<ExternalRequestRetryJob>();
 
             // FluentValidation
             services.AddFluentValidationAutoValidation();

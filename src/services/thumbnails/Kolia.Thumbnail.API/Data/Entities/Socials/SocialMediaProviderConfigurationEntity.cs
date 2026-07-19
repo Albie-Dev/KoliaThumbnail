@@ -105,6 +105,17 @@ namespace Kolia.Thumbnail.API.Data.Entities.Socials
         public DateTimeOffset? LastRequestResetTime { get; set; } = null;
 
         /// <summary>
+        /// Thời điểm bị rate-limit (429/403) gần nhất.
+        /// Dùng để tính cooldown trong Social Executor round-robin (D.6).
+        /// </summary>
+        public DateTimeOffset? LastRateLimitedAt { get; set; } = null;
+
+        /// <summary>
+        /// Thời gian cooldown tính bằng phút sau khi bị rate-limit (mặc định 1440 = 24 giờ).
+        /// </summary>
+        public int RateLimitCooldownMinutes { get; set; } = 1440;
+
+        /// <summary>
         /// Mô tả chi tiết
         /// </summary>
         public string? Description { get; set; } = null;

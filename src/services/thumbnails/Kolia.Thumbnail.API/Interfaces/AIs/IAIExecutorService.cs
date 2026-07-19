@@ -12,16 +12,17 @@ namespace Kolia.Thumbnail.API.AIs
     /// </summary>
     public interface IAIExecutorService
     {
+        // ── Provider-based methods (existing) ──────────────────────────
+
         /// <summary>
         /// Load thông tin provider và danh sách config từ DB.
-        /// Trả về null nếu không tìm thấy provider nào khả dụng.
         /// </summary>
         Task<ProviderExecutionContext?> GetProviderContextAsync(
             CAIProviderType providerType,
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gọi chat completion với fallback tự động qua các config.
+        /// Gọi chat completion với fallback tự động qua các config của một provider.
         /// </summary>
         Task<ChatCompletionResult> ChatCompletionWithFallbackAsync(
             CAIProviderType providerType,
@@ -29,9 +30,7 @@ namespace Kolia.Thumbnail.API.AIs
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gọi chat completion streaming với fallback tự động qua các config.
-        /// Lưu ý: streaming không thể fallback giữa chừng; nếu config đầu lỗi ngay
-        /// thì fallback sang config tiếp theo và bắt đầu stream lại từ đầu.
+        /// Gọi chat completion streaming với fallback tự động qua các config của một provider.
         /// </summary>
         IAsyncEnumerable<ChatCompletionChunk> ChatCompletionStreamWithFallbackAsync(
             CAIProviderType providerType,
@@ -39,7 +38,7 @@ namespace Kolia.Thumbnail.API.AIs
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gọi sinh ảnh với fallback tự động qua các config.
+        /// Gọi sinh ảnh với fallback tự động qua các config của một provider.
         /// </summary>
         Task<ImageGenerationResult> GenerateImageWithFallbackAsync(
             CAIProviderType providerType,
@@ -47,7 +46,7 @@ namespace Kolia.Thumbnail.API.AIs
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gọi TTS (text-to-speech) với fallback tự động qua các config.
+        /// Gọi TTS với fallback tự động qua các config của một provider.
         /// </summary>
         Task<TextToSpeechResult> GenerateSpeechWithFallbackAsync(
             CAIProviderType providerType,
@@ -55,7 +54,7 @@ namespace Kolia.Thumbnail.API.AIs
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gọi STT (speech-to-text) với fallback tự động qua các config.
+        /// Gọi STT với fallback tự động qua các config của một provider.
         /// </summary>
         Task<SpeechToTextResult> TranscribeWithFallbackAsync(
             CAIProviderType providerType,
@@ -63,11 +62,32 @@ namespace Kolia.Thumbnail.API.AIs
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gọi embedding với fallback tự động qua các config.
+        /// Gọi embedding với fallback tự động qua các config của một provider.
         /// </summary>
         Task<EmbeddingResult> CreateEmbeddingWithFallbackAsync(
             CAIProviderType providerType,
             EmbeddingRequest request,
+            CancellationToken cancellationToken = default);
+
+        // ── Function-based methods (mới) ───────────────────────────────
+
+        /// <summary>
+        /// Gọi chat completion dùng <see cref="CAIFunctionType"/> để tự động
+        /// tra cứu provider, config, model từ function config.
+        /// Tự động fallback qua các item (primary → fallback 1 → ...).
+        /// </summary>
+        Task<ChatCompletionResult> ChatCompletionWithFunctionAsync(
+            CAIFunctionType functionType,
+            ChatCompletionRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gọi sinh ảnh dùng <see cref="CAIFunctionType"/> để tự động
+        /// tra cứu provider, config, model.
+        /// </summary>
+        Task<ImageGenerationResult> GenerateImageWithFunctionAsync(
+            CAIFunctionType functionType,
+            ImageGenerationRequest request,
             CancellationToken cancellationToken = default);
     }
 }

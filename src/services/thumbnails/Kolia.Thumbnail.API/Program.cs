@@ -1,7 +1,6 @@
 using Kolia.Thumbnail.API;
 using Kolia.Thumbnail.API.Extensions;
 using Kolia.Thumbnail.API.OpenApi;
-using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
