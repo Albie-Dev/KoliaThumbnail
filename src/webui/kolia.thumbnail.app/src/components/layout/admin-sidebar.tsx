@@ -1,10 +1,15 @@
-import { useCallback, useState, useRef } from 'react'
+import { useCallback, useState, useRef, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ChevronDown } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ChevronDown, CircleCheck, CircleX, CircleAlert, CircleMinus } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { AdminMenuGroup, AdminMenuItem } from '../../types/admin-layout.types'
 import { adminMenuGroups } from '../../lib/admin-menu'
 import { useTheme } from '../../lib/theme-provider'
+import { useActiveProjectId } from '../../lib/project-context'
+import { getProjectById } from '../../features/projects/api'
+import { qk } from '../../lib/query-keys'
+import { CProjectStepStatus, CProjectStepNumber } from '../../types/enums/pipeline.enums'
 import koliaIconLight from '../../assets/logo/kolia-icon-only.svg'
 import koliaIconDark from '../../assets/logo/kolia-icon-only-dark-theme.svg'
 import koliaLogoLight from '../../assets/logo/kolia-primary-logo.svg'
@@ -29,6 +34,23 @@ function renderIcon(icon: AdminMenuItem['icon'], className?: string, color?: str
   return icon
 }
 
+// ── Step status icon ──────────────────────────────────
+function StepStatusIcon({ status }: { status: number | undefined }) {
+  if (status === undefined) return null
+  switch (status) {
+    case CProjectStepStatus.Completed:
+      return <CircleCheck className="h-3 w-3 text-emerald-500 shrink-0" />
+    case CProjectStepStatus.Failed:
+      return <CircleX className="h-3 w-3 text-rose-500 shrink-0" />
+    case CProjectStepStatus.InProgress:
+      return <CircleAlert className="h-3 w-3 text-blue-500 shrink-0" />
+    case CProjectStepStatus.Skipped:
+      return <CircleMinus className="h-3 w-3 text-slate-400 shrink-0" />
+    default:
+      return null
+  }
+}
+
 // ── Single menu item (recursive for N-level) ──────────
 function MenuItem({
   item,
@@ -36,12 +58,16 @@ function MenuItem({
   depth,
   onNavigate,
   collapsed,
+  stepStatus,
+  isDisabled,
 }: {
   item: AdminMenuItem
   currentPath: string
   depth: number
   onNavigate: (path: string) => void
   collapsed: boolean
+  stepStatus?: number
+  isDisabled?: boolean
 }) {
   const [expanded, setExpanded] = useState(() => {
     // Auto-expand if current path starts with this item's key
@@ -62,12 +88,14 @@ function MenuItem({
     : currentPath === item.key
 
   const handleClick = useCallback(() => {
+    if (isDisabled && !hasChildren) return
     if (hasChildren) {
       setExpanded((prev) => !prev)
-    } else {
+    }
+    if (item.component && !isDisabled) {
       onNavigate(item.key)
     }
-  }, [hasChildren, item.key, onNavigate])
+  }, [hasChildren, item.component, item.key, onNavigate, isDisabled])
 
   // Collapsed mode: icon-only, no label/children
   if (collapsed) {
@@ -75,7 +103,8 @@ function MenuItem({
       <li>
         <button
           type="button"
-          onClick={() => onNavigate(item.key)}
+          disabled={isDisabled}
+          onClick={() => !isDisabled && onNavigate(item.key)}
           className={cn(
             'mx-auto flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
             isActive
@@ -95,11 +124,14 @@ function MenuItem({
       <button
         type="button"
         onClick={handleClick}
+        disabled={isDisabled && !hasChildren}
         className={cn(
           'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
           isActive
             ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-900 hover:dark:text-slate-100',
+            : isDisabled && !hasChildren
+              ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-900 hover:dark:text-slate-100',
         )}
         style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
@@ -112,6 +144,9 @@ function MenuItem({
 
         {/* Label */}
         <span className="flex-1 truncate">{item.label}</span>
+
+        {/* Step status icon */}
+        {stepStatus !== undefined && <StepStatusIcon status={stepStatus} />}
 
         {/* Expand indicator */}
         {hasChildren && (
@@ -132,7 +167,7 @@ function MenuItem({
             expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
           )}
         >
-          <div className={cn('overflow-hidden transition-opacity duration-200', expanded ? 'opacity-100' : 'opacity-0')}>
+          <div className={cn('overflow-hidden transition-opacity duration-200', expanded ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
             <ul className="mt-0.5 space-y-0.5">
               {item.children!.map((child) => (
                 <MenuItem
@@ -142,6 +177,8 @@ function MenuItem({
                   depth={depth + 1}
                   onNavigate={onNavigate}
                   collapsed={false}
+                  stepStatus={stepStatus}
+                  isDisabled={isDisabled}
                 />
               ))}
             </ul>
@@ -158,11 +195,15 @@ function MenuGroup({
   currentPath,
   onNavigate,
   collapsed,
+  stepStatusMap,
+  isPipelineDisabled,
 }: {
   group: AdminMenuGroup
   currentPath: string
   onNavigate: (path: string) => void
   collapsed: boolean
+  stepStatusMap?: Record<string, number>
+  isPipelineDisabled?: boolean
 }) {
   return (
     <div>
@@ -176,16 +217,33 @@ function MenuGroup({
         )
       )}
       <ul className={cn(collapsed ? 'space-y-1' : 'space-y-0.5')}>
-        {group.items.map((item) => (
-          <MenuItem
-            key={item.key}
-            item={item}
-            currentPath={currentPath}
-            depth={0}
-            onNavigate={onNavigate}
-            collapsed={collapsed}
-          />
-        ))}
+        {group.items.map((item) => {
+          const stepKey = item.key
+          const status = stepStatusMap?.[stepKey]
+          // Nhận biết pipeline item bằng key pattern /pipeline/*
+          const isPipelineItem = stepKey.startsWith('/pipeline/')
+          // Pipeline items bị disable khi: không có project
+          // hoặc step chưa tới (nếu đã có dữ liệu steps)
+          const childDisabled = isPipelineItem && (
+            isPipelineDisabled ||
+            // Nếu step không có trong map (undefined) → cũng disabled (chưa tới)
+            status === undefined ||
+            (status !== CProjectStepStatus.Completed &&
+              status !== CProjectStepStatus.InProgress)
+          )
+          return (
+            <MenuItem
+              key={item.key}
+              item={item}
+              currentPath={currentPath}
+              depth={0}
+              onNavigate={onNavigate}
+              collapsed={collapsed}
+              stepStatus={status}
+              isDisabled={childDisabled}
+            />
+          )
+        })}
       </ul>
     </div>
   )
@@ -211,12 +269,58 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
 export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  const [activeProjectId] = useActiveProjectId()
+
+  // Fetch project steps để hiển thị trạng thái trên sidebar menu
+  const { data: projectDetail } = useQuery({
+    queryKey: activeProjectId ? qk.projects.detail(activeProjectId) : ['projects', 'empty'],
+    queryFn: () => getProjectById(activeProjectId!),
+    enabled: !!activeProjectId,
+    staleTime: 30_000,
+  })
+
+  // Map stepNumber → stepStatus cho từng menu key
+  const stepStatusMap = useMemo<Record<string, number>>(() => {
+    if (!projectDetail?.steps) return {}
+    const map: Record<string, number> = {}
+    for (const step of projectDetail.steps) {
+      // Map stepNumber → menu key
+      switch (step.stepNumber) {
+        case CProjectStepNumber.ContentBrief:
+          map['/pipeline/video-content'] = step.stepStatus
+          break
+        case CProjectStepNumber.News:
+          map['/pipeline/news'] = step.stepStatus
+          break
+        case CProjectStepNumber.ThumbnailReference:
+          map['/pipeline/reference'] = step.stepStatus
+          map['/pipeline/reference/library'] = step.stepStatus
+          break
+        case CProjectStepNumber.GenerateThumbnail:
+          map['/pipeline/thumbnail/display-text'] = step.stepStatus
+          map['/pipeline/thumbnail/generate'] = step.stepStatus
+          break
+        case CProjectStepNumber.VideoTitle:
+          map['/pipeline/video-title'] = step.stepStatus
+          break
+      }
+    }
+    return map
+  }, [projectDetail])
+
+  const hasProject = !!activeProjectId
 
   const handleNavigate = useCallback(
     (path: string) => {
-      navigate(path)
+      const params = new URLSearchParams(location.search)
+      const projectId = params.get('projectId')
+      if (projectId) {
+        navigate(path + '?projectId=' + encodeURIComponent(projectId))
+      } else {
+        navigate(path)
+      }
     },
-    [navigate],
+    [navigate, location.search],
   )
 
   return (
@@ -239,6 +343,8 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
               currentPath={location.pathname}
               onNavigate={handleNavigate}
               collapsed={collapsed}
+              stepStatusMap={stepStatusMap}
+              isPipelineDisabled={!hasProject}
             />
           ))}
         </div>

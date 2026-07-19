@@ -124,7 +124,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ) : (
             <textarea
               ref={ref}
-              value={isControlled ? value : internalValue}
+              value={isControlled ? value : undefined}
+              defaultValue={isControlled ? undefined : internalValue}
               onChange={handleChange}
               spellCheck={contentType === 'text' ? props.spellCheck : false}
               className={cn(

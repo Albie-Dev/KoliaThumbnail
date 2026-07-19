@@ -1,14 +1,16 @@
-import { Bell, Search, LogOut } from 'lucide-react'
+import { Bell, Search, LogOut, Menu } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { Button } from '../ui/button'
 import { ThemeToggle } from '../ui/theme-toggle'
 import { cn } from '../../lib/utils'
 import { adminMenuGroups } from '../../lib/admin-menu'
 import type { AdminMenuItem } from '../../types/admin-layout.types'
+import { ProjectSelector } from './project-selector'
 
 // ── Props ──────────────────────────────────────────────
 interface AdminNavbarProps {
   sidebarCollapsed: boolean
+  onToggleSidebar?: () => void
 }
 
 // ── Walk menu tree to build breadcrumb labels ─────────
@@ -80,7 +82,7 @@ function Breadcrumb() {
 }
 
 // ── Navbar Component ──────────────────────────────────
-export function AdminNavbar({ sidebarCollapsed }: AdminNavbarProps) {
+export function AdminNavbar({ sidebarCollapsed, onToggleSidebar }: AdminNavbarProps) {
   return (
     <header
       className={cn(
@@ -88,18 +90,31 @@ export function AdminNavbar({ sidebarCollapsed }: AdminNavbarProps) {
         sidebarCollapsed ? 'left-16' : 'left-64',
       )}
     >
-      {/* Left: Breadcrumb */}
-      <div className="flex-1">
-        <Breadcrumb />
+      {/* Left: Hamburger + Breadcrumb */}
+      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+        {/* Hamburger toggle — always visible, especially useful on mobile */}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:dark:bg-slate-800 hover:text-slate-700 hover:dark:text-slate-200 transition-colors"
+          title={sidebarCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+        <div className="hidden sm:block shrink-0">
+          <Breadcrumb />
+        </div>
+        <div className="hidden h-5 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
+        <ProjectSelector />
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
         {/* Search */}
         <Button variant="ghost" size="sm" className="text-slate-500 dark:text-slate-400">
           <Search className="h-4 w-4" />
-          <span className="ml-1 hidden md:inline">Tìm kiếm…</span>
-          <kbd className="ml-2 hidden rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 md:inline">
+          <span className="ml-1 hidden lg:inline">Tìm kiếm…</span>
+          <kbd className="ml-2 hidden rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 lg:inline">
             Ctrl+K
           </kbd>
         </Button>
@@ -116,11 +131,11 @@ export function AdminNavbar({ sidebarCollapsed }: AdminNavbarProps) {
         </Button>
 
         {/* User avatar */}
-        <div className="ml-2 flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+        <div className="ml-1 sm:ml-2 flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-2 sm:pl-3">
+          <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-xs sm:text-sm font-semibold text-indigo-700 dark:text-indigo-300">
             A
           </div>
-          <div className="hidden text-left md:block">
+          <div className="hidden text-left lg:block">
             <p className="text-sm font-medium leading-tight text-slate-900 dark:text-slate-100">Admin</p>
             <p className="text-[11px] leading-tight text-slate-500 dark:text-slate-400">admin@kolia.io</p>
           </div>
