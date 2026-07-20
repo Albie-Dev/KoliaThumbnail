@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { CheckCircle, Download } from 'lucide-react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/button'
@@ -233,6 +234,7 @@ export function ContentBriefPage() {
         <div className="flex items-center gap-2">
           {isConfirmed && <Badge variant="success">Đã xác nhận</Badge>}
           <Button variant="outline" onClick={() => setImportDialogOpen(true)} disabled={isConfirmed}>
+            <Download className="h-4 w-4" />
             Nhập thông tin
           </Button>
         </div>
@@ -241,7 +243,7 @@ export function ContentBriefPage() {
       {/* Two-column layout */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left column — input */}
-        <div className="space-y-4">
+        <div className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
           <FormGroup>
             <FormLabel htmlFor="overviewInput">Tổng quan livestream tuần</FormLabel>
             <Textarea
@@ -322,7 +324,7 @@ export function ContentBriefPage() {
         </div>
 
         {/* Right column — output */}
-        <div className="space-y-4">
+        <div className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Bản tóm tắt nội dung
           </h2>
@@ -335,7 +337,7 @@ export function ContentBriefPage() {
 
           {hasOutput && (
             <div className="space-y-4">
-              <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-4">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
                 <h3 className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   Chủ đề chính
                 </h3>
@@ -344,7 +346,7 @@ export function ContentBriefPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-4">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
                 <h3 className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   Thông điệp chính
                 </h3>
@@ -353,7 +355,7 @@ export function ContentBriefPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-4">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
                 <h3 className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   Dữ liệu nổi bật
                 </h3>
@@ -372,6 +374,7 @@ export function ContentBriefPage() {
               className="w-full"
               variant="outline"
             >
+              <CheckCircle className="h-4 w-4" />
               {isConfirming ? 'Đang xác nhận…' : 'Xác nhận'}
             </Button>
           )}

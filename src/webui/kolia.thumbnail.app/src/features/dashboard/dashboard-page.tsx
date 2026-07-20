@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { Plus } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { useActiveProjectId, EmptyProjectState } from '../../lib/project-context'
+import { useSidebarContext } from '../../lib/sidebar-context'
 import { getProjectById } from '../projects/api'
 import { qk } from '../../lib/query-keys'
 import { CProjectStepStatus, STEP_NUMBER_LABELS, STEP_NUMBER_ROUTES, NEXT_STEP_HINTS } from '../../types/enums/pipeline.enums'
@@ -11,6 +13,7 @@ import { CProjectStepStatus, STEP_NUMBER_LABELS, STEP_NUMBER_ROUTES, NEXT_STEP_H
 export function DashboardPage() {
   const [activeProjectId] = useActiveProjectId()
   const navigate = useNavigate()
+  const { open } = useSidebarContext()
 
   const { data: project, isLoading, error, refetch } = useQuery({
     queryKey: activeProjectId ? qk.projects.detail(activeProjectId) : ['projects', 'empty'],
@@ -98,13 +101,19 @@ export function DashboardPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* Dashboard điều hành */}
-      <div>
-        <p className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">
-          Dashboard điều hành
-        </p>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-          {project.name}
-        </h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">
+            Dashboard điều hành
+          </p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            {project.name}
+          </h1>
+        </div>
+        <Button onClick={() => open({ type: 'create-project' })} className="shrink-0">
+          <Plus className="h-4 w-4" />
+          Tạo project mới
+        </Button>
       </div>
 
       {/* Two-column layout */}
