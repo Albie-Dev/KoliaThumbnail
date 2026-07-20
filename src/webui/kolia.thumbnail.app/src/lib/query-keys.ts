@@ -18,6 +18,15 @@ export const qk = {
       ['thumbnail-library', projectId, excludeIrrelevant] as const,
     analysis: (itemId: string) => ['thumbnail-library', 'analysis', itemId] as const,
   },
+  googleServices: {
+    paging: (params: unknown) => ['google-services', 'paging', params] as const,
+    detail: (id: string) => ['google-services', id] as const,
+  },
+  scheduledJobs: {
+    paging: (params: unknown) => ['scheduled-jobs', 'paging', params] as const,
+    detail: (id: string) => ['scheduled-jobs', id] as const,
+    logs: (id: string) => ['scheduled-jobs', id, 'logs'] as const,
+  },
   displayTexts: (projectId: string) => ['display-texts', projectId] as const,
   thumbnailGeneration: (projectId: string) => ['thumbnail-generation', projectId] as const,
   characters: {

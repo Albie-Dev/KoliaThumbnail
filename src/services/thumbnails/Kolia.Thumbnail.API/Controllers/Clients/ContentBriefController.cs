@@ -69,7 +69,13 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         }
 
         /// <summary>
-        /// Import thông tin brief từ các nguồn lực bên ngoài (Raw text, Google Sheet, File URL).
+        /// ⚠️ ĐÃ THAY THẾ: Import thông tin brief từ các nguồn lực bên ngoài.
+        /// Tính năng Import từ External Link (Google Sheet/Docs) đã được thay thế bởi
+        /// <see cref="Controllers.Admins.AdminScheduledImportJobController"/> với Scheduled Import Jobs
+        /// sử dụng Google Service Account, hỗ trợ đặt lịch chạy, kiểm tra quyền và tự động tạo project.
+        ///
+        /// Endpoint này chỉ giữ lại cho PasteText và File upload (vẫn hoạt động bình thường).
+        /// Đối với External Link, vui lòng sử dụng Admin Scheduled Import Jobs.
         /// </summary>
         /// <param name="projectId">Id dự án</param>
         /// <param name="request">Thông tin nguồn import</param>

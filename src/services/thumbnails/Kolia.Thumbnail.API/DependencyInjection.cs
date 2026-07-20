@@ -27,6 +27,8 @@ using Kolia.Thumbnail.API.Services.ThumbnailGeneration;
 using Kolia.Thumbnail.API.Services.VideoTitles;
 using Kolia.Thumbnail.API.Services.CompletePackages;
 using Kolia.Thumbnail.API.Services.Characters;
+using Kolia.Thumbnail.API.Services.GoogleServices;
+using Kolia.Thumbnail.API.Interfaces.GoogleServices;
 using Kolia.Thumbnail.API.Socials;
 using Microsoft.EntityFrameworkCore;
 
@@ -134,8 +136,14 @@ namespace Kolia.Thumbnail.API
             services.AddScoped<ISocialExecutorService, SocialExecutorService>();
             services.AddScoped<IProjectStepGuard, ProjectStepGuard>();
 
+            // Google Services
+            services.AddScoped<IGoogleServiceAccountService, GoogleServiceAccountService>();
+            services.AddScoped<IScheduledImportJobService, ScheduledImportJobService>();
+            services.AddScoped<GoogleServiceAccountHelper>();
+
             // Background Jobs
             services.AddHostedService<ExternalRequestRetryJob>();
+            services.AddHostedService<ScheduledImportJobRunner>();
 
             // FluentValidation
             services.AddFluentValidationAutoValidation();

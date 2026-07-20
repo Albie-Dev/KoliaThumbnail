@@ -78,6 +78,11 @@ namespace Kolia.Thumbnail.API.Data.Contexts
         public DbSet<Entities.ExternalRequests.ExternalRequestUsageLogEntity> ExternalRequestUsageLogs { get; set; } = null!;
         #endregion
 
+        #region DbSets - Google Services
+        public DbSet<Entities.GoogleServices.GoogleServiceAccountEntity> GoogleServiceAccounts { get; set; } = null!;
+        public DbSet<Entities.GoogleServices.ScheduledImportJobEntity> ScheduledImportJobs { get; set; } = null!;
+        #endregion
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -17,6 +17,8 @@ import {
   Share2,
   Globe,
   KeyRound,
+  Cloud,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react'
 import type { AdminMenuGroup, AdminMenuItem } from '../types/admin-layout.types'
@@ -87,6 +89,14 @@ const CompletePackagePage = lazy(() =>
 
 const ThumbnailGenerationPage = lazy(() =>
   import('../features/thumbnail-generation/thumbnail-generation-page').then((m) => ({ default: m.ThumbnailGenerationPage })),
+)
+
+const GoogleServicesPage = lazy(() =>
+  import('../features/google-services/google-service-page').then((m) => ({ default: m.GoogleServicesPage })),
+)
+
+const ScheduledJobsPage = lazy(() =>
+  import('../features/scheduled-jobs/scheduled-jobs-page').then((m) => ({ default: m.ScheduledJobsPage })),
 )
 
 const PlaceholderPage: ComponentType = () => {
@@ -205,6 +215,20 @@ export const adminMenuGroups: AdminMenuGroup[] = [
     ],
   },
 
+  // ── Group: Tác vụ tự động ──────────────────────────────
+  {
+    label: 'Tác vụ tự động',
+    items: [
+      {
+        key: '/scheduled-jobs',
+        label: 'Import lịch trình',
+        icon: CalendarClock,
+        iconColor: '#f43f5e', // rose-500
+        component: ScheduledJobsPage,
+      }
+    ],
+  },
+
   // ── Group: Cảnh báo & Tích hợp (giữ nguyên) ─────────
   {
     label: 'Cảnh báo & Tích hợp',
@@ -273,6 +297,13 @@ export const adminMenuGroups: AdminMenuGroup[] = [
             component: AiConfigurationsPage,
           },
         ],
+      },
+      {
+        key: '/configuration/google-services',
+        label: 'Google Service Accounts',
+        icon: Cloud,
+        iconColor: '#4285F4', // Google Blue
+        component: GoogleServicesPage,
       },
     ],
   },
