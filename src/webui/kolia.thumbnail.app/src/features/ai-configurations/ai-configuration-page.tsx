@@ -14,7 +14,6 @@ import {
     type StatusFilter,
 } from '../../components/filters/status-filter'
 
-import { ApiError } from '../../lib/api/api-error'
 import { formatDateTime } from '../../lib/date-formatter'
 import { useSidebarContext } from '../../lib/sidebar-context'
 
@@ -72,14 +71,6 @@ export function AiConfigurationsPage() {
                 queryKey: ['ai-configurations'],
             })
         },
-
-        onError: (error) => {
-            toast.error(
-                error instanceof ApiError
-                    ? error.message
-                    : 'Có lỗi xảy ra khi xoá.',
-            )
-        },
     })
 
     const {
@@ -95,14 +86,6 @@ export function AiConfigurationsPage() {
             queryClient.invalidateQueries({
                 queryKey: ['ai-configurations'],
             })
-        },
-
-        onError: (error) => {
-            toast.error(
-                error instanceof ApiError
-                    ? error.message
-                    : 'Có lỗi xảy ra.',
-            )
         },
     })
 

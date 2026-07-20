@@ -16,7 +16,6 @@ import { getNews } from '../news/api'
 import { getVideoTitles, generateVideoTitle, regenerateVideoTitle, regenerateWithFeedback, selectVideoTitleOption } from './api'
 import { qk } from '../../lib/query-keys'
 import { CTitleStyle, TITLE_STYLE_OPTIONS } from '../../types/enums/pipeline.enums'
-import { ApiError } from '../../lib/api/api-error'
 
 export function VideoTitlePage() {
   const [activeProjectId] = useActiveProjectId()
@@ -61,7 +60,6 @@ export function VideoTitlePage() {
       toast.success('Đã tạo video title!')
       queryClient.invalidateQueries({ queryKey: qk.videoTitles(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Regenerate
@@ -71,7 +69,6 @@ export function VideoTitlePage() {
       toast.success('Đã tạo thêm phương án!')
       queryClient.invalidateQueries({ queryKey: qk.videoTitles(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Feedback
@@ -83,14 +80,12 @@ export function VideoTitlePage() {
       setFeedbackText('')
       queryClient.invalidateQueries({ queryKey: qk.videoTitles(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Select option
   const { mutate: doSelectOption } = useMutation({
     mutationFn: ({ id, selected }: { id: string; selected: boolean }) =>
       selectVideoTitleOption(activeProjectId!, id, selected),
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   if (!activeProjectId) return <EmptyProjectState />

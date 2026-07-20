@@ -9,7 +9,6 @@ import { useStepGuard } from '../../lib/use-step-guard'
 import { getCompletePackages, confirmCompletePackage } from './api'
 import { getVideoTitles } from '../video-title/api'
 import { qk } from '../../lib/query-keys'
-import { ApiError } from '../../lib/api/api-error'
 
 export function CompletePackagePage() {
   const [activeProjectId] = useActiveProjectId()
@@ -48,7 +47,6 @@ export function CompletePackagePage() {
       queryClient.invalidateQueries({ queryKey: qk.completePackages(activeProjectId!) })
       queryClient.invalidateQueries({ queryKey: qk.projects.detail(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   if (!activeProjectId) return <EmptyProjectState />

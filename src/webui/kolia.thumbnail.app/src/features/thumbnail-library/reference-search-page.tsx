@@ -18,7 +18,6 @@ import {
   THUMBNAIL_TIME_FILTER_OPTIONS,
   THUMBNAIL_SORT_FILTER_OPTIONS,
 } from '../../types/enums/pipeline.enums'
-import { ApiError } from '../../lib/api/api-error'
 
 export function ReferenceSearchPage() {
   const [activeProjectId] = useActiveProjectId()
@@ -53,7 +52,6 @@ export function ReferenceSearchPage() {
         timeFilter: timeFilter as CThumbnailTimeFilter,
         sortFilter: sortFilter as CThumbnailSortFilter,
       }),
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Approve selected
@@ -68,7 +66,6 @@ export function ReferenceSearchPage() {
       queryClient.invalidateQueries({ queryKey: qk.thumbnailLibrary.list(activeProjectId!) })
       setSelectedIds(new Set())
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   const items = searchResult?.items ?? []

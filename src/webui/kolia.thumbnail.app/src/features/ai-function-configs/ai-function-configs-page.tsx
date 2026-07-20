@@ -52,7 +52,6 @@ export function AiFunctionConfigsPage() {
       toast.success('Đã xoá cấu hình chức năng.')
       queryClient.invalidateQueries({ queryKey: ['ai-function-configs'] })
     },
-    onError: () => toast.error('Có lỗi xảy ra khi xoá.'),
   })
 
   const handleDeleteConfirm = useCallback(() => {

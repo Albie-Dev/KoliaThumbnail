@@ -45,25 +45,21 @@ export const CreateAIProviderForm = forwardRef<CreateAIProviderFormHandle, Creat
       },
     });
 
-    const { mutate } = useMutation({
+    const { mutateAsync } = useMutation({
       mutationFn: (data: CreateAIProviderInput) => createAIProvider(data),
       onError: (error) => {
         if (error instanceof ApiError && error.isValidationError) {
-          // Map backend validation errors to form fields
           error.errors?.forEach((validationError) => {
             setError(validationError.property as keyof CreateAIProviderInput, {
               message: validationError.message,
             })
           })
-          // Toast thông báo về lỗi validation tổng quát
           toast.warning('Vui lòng kiểm tra lại thông tin đã nhập.')
         }
       },
       onSuccess: () => {
-        toast.success('Tạo nhà cung cấp thành công!')
         onClose?.()
         reset()
-        // Refetch the list
         queryClient.invalidateQueries({ queryKey: ['ai-providers'] })
       },
     })
@@ -71,19 +67,8 @@ export const CreateAIProviderForm = forwardRef<CreateAIProviderFormHandle, Creat
     const onSubmit = async (data: CreateAIProviderInput) => {
       setIsSubmitting(true)
       try {
-        await toast.promise(
-          new Promise((resolve, reject) => {
-            mutate(data, {
-              onSuccess: () => resolve(null),
-              onError: (error) => reject(error),
-            })
-          }),
-          {
-            loading: 'Đang tạo nhà cung cấp…',
-            success: 'Tạo thành công!',
-            error: (error: Error) => error.message || 'Có lỗi xảy ra',
-          },
-        )
+        await mutateAsync(data)
+        toast.success('Tạo nhà cung cấp thành công!')
       } finally {
         setIsSubmitting(false)
       }

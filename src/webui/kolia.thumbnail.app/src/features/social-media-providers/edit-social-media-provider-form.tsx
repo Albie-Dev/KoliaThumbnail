@@ -50,7 +50,7 @@ export const EditSocialMediaProviderForm = forwardRef<EditSocialMediaProviderFor
       },
     })
 
-    const { mutate } = useMutation({
+    const { mutateAsync } = useMutation({
       mutationFn: (data: FormValues) =>
         updateSocialMediaProvider({ ...data, id: provider.id } as UpdateSocialMediaProviderInput),
       onError: (error) => {
@@ -64,7 +64,6 @@ export const EditSocialMediaProviderForm = forwardRef<EditSocialMediaProviderFor
         }
       },
       onSuccess: () => {
-        toast.success('Cập nhật nhà cung cấp thành công!')
         onClose?.()
         reset()
         queryClient.invalidateQueries({ queryKey: ['social-media-providers'] })
@@ -74,19 +73,8 @@ export const EditSocialMediaProviderForm = forwardRef<EditSocialMediaProviderFor
     const onSubmit = async (data: FormValues) => {
       setIsSubmitting(true)
       try {
-        await toast.promise(
-          new Promise((resolve, reject) => {
-            mutate(data, {
-              onSuccess: () => resolve(null),
-              onError: (error) => reject(error),
-            })
-          }),
-          {
-            loading: 'Đang cập nhật…',
-            success: 'Cập nhật thành công!',
-            error: (error: Error) => error.message || 'Có lỗi xảy ra',
-          },
-        )
+        await mutateAsync(data)
+        toast.success('Cập nhật nhà cung cấp thành công!')
       } finally {
         setIsSubmitting(false)
       }

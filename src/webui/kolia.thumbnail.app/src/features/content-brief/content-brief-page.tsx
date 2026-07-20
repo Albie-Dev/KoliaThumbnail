@@ -159,9 +159,8 @@ export function ContentBriefPage() {
       setImportFile(null)
       setImportFileError('')
     },
-    onError: (error) => {
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: qk.brief(activeProjectId!) })
-      toast.error(error instanceof Error ? error.message : 'Nhập thông tin thất bại!')
     },
   })
 

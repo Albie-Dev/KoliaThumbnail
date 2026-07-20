@@ -10,7 +10,6 @@ import { useStepGuard } from '../../lib/use-step-guard'
 import { getNews } from '../news/api'
 import { getDisplayTexts, generateDisplayText, selectDisplayTextOption } from './api'
 import { qk } from '../../lib/query-keys'
-import { ApiError } from '../../lib/api/api-error'
 
 export function DisplayTextPage() {
   const [activeProjectId] = useActiveProjectId()
@@ -54,14 +53,12 @@ export function DisplayTextPage() {
       toast.success('Đã tạo display text!')
       queryClient.invalidateQueries({ queryKey: qk.displayTexts(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Select option
   const { mutate: doSelectOption } = useMutation({
     mutationFn: ({ id, selected }: { id: string; selected: boolean }) =>
       selectDisplayTextOption(activeProjectId!, id, selected),
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   if (!activeProjectId) return <EmptyProjectState />

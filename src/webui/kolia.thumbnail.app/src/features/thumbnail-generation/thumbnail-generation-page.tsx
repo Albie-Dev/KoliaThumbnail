@@ -18,7 +18,6 @@ import { getThumbnailLibrary } from '../thumbnail-library/api'
 import { getCharacters } from '../characters/api'
 import { qk } from '../../lib/query-keys'
 import { CThumbnailEditTool, THUMBNAIL_EDIT_TOOL_OPTIONS } from '../../types/enums/pipeline.enums'
-import { ApiError } from '../../lib/api/api-error'
 
 export function ThumbnailGenerationPage() {
   const [activeProjectId] = useActiveProjectId()
@@ -99,7 +98,6 @@ export function ThumbnailGenerationPage() {
       toast.success('Đã tạo thumbnail!')
       queryClient.invalidateQueries({ queryKey: qk.thumbnailGeneration(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // ── Export prompt ────────────────────────────────────────────────────
@@ -119,7 +117,6 @@ export function ThumbnailGenerationPage() {
       setExportedPrompt(prompt)
       setPromptDialogOpen(true)
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // ── Edit ─────────────────────────────────────────────────────────────
@@ -134,7 +131,6 @@ export function ThumbnailGenerationPage() {
       toast.success('Đã áp dụng chỉnh sửa!')
       queryClient.invalidateQueries({ queryKey: qk.thumbnailGeneration(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // ── Push to title ────────────────────────────────────────────────────
@@ -149,7 +145,6 @@ export function ThumbnailGenerationPage() {
       queryClient.invalidateQueries({ queryKey: qk.thumbnailGeneration(activeProjectId!) })
       navigateWithProject('/pipeline/video-title')
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // ── Build generation sets for grid ───────────────────────────────────

@@ -50,7 +50,7 @@ export const EditAIProviderForm = forwardRef<EditAIProviderFormHandle, EditAIPro
       },
     })
 
-    const { mutate } = useMutation({
+    const { mutateAsync } = useMutation({
       mutationFn: (data: FormValues) =>
         updateAIProvider({ ...data, id: provider.id } as UpdateAIProviderInput),
       onError: (error) => {
@@ -64,7 +64,6 @@ export const EditAIProviderForm = forwardRef<EditAIProviderFormHandle, EditAIPro
         }
       },
       onSuccess: () => {
-        toast.success('Cập nhật nhà cung cấp thành công!')
         onClose?.()
         reset()
         queryClient.invalidateQueries({ queryKey: ['ai-providers'] })
@@ -74,19 +73,8 @@ export const EditAIProviderForm = forwardRef<EditAIProviderFormHandle, EditAIPro
     const onSubmit = async (data: FormValues) => {
       setIsSubmitting(true)
       try {
-        await toast.promise(
-          new Promise((resolve, reject) => {
-            mutate(data, {
-              onSuccess: () => resolve(null),
-              onError: (error) => reject(error),
-            })
-          }),
-          {
-            loading: 'Đang cập nhật…',
-            success: 'Cập nhật thành công!',
-            error: (error: Error) => error.message || 'Có lỗi xảy ra',
-          },
-        )
+        await mutateAsync(data)
+        toast.success('Cập nhật nhà cung cấp thành công!')
       } finally {
         setIsSubmitting(false)
       }

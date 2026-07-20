@@ -14,7 +14,6 @@ import { StatusFilterGroup, type StatusFilter } from '../../components/filters/s
 import { getAIProvidersWithPaging, deleteAIProvider, type AIProviderBaseDto } from './api'
 import { SortDirection, FilterOperator, type SortRequestDto, type RangeFilterRequestDto } from '../../types/paging.types'
 import { useQueryState, parseAsString } from 'nuqs'
-import { ApiError } from '../../lib/api/api-error'
 import { AI_PROVIDER_TYPE_OPTIONS, CAIProviderType, getAIProviderTypeLabel, getAIProviderTypeBadgeClass } from './ai-provider-type'
 
 export function AiProvidersPage() {
@@ -35,9 +34,6 @@ export function AiProvidersPage() {
     onSuccess: () => {
       toast.success('Đã xoá nhà cung cấp thành công.')
       queryClient.invalidateQueries({ queryKey: ['ai-providers'] })
-    },
-    onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : 'Có lỗi xảy ra khi xoá.')
     },
   })
 

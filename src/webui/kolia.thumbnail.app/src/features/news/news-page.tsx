@@ -29,7 +29,6 @@ import {
   NEWS_RECOMMENDATION_OPTIONS,
   decodeEmotionTags,
 } from '../../types/enums/pipeline.enums'
-import { ApiError } from '../../lib/api/api-error'
 
 export function NewsPage() {
   const [activeProjectId] = useActiveProjectId()
@@ -75,14 +74,12 @@ export function NewsPage() {
       toast.success(`Tìm thấy ${result.totalCount} tin tức`)
       queryClient.invalidateQueries({ queryKey: qk.news.list(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra khi tìm tin.'),
   })
 
   // ── Select mutation ──────────────────────────────────────────────────
   const { mutate: doSelect } = useMutation({
     mutationFn: ({ id, selected }: { id: string; selected: boolean }) =>
       selectNewsItem(activeProjectId!, id, selected),
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // ── Deep analyze mutation ────────────────────────────────────────────
@@ -101,7 +98,6 @@ export function NewsPage() {
       toast.success(`Đã phân tích ${ids.length} tin`)
       queryClient.invalidateQueries({ queryKey: qk.news.list(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra khi phân tích.'),
     onSettled: () => setAnalyzingIds(new Set()),
   })
 

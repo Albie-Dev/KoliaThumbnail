@@ -14,7 +14,6 @@ import { StatusFilterGroup, type StatusFilter } from '../../components/filters/s
 import { getSocialMediaProvidersWithPaging, deleteSocialMediaProvider, type SocialMediaProviderBaseDto } from './api'
 import { SortDirection, FilterOperator, type SortRequestDto, type RangeFilterRequestDto } from '../../types/paging.types'
 import { useQueryState, parseAsString } from 'nuqs'
-import { ApiError } from '../../lib/api/api-error'
 import { SOCIAL_MEDIA_PROVIDER_TYPE_OPTIONS, CSocialMediaProviderType, getSocialMediaProviderTypeLabel, getSocialMediaProviderTypeBadgeClass } from './social-media-provider-type'
 
 export function SocialMediaProvidersPage() {
@@ -35,9 +34,6 @@ export function SocialMediaProvidersPage() {
     onSuccess: () => {
       toast.success('Đã xoá nhà cung cấp thành công.')
       queryClient.invalidateQueries({ queryKey: ['social-media-providers'] })
-    },
-    onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : 'Có lỗi xảy ra khi xoá.')
     },
   })
 

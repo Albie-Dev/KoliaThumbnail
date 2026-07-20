@@ -22,7 +22,6 @@ import {
   CLibraryUserStatus,
   LIBRARY_USER_STATUS_OPTIONS,
 } from '../../types/enums/pipeline.enums'
-import { ApiError } from '../../lib/api/api-error'
 
 
 
@@ -61,7 +60,6 @@ export function ThumbnailLibraryPage() {
       setVideoUrl('')
       queryClient.invalidateQueries({ queryKey: qk.thumbnailLibrary.list(activeProjectId!) })
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Status update
@@ -69,7 +67,6 @@ export function ThumbnailLibraryPage() {
     mutationFn: ({ id, status }: { id: string; status: CLibraryUserStatus }) =>
       updateThumbnailStatus(activeProjectId!, id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.thumbnailLibrary.list(activeProjectId!) }),
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Choose for generation
@@ -77,7 +74,6 @@ export function ThumbnailLibraryPage() {
     mutationFn: ({ id, chosen }: { id: string; chosen: boolean }) =>
       chooseThumbnailForGeneration(activeProjectId!, id, chosen),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.thumbnailLibrary.list(activeProjectId!) }),
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Deep analyze
@@ -92,7 +88,6 @@ export function ThumbnailLibraryPage() {
       queryClient.invalidateQueries({ queryKey: qk.thumbnailLibrary.list(activeProjectId!) })
       setTab('analysis')
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.'),
   })
 
   // Batch actions
