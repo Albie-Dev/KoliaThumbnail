@@ -34,9 +34,9 @@ namespace Kolia.Thumbnail.API.Data.Configurations.AIs
             builder.Property(x => x.ProviderType)
                 .IsRequired();
 
-            builder.HasIndex(x => x.Name).IsUnique();
+            builder.HasIndex(x => new { x.Name, x.IsDeleted }).IsUnique();
 
-            builder.HasIndex(x => x.ShortName).IsUnique();
+            builder.HasIndex(x => new { x.ShortName, x.IsDeleted }).IsUnique();
 
             builder.Property(x => x.BaseUrl)
                 .IsRequired()

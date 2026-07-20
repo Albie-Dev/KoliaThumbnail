@@ -31,10 +31,10 @@ namespace Kolia.Thumbnail.API.Data.Configurations.Socials
             builder.Property(x => x.ProviderType)
                 .IsRequired();
 
-            builder.HasIndex(x => x.Name)
+            builder.HasIndex(x => new { x.Name, x.IsDeleted })
                 .IsUnique();
 
-            builder.HasIndex(x => x.ShortName)
+            builder.HasIndex(x => new { x.ShortName, x.IsDeleted })
                 .IsUnique();
 
             builder.HasMany(x => x.Configurations)
