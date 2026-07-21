@@ -42,6 +42,30 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
                     var briefAnalysisEngine = scope.ServiceProvider.GetRequiredService<IBriefAnalysisEngine>();
                     var googleHelper = scope.ServiceProvider.GetRequiredService<GoogleServiceAccountHelper>();
 
+                    // === Khôi phục các job bị treo ở trạng thái Running ===
+                    // Khi app tắt đột ngột hoặc exception không được catch, job bị stuck Running mãi.
+                    // Reset các job Running quá 5 phút về Pending để chạy lại.
+                    var staleTimeout = DateTimeOffset.UtcNow.AddMinutes(-5);
+                    var staleJobs = await db.Set<ScheduledImportJobEntity>()
+                        .Where(x => x.Status == CJobScheduleStatus.Running
+                                 && x.StartedAt < staleTimeout
+                                 && !x.IsDeleted)
+                        .ToListAsync(stoppingToken);
+
+                    foreach (var staleJob in staleJobs)
+                    {
+                        _logger.LogWarning(
+                            "Job {JobId} ({Name}) bị treo ở trạng thái Running từ {StartedAt}. Đang reset về Pending.",
+                            staleJob.Id, staleJob.Name, staleJob.StartedAt);
+                        staleJob.Status = CJobScheduleStatus.Pending;
+                        staleJob.ErrorMessage = "Job bị treo do ứng dụng tắt đột ngột. Đã reset để chạy lại.";
+                        staleJob.CompletedAt = DateTimeOffset.UtcNow;
+                        AppendLog(staleJob, LogEntry.Warning("Job bị treo do ứng dụng tắt đột ngột. Đang reset về Pending."));
+                    }
+
+                    if (staleJobs.Count > 0)
+                        await db.SaveChangesAsync(stoppingToken);
+
                     // Tìm các job đến hạn: Pending và thoả mãn 1 trong 2:
                     // 1. CronExpression != null && cron matches thời điểm hiện tại (trong vòng 30s)
                     // 2. ScheduledAt != null && ScheduledAt <= now
@@ -100,7 +124,17 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
                             job.ErrorMessage = $"Lỗi hệ thống: {ex.Message}";
                             job.CompletedAt = DateTimeOffset.UtcNow;
                             AppendLog(job, LogEntry.Error($"Exception: {ex.Message}"));
-                            await db.SaveChangesAsync(stoppingToken);
+
+                            // Dùng CancellationToken.None để đảm bảo luôn lưu được Failed status,
+                            // kể cả khi app đang shutdown (stoppingToken bị cancelled).
+                            try
+                            {
+                                await db.SaveChangesAsync(CancellationToken.None);
+                            }
+                            catch (Exception saveEx)
+                            {
+                                _logger.LogError(saveEx, "Không thể lưu Failed status cho job {JobId}.", job.Id);
+                            }
 
                             Notify("ScheduledImportJob",
                                 $"Job '{job.Name}' thất bại với lỗi: {ex.Message}");
@@ -143,7 +177,8 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
             // Bước 2: Gọi AI Agent phân tích nội dung TRƯỚC
             // Nếu AI fail → job chưa tạo project → retry an toàn, không orphan data
             AppendLog(job, LogEntry.Info($"Đang gọi AI phân tích nội dung..."));
-            var textForAnalysis = content.Length > 100000 ? content[..100000] : content;
+            var textForAnalysis = content;
+            // content.Length > 1000000 ? content[..1000000] : content;
             var aiResult = await briefAnalysisEngine.AnalyzeFromPastedTextAsync(textForAnalysis, ct);
 
             AppendLog(job, LogEntry.Info($"AI phân tích thành công. Đang tạo project..."));

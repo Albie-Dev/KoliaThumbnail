@@ -25,6 +25,7 @@ import { SelectDropdown } from '../../components/selects/select-dropdown'
 import { ApiError } from '../../lib/api/api-error'
 import {
   SortDirection,
+  FilterOperator,
   type SortRequestDto,
 } from '../../types/paging.types'
 
@@ -37,6 +38,7 @@ export function ScheduledJobsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
   const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>('active')
   const [filterSourceType, setFilterSourceType] = useState<string>('')
+  const [appliedSourceType, setAppliedSourceType] = useState<string>('')
   const [deleteTarget, setDeleteTarget] = useState<ScheduledJobSummaryDto | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ScheduledJobSummaryDto | null>(null)
   const [logTarget, setLogTarget] = useState<ScheduledJobSummaryDto | null>(null)
@@ -110,14 +112,20 @@ export function ScheduledJobsPage() {
     return [{ field: fieldMap[sortBy] || 'CreationTime', direction: sortOrder === 'asc' ? SortDirection.Asc : SortDirection.Desc }]
   }, [sortBy, sortOrder])
 
+  const sourceTypeFilter = useMemo(() => {
+    if (!appliedSourceType) return undefined
+    return [{ field: 'SourceType', operator: FilterOperator.Equal, values: [Number(appliedSourceType)] }]
+  }, [appliedSourceType])
+
   const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ['scheduled-jobs', page, pageSize, search, statusFilter, backendSorts],
+    queryKey: ['scheduled-jobs', page, pageSize, search, statusFilter, backendSorts, appliedSourceType],
     queryFn: () =>
       getScheduledJobsWithPaging({
         pageNumber: page,
         pageSize,
         searchText: search || undefined,
         sorts: backendSorts,
+        filters: sourceTypeFilter,
         includeDeleted,
         deletedOnly,
       }),
@@ -323,6 +331,20 @@ export function ScheduledJobsPage() {
     [handleViewLogs, retry, isRetrying, setCancelTarget, setDeleteTarget],
   )
 
+  const handleApplyFilter = useCallback(() => {
+    setStatusFilter(localStatusFilter)
+    setAppliedSourceType(filterSourceType)
+    setPage(1)
+  }, [localStatusFilter, filterSourceType, setPage])
+
+  const handleResetFilter = useCallback(() => {
+    setLocalStatusFilter('active')
+    setFilterSourceType('')
+    setStatusFilter('active')
+    setAppliedSourceType('')
+    setPage(1)
+  }, [setPage])
+
   const filterContent = (
     <div className="space-y-5">
       <StatusFilterGroup value={localStatusFilter} onChange={setLocalStatusFilter} />
@@ -382,6 +404,8 @@ export function ScheduledJobsPage() {
         sortOrder={sortOrder}
         onSort={handleSort}
         filterContent={filterContent}
+        onApplyFilter={handleApplyFilter}
+        onResetFilter={handleResetFilter}
         emptyMessage="Chưa có Scheduled Import Job nào."
       />
 

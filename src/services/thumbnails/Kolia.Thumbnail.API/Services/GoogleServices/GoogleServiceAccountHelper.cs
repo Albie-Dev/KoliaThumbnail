@@ -2,7 +2,6 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Docs.v1;
 using Google.Apis.Docs.v1.Data;
 using Google.Apis.Sheets.v4;
-using Google.Apis.Util;
 using Kolia.Thumbnail.API.Data.Entities.GoogleServices;
 using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Exceptions;
@@ -29,10 +28,13 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
 
         /// <summary>
         /// Tạo GoogleCredential từ Service Account credentials đã mã hoá.
+        /// Dùng <paramref name="requiredScopes"/> nếu được chỉ định, nếu không dùng scopes từ entity,
+        /// nếu entity cũng không có thì dùng mặc định (Sheets + Docs readonly).
         /// </summary>
         private async Task<GoogleCredential> CreateCredentialAsync(
             GoogleServiceAccountEntity sa,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            params string[] requiredScopes)
         {
             if (string.IsNullOrWhiteSpace(sa.RawCredentialJson))
                 throw new ExternalServiceException(
@@ -40,9 +42,24 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
 
             var rawJson = _protector.Unprotect(sa.RawCredentialJson);
 
-            var scopes = !string.IsNullOrWhiteSpace(sa.Scopes)
-                ? sa.Scopes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                : new[] { SheetsService.Scope.SpreadsheetsReadonly };
+            // Ưu tiên: requiredScopes > entity.Scopes > default (cả Sheets + Docs readonly)
+            string[] scopes;
+            if (requiredScopes.Length > 0)
+            {
+                scopes = requiredScopes;
+            }
+            else if (!string.IsNullOrWhiteSpace(sa.Scopes))
+            {
+                scopes = sa.Scopes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            }
+            else
+            {
+                scopes = new[]
+                {
+                    SheetsService.Scope.SpreadsheetsReadonly,
+                    DocsService.Scope.DocumentsReadonly
+                };
+            }
 
             var serviceCredential = Google.Apis.Auth.OAuth2.CredentialFactory
                 .FromJson<Google.Apis.Auth.OAuth2.ServiceAccountCredential>(rawJson);
@@ -63,7 +80,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
             GoogleServiceAccountEntity sa,
             CancellationToken ct = default)
         {
-            var credential = await CreateCredentialAsync(sa, ct);
+            var credential = await CreateCredentialAsync(sa, ct, SheetsService.Scope.SpreadsheetsReadonly);
             var docId = ExtractDocId(sheetUrl);
 
             using var sheetsService = new SheetsService(new Google.Apis.Services.BaseClientService.Initializer
@@ -102,15 +119,17 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
 
         /// <summary>
         /// Lấy nội dung Google Doc dạng plain text.
-        /// Dùng Google Docs API v1 chính thức.
+        /// Dùng Google Docs API v1 chính thức với includeTabsContent=true
+        /// để hỗ trợ document có nhiều tabs.
         /// </summary>
         public async Task<string> FetchDocContentAsync(
             string docsUrl,
             GoogleServiceAccountEntity sa,
             CancellationToken ct = default)
         {
-            var credential = await CreateCredentialAsync(sa, ct);
+            var credential = await CreateCredentialAsync(sa, ct, DocsService.Scope.DocumentsReadonly);
             var docId = ExtractDocId(docsUrl);
+            var targetTabId = ExtractTargetTabId(docsUrl);
 
             using var docsService = new DocsService(new Google.Apis.Services.BaseClientService.Initializer
             {
@@ -118,10 +137,13 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                 ApplicationName = "KoliaThumbnail"
             });
 
-            var document = await docsService.Documents.Get(docId).ExecuteAsync(ct);
+            var getRequest = docsService.Documents.Get(docId);
+            getRequest.IncludeTabsContent = true;
+            var document = await getRequest.ExecuteAsync(ct);
 
-            var text = ExtractPlainText(document);
-            _logger.LogInformation("Fetched Doc {DocId}: {Length} chars", docId, text.Length);
+            var text = ExtractPlainText(document, targetTabId);
+            _logger.LogInformation("Fetched Doc {DocId}: {Length} chars (tab: {TabId})",
+                docId, text.Length, targetTabId ?? "all");
 
             return text;
         }
@@ -138,7 +160,10 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
         {
             try
             {
-                var credential = await CreateCredentialAsync(sa, ct);
+                var requiredScopes = type == CGoogleServiceType.GoogleSheets
+                    ? new[] { SheetsService.Scope.SpreadsheetsReadonly }
+                    : new[] { DocsService.Scope.DocumentsReadonly };
+                var credential = await CreateCredentialAsync(sa, ct, requiredScopes);
                 var docId = ExtractDocId(url);
 
                 if (type == CGoogleServiceType.GoogleSheets)
@@ -158,7 +183,9 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                         HttpClientInitializer = credential,
                         ApplicationName = "KoliaThumbnail"
                     });
-                    await docsService.Documents.Get(docId).ExecuteAsync(ct);
+                    var getRequest = docsService.Documents.Get(docId);
+                    getRequest.IncludeTabsContent = true;
+                    await getRequest.ExecuteAsync(ct);
                 }
 
                 return true;
@@ -172,33 +199,164 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
         }
 
         /// <summary>
-        /// Trích xuất plain text từ Document content (paragraphs + inline text).
+        /// Trích xuất plain text từ Document.
+        /// Hỗ trợ cả Document.Body (legacy) và Document.Tabs (khi includeTabsContent=true).
+        /// Xử lý đệ quy Paragraph, Table, TableOfContents.
+        /// Nếu <paramref name="targetTabId"/> != null, chỉ đọc nội dung từ tab đó.
         /// </summary>
-        private static string ExtractPlainText(Document document)
+        private static string ExtractPlainText(Document document, string? targetTabId = null)
         {
             var parts = new List<string>();
 
-            if (document.Body?.Content == null)
-                return string.Empty;
-
-            foreach (var element in document.Body.Content)
+            // Khi includeTabsContent=true, nội dung nằm trong Document.Tabs
+            if (document.Tabs != null && document.Tabs.Count > 0)
             {
-                if (element.Paragraph?.Elements == null)
-                    continue;
-
-                foreach (var paraElement in element.Paragraph.Elements)
-                {
-                    if (paraElement.TextRun?.Content != null)
-                    {
-                        parts.Add(paraElement.TextRun.Content);
-                    }
-                }
-
-                // Thêm newline sau mỗi paragraph
-                parts.Add(Environment.NewLine);
+                ExtractFromTabs(document.Tabs, parts, targetTabId);
+            }
+            // Fallback: Document.Body (khi includeTabsContent=false, single-tab docs)
+            else if (document.Body?.Content != null)
+            {
+                ExtractFromStructuralElements(document.Body.Content, parts);
             }
 
             return string.Join("", parts).Trim();
+        }
+
+        /// <summary>
+        /// Đệ quy trích xuất text từ danh sách Tab (bao gồm child tabs).
+        /// Nếu <paramref name="targetTabId"/> != null, chỉ đọc tab có ID khớp.
+        /// </summary>
+        private static void ExtractFromTabs(
+            IList<Google.Apis.Docs.v1.Data.Tab> tabs,
+            List<string> parts,
+            string? targetTabId = null)
+        {
+            if (tabs == null)
+                return;
+
+            foreach (var tab in tabs)
+            {
+                var currentTabId = tab.TabProperties?.TabId;
+
+                // Nếu có targetTabId, chỉ xử lý tab có ID khớp (hoặc child của nó)
+                if (targetTabId != null)
+                {
+                    // Thử match cả format có và không có prefix "t."
+                    if (currentTabId == targetTabId || currentTabId == "t." + targetTabId || "t." + currentTabId == targetTabId)
+                    {
+                        // Tab mục tiêu — chỉ đọc nội dung tab này
+                        if (tab.TabProperties?.Title != null)
+                            parts.Add($"\n--- {tab.TabProperties.Title} ---\n");
+
+                        if (tab.DocumentTab?.Body?.Content != null)
+                            ExtractFromStructuralElements(tab.DocumentTab.Body.Content, parts);
+
+                        return; // Không cần tìm tiếp
+                    }
+
+                    // Không khớp → tìm trong child tabs
+                    if (tab.ChildTabs != null && tab.ChildTabs.Count > 0)
+                    {
+                        ExtractFromTabs(tab.ChildTabs, parts, targetTabId);
+                    }
+
+                    continue;
+                }
+
+                // Không có targetTabId → đọc tất cả tabs
+                if (tab.TabProperties?.Title != null)
+                    parts.Add($"\n--- Tab: {tab.TabProperties.Title} ---\n");
+
+                if (tab.DocumentTab?.Body?.Content != null)
+                    ExtractFromStructuralElements(tab.DocumentTab.Body.Content, parts);
+
+                if (tab.ChildTabs != null && tab.ChildTabs.Count > 0)
+                    ExtractFromTabs(tab.ChildTabs, parts);
+            }
+        }
+
+        /// <summary>
+        /// Đệ quy trích xuất text từ danh sách StructuralElement.
+        /// Xử lý Paragraph, Table, TableOfContents.
+        /// </summary>
+        private static void ExtractFromStructuralElements(
+            IList<Google.Apis.Docs.v1.Data.StructuralElement> elements,
+            List<string> parts)
+        {
+            if (elements == null)
+                return;
+
+            foreach (var element in elements)
+            {
+                if (element.Paragraph != null)
+                {
+                    ExtractFromParagraph(element.Paragraph, parts);
+                }
+                else if (element.Table != null)
+                {
+                    ExtractFromTable(element.Table, parts);
+                }
+                else if (element.TableOfContents?.Content != null)
+                {
+                    ExtractFromStructuralElements(element.TableOfContents.Content, parts);
+                }
+                // SectionBreak: bỏ qua, không có nội dung text
+            }
+        }
+
+        /// <summary>
+        /// Trích xuất text từ Paragraph (TextRun).
+        /// </summary>
+        private static void ExtractFromParagraph(
+            Google.Apis.Docs.v1.Data.Paragraph paragraph,
+            List<string> parts)
+        {
+            if (paragraph.Elements == null)
+                return;
+
+            foreach (var paraElement in paragraph.Elements)
+            {
+                if (paraElement.TextRun?.Content != null)
+                {
+                    parts.Add(paraElement.TextRun.Content);
+                }
+            }
+
+            // Xuống dòng sau mỗi paragraph
+            parts.Add(Environment.NewLine);
+        }
+
+        /// <summary>
+        /// Trích xuất text từ Table (đệ quy vào từng cell, hỗ trợ table lồng nhau).
+        /// </summary>
+        private static void ExtractFromTable(
+            Google.Apis.Docs.v1.Data.Table table,
+            List<string> parts)
+        {
+            if (table.TableRows == null)
+                return;
+
+            foreach (var row in table.TableRows)
+            {
+                if (row.TableCells == null)
+                    continue;
+
+                foreach (var cell in row.TableCells)
+                {
+                    if (cell.Content != null)
+                    {
+                        // Cell có thể chứa Paragraph, Table (lồng nhau), v.v.
+                        ExtractFromStructuralElements(cell.Content, parts);
+                    }
+                    // Phân cách giữa các cell
+                    parts.Add("\t");
+                }
+                // Xuống dòng sau mỗi row
+                parts.Add(Environment.NewLine);
+            }
+
+            // Xuống dòng sau khi kết thúc table
+            parts.Add(Environment.NewLine);
         }
 
         /// <summary>
@@ -213,6 +371,25 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                 throw new ArgumentException($"URL không hợp lệ: {url}");
 
             return pathSegments[docIdIndex + 1];
+        }
+
+        /// <summary>
+        /// Trích xuất Tab ID từ query parameter `tab` trong URL Google Doc.
+        /// VD: .../edit?tab=t.ygde6l8uem9j → trả về "ygde6l8uem9j"
+        /// Nếu không có tab parameter, trả về null.
+        /// </summary>
+        private static string? ExtractTargetTabId(string url)
+        {
+            var uri = new Uri(url);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var tabValue = query["tab"];
+            if (string.IsNullOrWhiteSpace(tabValue))
+                return null;
+
+            // Google dùng prefix "t." trong URL, TabId thực tế không có prefix này
+            return tabValue.StartsWith("t.")
+                ? tabValue[2..]
+                : tabValue;
         }
     }
 }
