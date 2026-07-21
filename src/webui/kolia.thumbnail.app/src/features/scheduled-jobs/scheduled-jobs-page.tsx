@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Play, XCircle, Trash2, FileText, ExternalLink } from 'lucide-react'
+import { Plus, Play, XCircle, Trash2, FileText, ExternalLink, Pencil, Clock, AlertCircle, Repeat, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { DataTable } from '../../components/data-table/data-table'
 import { useDataTableState } from '../../components/data-table/use-data-table-state'
@@ -20,7 +20,9 @@ import {
   type ScheduledJobSummaryDto,
   type LogEntry,
 } from './api'
-import { getJobStatusLabel, getJobStatusBadgeClass, getGoogleServiceTypeLabel } from './schema'
+import { getJobStatusLabel, getJobStatusBadgeClass, getGoogleServiceTypeLabel, GOOGLE_SERVICE_TYPE_OPTIONS } from './schema'
+import { SelectDropdown } from '../../components/selects/select-dropdown'
+import { ApiError } from '../../lib/api/api-error'
 import {
   SortDirection,
   type SortRequestDto,
@@ -33,6 +35,8 @@ export function ScheduledJobsPage() {
     useDataTableState(1, 10)
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
+  const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>('active')
+  const [filterSourceType, setFilterSourceType] = useState<string>('')
   const [deleteTarget, setDeleteTarget] = useState<ScheduledJobSummaryDto | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ScheduledJobSummaryDto | null>(null)
   const [logTarget, setLogTarget] = useState<ScheduledJobSummaryDto | null>(null)
@@ -44,6 +48,9 @@ export function ScheduledJobsPage() {
     onSuccess: () => {
       toast.success('Đã xoá job.')
       queryClient.invalidateQueries({ queryKey: ['scheduled-jobs'] })
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Không thể xoá job.')
     },
   })
 
@@ -97,11 +104,13 @@ export function ScheduledJobsPage() {
       status: 'Status',
       creationTime: 'CreationTime',
       scheduledAt: 'ScheduledAt',
+      cronExpression: 'CronExpression',
+      retryCount: 'RetryCount',
     }
     return [{ field: fieldMap[sortBy] || 'CreationTime', direction: sortOrder === 'asc' ? SortDirection.Asc : SortDirection.Desc }]
   }, [sortBy, sortOrder])
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['scheduled-jobs', page, pageSize, search, statusFilter, backendSorts],
     queryFn: () =>
       getScheduledJobsWithPaging({
@@ -164,12 +173,62 @@ export function ScheduledJobsPage() {
         ),
       },
       {
-        key: 'scheduledAt',
-        header: 'Lịch chạy',
+        key: 'cronExpression',
+        header: 'Lịch Cron',
         sortable: true,
         render: (row: ScheduledJobSummaryDto) => (
-          <span className="text-xs text-slate-500">
-            {row.scheduledAt ? formatDateTime(row.scheduledAt) : 'Ngay lập tức'}
+          row.cronExpression ? (
+            <div className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center gap-1 text-xs font-mono text-slate-600 dark:text-slate-300">
+                <Clock className="h-3 w-3" />
+                {row.cronExpression}
+              </span>
+              {row.cronDescription && (
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[200px]">
+                  {row.cronDescription}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs text-slate-400">—</span>
+          )
+        ),
+      },
+      {
+        key: 'scheduleType',
+        header: 'Loại lịch',
+        render: (row: ScheduledJobSummaryDto) => {
+          if (row.cronExpression) {
+            return (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                <Clock className="h-3 w-3" />
+                Cron
+              </span>
+            )
+          }
+          if (row.scheduledAt) {
+            return (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                Một lần
+              </span>
+            )
+          }
+          return (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              Ngay
+            </span>
+          )
+        },
+      },
+      {
+        key: 'retryCount',
+        header: 'Lần thử',
+        sortable: true,
+        className: 'text-center',
+        render: (row: ScheduledJobSummaryDto) => (
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+            <Repeat className="h-3 w-3" />
+            {row.retryCount}
           </span>
         ),
       },
@@ -179,6 +238,23 @@ export function ScheduledJobsPage() {
         sortable: true,
         render: (row: ScheduledJobSummaryDto) => (
           <span className="text-xs text-slate-500">{formatDateTime(row.creationTime)}</span>
+        ),
+      },
+      {
+        key: 'errorMessage',
+        header: 'Lỗi',
+        render: (row: ScheduledJobSummaryDto) => (
+          row.errorMessage ? (
+            <span
+              className="inline-flex items-center gap-1 text-xs text-red-500 cursor-help truncate max-w-[160px]"
+              title={row.errorMessage}
+            >
+              <AlertCircle className="h-3 w-3 shrink-0" />
+              <span className="truncate">{row.errorMessage}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-slate-400">—</span>
+          )
         ),
       },
       {
@@ -196,15 +272,26 @@ export function ScheduledJobsPage() {
               <FileText className="h-4 w-4" />
             </Button>
             {row.status === 1 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCancelTarget(row)}
-                title="Huỷ job"
-                className="text-orange-500 hover:text-orange-700"
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => open({ type: 'edit-scheduled-job', id: row.id })}
+                  title="Sửa job"
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCancelTarget(row)}
+                  title="Huỷ job"
+                  className="text-orange-500 hover:text-orange-700"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </>
             )}
             {row.status === 4 && (
               <Button
@@ -236,24 +323,53 @@ export function ScheduledJobsPage() {
     [handleViewLogs, retry, isRetrying, setCancelTarget, setDeleteTarget],
   )
 
+  const filterContent = (
+    <div className="space-y-5">
+      <StatusFilterGroup value={localStatusFilter} onChange={setLocalStatusFilter} />
+
+      <div>
+        <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Loại nguồn</label>
+        <SelectDropdown<{ id: number; label: string }>
+          items={GOOGLE_SERVICE_TYPE_OPTIONS}
+          getOptionId={(opt) => String(opt.id)}
+          getOptionLabel={(opt) => opt.label}
+          value={GOOGLE_SERVICE_TYPE_OPTIONS.find((opt) => String(opt.id) === filterSourceType) ?? null}
+          onChange={(opt) => setFilterSourceType(opt ? String(opt.id) : '')}
+          allowSearch={false}
+          placeholder="Tất cả"
+        />
+      </div>
+    </div>
+  )
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
           Scheduled Import Jobs
         </h1>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            title="Làm mới"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </Button>
           <Button onClick={() => open({ type: 'create-scheduled-job' })}>
-          <Plus className="mr-1 h-4 w-4" /> Tạo Job mới
-        </Button>
+            <Plus className="mr-1 h-4 w-4" /> Tạo Job mới
+          </Button>
+        </div>
       </div>
-
-      <StatusFilterGroup value={statusFilter} onChange={setStatusFilter} />
 
       <DataTable
         data={data?.items ?? []}
         columns={columns}
         isLoading={isLoading}
         error={(error as Error)?.message}
+        onRetry={() => void refetch()}
         page={page}
         pageSize={pageSize}
         totalCount={data?.totalCount ?? 0}
@@ -265,6 +381,7 @@ export function ScheduledJobsPage() {
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSort={handleSort}
+        filterContent={filterContent}
         emptyMessage="Chưa có Scheduled Import Job nào."
       />
 

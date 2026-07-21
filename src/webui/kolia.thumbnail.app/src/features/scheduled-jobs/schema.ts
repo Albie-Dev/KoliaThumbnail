@@ -44,10 +44,10 @@ export function getJobStatusBadgeClass(status: number): string {
   return map[status] ?? 'bg-slate-100 text-slate-500'
 }
 
-export const createScheduledJobSchema = z.object({
+const baseCreateSchema = z.object({
   name: z.string().min(1, 'Tên không được để trống'),
   description: z.string().optional().nullable(),
-  sourceType: z.number().refine((val) => [1, 2].includes(val), { message: 'Loại nguồn không hợp lệ' }),
+  sourceType: z.number().optional(),
   sourceUrl: z.string().min(1, 'URL không được để trống').url('URL không hợp lệ'),
   googleServiceAccountId: z.string().min(1, 'Vui lòng chọn service account'),
   scheduleType: z.enum(['now', 'once', 'cron']),
@@ -55,6 +55,16 @@ export const createScheduledJobSchema = z.object({
   cronExpression: z.string().optional().nullable(),
   cronDescription: z.string().optional().nullable(),
   maxRetries: z.number().min(0).max(10),
+})
+
+export const createScheduledJobSchema = baseCreateSchema.superRefine((val, ctx) => {
+  if (val.scheduleType === 'cron' && !val.cronExpression) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['cronExpression'],
+      message: 'Vui lòng nhập cron expression',
+    })
+  }
 })
 
 export type CreateScheduledJobInput = z.infer<typeof createScheduledJobSchema>

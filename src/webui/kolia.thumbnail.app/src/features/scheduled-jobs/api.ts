@@ -8,6 +8,7 @@ export interface ScheduledJobDto {
   description?: string | null
   sourceType: number
   sourceUrl: string
+  googleServiceAccountId: string
   serviceAccountName?: string | null
   serviceAccountEmail?: string | null
   status: number
@@ -82,12 +83,13 @@ export async function getScheduledJob(id: string): Promise<ScheduledJobDto> {
 export interface CreateScheduledJobInput {
   name: string
   description?: string | null
-  sourceType: number
+  sourceType?: number
   sourceUrl: string
   googleServiceAccountId: string
   scheduledAt?: string | null
   cronExpression?: string | null
   cronDescription?: string | null
+  timeZone?: string | null
   maxRetries?: number
 }
 
@@ -103,6 +105,7 @@ export interface UpdateScheduledJobInput {
   scheduledAt?: string | null
   cronExpression?: string | null
   cronDescription?: string | null
+  timeZone?: string | null
   maxRetries: number
 }
 
@@ -120,7 +123,7 @@ export async function deleteScheduledJob(id: string): Promise<void> {
 
 export async function checkAccess(data: {
   sourceUrl: string
-  sourceType: number
+  sourceType?: number
   googleServiceAccountId: string
 }): Promise<CheckAccessResult> {
   return httpClient.post<CheckAccessResult>('/api/v1/admin/scheduled-import-jobs/check-access', data)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Input } from '../../components/ui/input'
 import { SelectDropdown } from '../../components/selects/select-dropdown'
 import { FormGroup, FormLabel } from '../../components/ui/form'
@@ -37,39 +37,62 @@ export function CronBuilder({ value, description, onChange }: CronBuilderProps) 
   const [monthDay, setMonthDay] = useState(1)
   const [customCron, setCustomCron] = useState(value || '')
   const [customDesc, setCustomDesc] = useState(description || '')
+  const mounted = useRef(false)
+  const isParsingFromProp = useRef(false)
+  const lastGeneratedCron = useRef<string | null>(null)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
-  // Detect initial frequency from cron expression
+  // Đánh dấu mounted sau lần render đầu — giúp sync effect hoạt động
+  // ở create mode (khi value='' thì parse effect không set flag)
+  useEffect(() => {
+    mounted.current = true
+  }, [])
+
+  // Parse cron expression khi value thay đổi (từ edit data)
   useEffect(() => {
     if (!value) return
+
+    // Skip nếu value là cron ta vừa generate ra (tránh re-parse vô hạn)
+    if (lastGeneratedCron.current === value) return
+
+    isParsingFromProp.current = true
     const parts = value.trim().split(/\s+/)
-    if (parts.length !== 5) { setFreq('custom'); return }
+    if (parts.length !== 5) { setFreq('custom'); isParsingFromProp.current = false; return }
 
     const [min, hr, day, mon, dow] = parts
 
     if (min.startsWith('*/') && hr === '*' && day === '*' && mon === '*' && dow === '*') {
-      setFreq('minutes')
-      setIntervalVal(parseInt(min.slice(2)) || 5)
+      setFreq('minutes'); setIntervalVal(parseInt(min.slice(2)) || 5)
     } else if (min === '0' && hr.startsWith('*/') && day === '*' && mon === '*' && dow === '*') {
-      setFreq('hours')
-      setIntervalVal(parseInt(hr.slice(2)) || 1)
+      setFreq('hours'); setIntervalVal(parseInt(hr.slice(2)) || 1)
     } else if (min !== '*' && hr !== '*' && day === '*' && mon === '*' && dow === '*') {
-      setFreq('daily')
-      setHour(parseInt(hr) || 9)
-      setMinute(parseInt(min) || 0)
+      setFreq('daily'); setHour(parseInt(hr) || 9); setMinute(parseInt(min) || 0)
     } else if (min !== '*' && hr !== '*' && day === '*' && mon === '*' && dow !== '*') {
-      setFreq('weekly')
-      setHour(parseInt(hr) || 9)
-      setMinute(parseInt(min) || 0)
+      setFreq('weekly'); setHour(parseInt(hr) || 9); setMinute(parseInt(min) || 0)
       setSelectedDays(dow.split(',').map(Number))
     } else if (min !== '*' && hr !== '*' && day !== '*' && mon === '*' && dow === '*') {
-      setFreq('monthly')
-      setHour(parseInt(hr) || 9)
-      setMinute(parseInt(min) || 0)
+      setFreq('monthly'); setHour(parseInt(hr) || 9); setMinute(parseInt(min) || 0)
       setMonthDay(parseInt(day) || 1)
     } else {
       setFreq('custom')
     }
-  }, [])
+    // Reset flag after state updates are queued
+    setTimeout(() => { isParsingFromProp.current = false }, 0)
+    // Không gọi onChange ở đây — parent đã setValue rồi, chỉ parse để hiển thị UI
+  }, [value])
+
+  // Sync lên parent khi user thay đổi UI control (freq, intervalVal, hour, ...)
+  useEffect(() => {
+    if (!mounted.current || freq === 'custom' || isParsingFromProp.current) return
+
+    const { cron, desc } = generateCron()
+    if (cron !== value) {
+      lastGeneratedCron.current = cron
+      onChangeRef.current(cron, desc)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freq, intervalVal, hour, minute, selectedDays, monthDay])
 
   const generateCron = () => {
     let cron = ''
@@ -107,17 +130,13 @@ export function CronBuilder({ value, description, onChange }: CronBuilderProps) 
     return { cron, desc }
   }
 
-  useEffect(() => {
-    if (freq !== 'custom') {
-      const { cron, desc } = generateCron()
-      onChange(cron, desc)
-    }
-  }, [freq, intervalVal, hour, minute, selectedDays, monthDay])
-
   const handleCustomChange = (cron: string, desc: string) => {
     setCustomCron(cron)
     setCustomDesc(desc)
-    if (freq === 'custom') onChange(cron, desc)
+    if (freq === 'custom') {
+      lastGeneratedCron.current = cron
+      onChangeRef.current(cron, desc)
+    }
   }
 
   const toggleDay = (day: number) => {
@@ -318,10 +337,18 @@ export function CronBuilder({ value, description, onChange }: CronBuilderProps) 
     }
   }
 
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const { cron: previewCron } = generateCron()
 
   return (
     <div className="space-y-4">
+      {/* Hiển thị múi giờ tự động detect */}
+      <div className="flex items-center gap-2 rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+        <span>🕐</span>
+        <span>Múi giờ phát hiện: <strong>{userTimeZone}</strong></span>
+        <span className="text-blue-400">(cron chạy theo giờ địa phương của bạn)</span>
+      </div>
+
       <FormGroup>
         <FormLabel required>Tần suất</FormLabel>
         <SelectDropdown<{ id: string; label: string }>

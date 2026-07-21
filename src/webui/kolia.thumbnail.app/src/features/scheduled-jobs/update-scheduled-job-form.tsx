@@ -1,9 +1,10 @@
-import { forwardRef, useImperativeHandle, useState } from 'react'
+import { forwardRef, useImperativeHandle, useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader2, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { z } from 'zod'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
@@ -11,38 +12,70 @@ import { SelectDropdown } from '../../components/selects/select-dropdown'
 import { FormField, FormGroup, FormLabel } from '../../components/ui/form'
 import { FormSection } from '../../components/ui/form-section'
 import { CronBuilder } from './cron-builder'
-import { createScheduledJobSchema, type CreateScheduledJobInput as CreateScheduledJobFormInput } from './schema'
-import { createScheduledJob, checkAccess, type CheckAccessResult, type CreateScheduledJobInput as CreateScheduledJobApiInput } from './api'
+import { updateScheduledJob, getScheduledJob, checkAccess, type CheckAccessResult, type UpdateScheduledJobInput } from './api'
 import { getGoogleServiceAccountsWithPaging } from '../google-services/api'
 import { ApiError } from '../../lib/api/api-error'
 
+// Schema riêng cho update — KHÔNG dùng chung với create
+const baseUpdateSchema = z.object({
+  name: z.string().min(1, 'Tên không được để trống'),
+  description: z.string().optional().nullable(),
+  sourceType: z.number().optional(),
+  sourceUrl: z.string().min(1, 'URL không được để trống').url('URL không hợp lệ'),
+  googleServiceAccountId: z.string().min(1, 'Vui lòng chọn service account'),
+  scheduleType: z.enum(['now', 'once', 'cron']),
+  scheduledAt: z.string().optional().nullable(),
+  cronExpression: z.string().optional().nullable(),
+  cronDescription: z.string().optional().nullable(),
+  maxRetries: z.number().min(0).max(10),
+})
+
+const updateScheduledJobSchema = baseUpdateSchema.superRefine((val, ctx) => {
+  if (val.scheduleType === 'cron' && !val.cronExpression) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['cronExpression'],
+      message: 'Vui lòng nhập cron expression',
+    })
+  }
+})
+
+type UpdateFormInput = z.infer<typeof updateScheduledJobSchema>
+
 interface Props {
+  editJobId: string
   onSuccess?: () => void
 }
 
-export interface CreateScheduledJobFormHandle {
+export interface UpdateScheduledJobFormHandle {
   submit: () => Promise<void>
   isSubmitting: boolean
 }
 
-export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, Props>(
-  ({ onSuccess }, ref) => {
+export const UpdateScheduledJobForm = forwardRef<UpdateScheduledJobFormHandle, Props>(
+  ({ editJobId, onSuccess }, ref) => {
     const queryClient = useQueryClient()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [accessResult, setAccessResult] = useState<CheckAccessResult | null>(null)
     const [isChecking, setIsChecking] = useState(false)
+
+    // Fetch full job details
+    const { data: jobData, isLoading: isJobLoading } = useQuery({
+      queryKey: ['scheduled-jobs', editJobId],
+      queryFn: () => getScheduledJob(editJobId),
+      enabled: !!editJobId,
+    })
 
     const {
       register,
       handleSubmit,
       formState: { errors },
       setError,
-      reset,
       setValue,
       watch,
-    } = useForm<CreateScheduledJobFormInput>({
+    } = useForm<UpdateFormInput>({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      resolver: zodResolver(createScheduledJobSchema) as any,
+      resolver: zodResolver(updateScheduledJobSchema) as any,
       defaultValues: {
         name: '',
         description: '',
@@ -56,6 +89,23 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
         maxRetries: 3,
       },
     })
+
+    // Pre-populate form khi job data loaded
+    useEffect(() => {
+      if (!jobData) return
+      setValue('name', jobData.name)
+      setValue('description', jobData.description || '')
+      setValue('sourceUrl', jobData.sourceUrl)
+      setValue('googleServiceAccountId', jobData.googleServiceAccountId)
+      setValue('maxRetries', jobData.maxRetries)
+      setValue('scheduleType', jobData.cronExpression ? 'cron' : jobData.scheduledAt ? 'once' : 'now')
+      setValue('scheduledAt', jobData.scheduledAt ? jobData.scheduledAt.slice(0, 16) : null)
+      setValue('cronExpression', jobData.cronExpression || '')
+      setValue('cronDescription', jobData.cronDescription || '')
+      // Auto-detect source type from URL
+      if (jobData.sourceUrl.includes('/spreadsheets/')) setValue('sourceType', 1)
+      else if (jobData.sourceUrl.includes('/document/')) setValue('sourceType', 2)
+    }, [jobData, setValue])
 
     const { data: saData } = useQuery({
       queryKey: ['google-services', 'select'],
@@ -72,26 +122,24 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
       label: `${sa.name} (${sa.clientEmail})`,
     }))
 
-    const { mutateAsync } = useMutation({
-      mutationFn: (data: CreateScheduledJobApiInput) => createScheduledJob(data),
+    const { mutateAsync: save } = useMutation({
+      mutationFn: (data: UpdateScheduledJobInput) => updateScheduledJob(editJobId, data),
       onError: (error) => {
         if (error instanceof ApiError && error.isValidationError) {
           error.errors?.forEach((ve) => {
-            setError(ve.property as keyof CreateScheduledJobFormInput, { message: ve.message })
+            setError(ve.property as keyof UpdateFormInput, { message: ve.message })
           })
           toast.warning('Vui lòng kiểm tra lại thông tin đã nhập.')
         }
       },
       onSuccess: () => {
+        toast.success('Cập nhật job thành công!')
         onSuccess?.()
-        reset()
         queryClient.invalidateQueries({ queryKey: ['scheduled-jobs'] })
-        toast.success('Tạo job thành công!')
       },
     })
 
-    const onSubmit = async (data: CreateScheduledJobFormInput) => {
-      // Auto-detect source type nếu chưa được set
+    const onSubmit = async (data: UpdateFormInput) => {
       const detectedType = data.sourceType ?? (
         data.sourceUrl.includes('/spreadsheets/') ? 1 :
         data.sourceUrl.includes('/document/') ? 2 :
@@ -104,10 +152,9 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
       }
 
       // Map scheduleType to API contract — chỉ gửi field phù hợp, không gửi null
-      const payload: CreateScheduledJobApiInput = {
+      const payload: UpdateScheduledJobInput = {
         name: data.name,
         description: data.description || null,
-        sourceType: detectedType,
         sourceUrl: data.sourceUrl,
         googleServiceAccountId: data.googleServiceAccountId,
         maxRetries: data.maxRetries,
@@ -122,9 +169,10 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
             }
           : {}),
       }
+
       setIsSubmitting(true)
       try {
-        await mutateAsync(payload)
+        await save(payload)
       } finally {
         setIsSubmitting(false)
       }
@@ -168,9 +216,17 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
       }
     }
 
+    if (isJobLoading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        </div>
+      )
+    }
+
     return (
       <form className="space-y-5" onSubmit={handleSubmit(onSubmit as unknown as (data: Record<string, unknown>) => Promise<void>)}>
-        <FormSection title="Thông tin job" description="Tên và mô tả của scheduled import job">
+        <FormSection title="Thông tin job" description="Cập nhật tên và mô tả của scheduled import job">
           <FormGroup>
             <FormLabel htmlFor="name" required>Tên job</FormLabel>
             <Input {...register('name')} id="name" placeholder="VD: Import nội dung livestream tuần 30" />
@@ -204,7 +260,6 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
 
           <FormGroup>
             <FormLabel htmlFor="sourceUrl" required>URL nguồn</FormLabel>
-            {/* Badge hiển thị loại nguồn tự động phát hiện */}
             <div className="flex gap-2 mb-2">
               {([
                 { id: 1, label: 'Google Sheets', icon: '📊' },
@@ -269,7 +324,7 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
           </FormGroup>
         </FormSection>
 
-        <FormSection title="Lịch trình" description="Chọn cách lên lịch cho job">
+        <FormSection title="Lịch trình" description="Thay đổi lịch chạy cho job">
           <FormGroup>
             <FormLabel required>Kiểu lịch</FormLabel>
             <div className="flex gap-2">
@@ -332,4 +387,4 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
   },
 )
 
-CreateScheduledJobForm.displayName = 'CreateScheduledJobForm'
+UpdateScheduledJobForm.displayName = 'UpdateScheduledJobForm'
