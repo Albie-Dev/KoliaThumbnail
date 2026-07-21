@@ -68,6 +68,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                     e.ErrorMessage,
                     e.CronExpression,
                     e.CronDescription,
+                    e.TimeZone,
                     e.ScheduledAt,
                     e.CreatedProjectId,
                     e.RetryCount,
@@ -127,6 +128,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                 ScheduledAt = request.CronExpression != null ? null : request.ScheduledAt,
                 CronExpression = request.CronExpression,
                 CronDescription = request.CronDescription,
+                TimeZone = request.TimeZone ?? "UTC",
                 MaxRetries = request.MaxRetries,
                 Status = CJobScheduleStatus.Pending
             };
@@ -167,6 +169,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
             entity.ScheduledAt = request.CronExpression != null ? null : request.ScheduledAt;
             entity.CronExpression = request.CronExpression;
             entity.CronDescription = request.CronDescription;
+            entity.TimeZone = request.TimeZone ?? "UTC";
             entity.MaxRetries = request.MaxRetries;
             entity.LastModificationTime = DateTimeOffset.UtcNow;
 
@@ -202,8 +205,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
             if (entity.Status is CJobScheduleStatus.Pending or CJobScheduleStatus.Running)
                 throw new BusinessException("Không thể xoá job đang chờ hoặc đang chạy. Hãy huỷ trước.");
 
-            entity.IsDeleted = true;
-            entity.DeletionTime = DateTimeOffset.UtcNow;
+            _db.Set<ScheduledImportJobEntity>().Remove(entity);
             await _db.SaveChangesAsync(ct);
         }
 
@@ -409,6 +411,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                 e.Description,
                 e.SourceType,
                 e.SourceUrl,
+                e.GoogleServiceAccountId,
                 e.GoogleServiceAccount?.Name,
                 e.GoogleServiceAccount?.ClientEmail,
                 e.Status,
@@ -417,6 +420,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                 e.CreatedBriefId,
                 e.CronExpression,
                 e.CronDescription,
+                e.TimeZone,
                 e.ScheduledAt,
                 e.StartedAt,
                 e.CompletedAt,

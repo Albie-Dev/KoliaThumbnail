@@ -57,15 +57,19 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
                     // Filter cron-based và one-time jobs trong memory
                     var jobsToRun = dueJobs.Where(job =>
                     {
-                        // Cron job: kiểm tra cron expression
+                        // Cron job: kiểm tra cron expression theo múi giờ của job
                         if (!string.IsNullOrWhiteSpace(job.CronExpression))
                         {
                             try
                             {
                                 var cron = Cronos.CronExpression.Parse(job.CronExpression);
-                            var lastRun = job.StartedAt?.UtcDateTime ?? job.CreationTime.UtcDateTime;
-                            var next = cron.GetNextOccurrence(lastRun);
-                            return next.HasValue && next.Value <= now.UtcDateTime;
+                                var tz = GetTimeZoneInfo(job.TimeZone);
+                                var lastRun = job.StartedAt?.UtcDateTime ?? job.CreationTime.UtcDateTime;
+                                // Cronos.GetNextOccurrence(fromUtc, tz) nhận fromUtc là UTC,
+                                // tự động convert sang tz, tìm next occurrence trong tz,
+                                // và trả về kết quả dạng UTC — so sánh với now (UTC) là chính xác
+                                var next = cron.GetNextOccurrence(lastRun, tz);
+                                return next.HasValue && next.Value <= now.UtcDateTime;
                             }
                             catch
                             {
@@ -83,7 +87,7 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
                     .Take(10)
                     .ToList();
 
-                    foreach (var job in dueJobs)
+                    foreach (var job in jobsToRun)
                     {
                         try
                         {
@@ -136,11 +140,18 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
 
             AppendLog(job, LogEntry.Info($"Đã fetch thành công {content.Length} ký tự."));
 
-            // Bước 2: Tạo Project tự động với tên không trùng
-            var timestamp = DateTimeOffset.UtcNow.ToString("dd/MM/yyyy HH:mm:ss");
-            var projectName = $"Job Automatic projects {timestamp}";
+            // Bước 2: Gọi AI Agent phân tích nội dung TRƯỚC
+            // Nếu AI fail → job chưa tạo project → retry an toàn, không orphan data
+            AppendLog(job, LogEntry.Info($"Đang gọi AI phân tích nội dung..."));
+            var textForAnalysis = content.Length > 100000 ? content[..100000] : content;
+            var aiResult = await briefAnalysisEngine.AnalyzeFromPastedTextAsync(textForAnalysis, ct);
 
-            // Đảm bảo không trùng tên
+            AppendLog(job, LogEntry.Info($"AI phân tích thành công. Đang tạo project..."));
+
+            // Bước 3: AI thành công → mới tạo Project
+            var timestamp = DateTimeOffset.UtcNow.ToString("dd/MM/yyyy HH:mm:ss");
+            var projectName = $"Auto-Generated Project {timestamp}";
+
             var counter = 0;
             string uniqueName;
             do
@@ -158,8 +169,7 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
 
             Notify("ScheduledImportJob", $"Đã tạo project '{uniqueName}' cho job '{job.Name}'.");
 
-            // Bước 3: Tạo Content Brief và gửi lên AI Agent phân tích
-            // Tương tự flow ImportAndAnalyzeFromPasteAsync
+            // Bước 4: Tạo Content Brief và lưu kết quả AI
             var brief = await db.Set<Kolia.Thumbnail.API.Data.Entities.Briefs.ContentBriefEntity>()
                 .FirstOrDefaultAsync(b => b.ProjectId == project.Id, ct);
 
@@ -171,53 +181,48 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
                     ImportSource = CImportContentSource.ExternalLink,
                     ImportedExternalLink = job.SourceUrl,
                     ImportedRawText = content.Length > 50000 ? content[..50000] : content,
+                    OverviewInput = aiResult.OverviewInput,
+                    ViewpointInput = aiResult.ViewpointInput,
+                    KeyDataInput = aiResult.KeyDataInput,
+                    TopicOutput = aiResult.Topic,
+                    MainMessageOutput = aiResult.MainMessage,
+                    HighlightDataOutput = aiResult.HighlightData,
+                    SuggestedKeywordsJson = JsonSerializer.Serialize(aiResult.SuggestedKeywords),
                     LastModificationTime = DateTimeOffset.UtcNow
                 };
                 db.Set<Kolia.Thumbnail.API.Data.Entities.Briefs.ContentBriefEntity>().Add(brief);
-                await db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                brief.OverviewInput = aiResult.OverviewInput;
+                brief.ViewpointInput = aiResult.ViewpointInput;
+                brief.KeyDataInput = aiResult.KeyDataInput;
+                brief.TopicOutput = aiResult.Topic;
+                brief.MainMessageOutput = aiResult.MainMessage;
+                brief.HighlightDataOutput = aiResult.HighlightData;
+                brief.SuggestedKeywordsJson = JsonSerializer.Serialize(aiResult.SuggestedKeywords);
+                brief.LastModificationTime = DateTimeOffset.UtcNow;
             }
 
             job.CreatedBriefId = brief.Id;
-            AppendLog(job, LogEntry.Info($"Đã tạo Content Brief (ID: {brief.Id}). Đang gọi AI phân tích..."));
+            AppendLog(job, LogEntry.Info($"Đã lưu Content Brief (ID: {brief.Id}) và kết quả AI."));
 
-            // Bước 4: Gọi AI Agent phân tích nội dung
-            try
+            // Bước 5: Kết thúc thành công
+            // Cron job → giữ Pending để chạy tiếp; One-time → Completed
+            if (string.IsNullOrWhiteSpace(job.CronExpression))
             {
-                var textForAnalysis = content.Length > 100000 ? content[..100000] : content;
-                var result = await briefAnalysisEngine.AnalyzeFromPastedTextAsync(textForAnalysis, ct);
-
-                brief.OverviewInput = result.OverviewInput;
-                brief.ViewpointInput = result.ViewpointInput;
-                brief.KeyDataInput = result.KeyDataInput;
-                brief.TopicOutput = result.Topic;
-                brief.MainMessageOutput = result.MainMessage;
-                brief.HighlightDataOutput = result.HighlightData;
-                brief.SuggestedKeywordsJson = JsonSerializer.Serialize(result.SuggestedKeywords);
-                brief.LastModificationTime = DateTimeOffset.UtcNow;
-
-                await db.SaveChangesAsync(ct);
-
-                AppendLog(job, LogEntry.Info("AI đã phân tích thành công 6 trường nội dung."));
-                Notify("ScheduledImportJob", $"Job '{job.Name}' hoàn thành. Đã phân tích nội dung từ {job.SourceUrl}");
-
-                // Bước 5: Kết thúc thành công
                 job.Status = CJobScheduleStatus.Completed;
-                job.CompletedAt = DateTimeOffset.UtcNow;
-                AppendLog(job, LogEntry.Info("Job hoàn thành thành công."));
-                await db.SaveChangesAsync(ct);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "AI phân tích thất bại cho job {JobId}", job.Id);
-                job.Status = CJobScheduleStatus.Failed;
-                job.ErrorMessage = $"AI phân tích thất bại: {ex.Message}";
-                job.CompletedAt = DateTimeOffset.UtcNow;
-                AppendLog(job, LogEntry.Error($"AI phân tích thất bại: {ex.Message}"));
-                await db.SaveChangesAsync(ct);
-
-                Notify("ScheduledImportJob",
-                    $"Job '{job.Name}' thất bại khi phân tích AI: {ex.Message}");
+                job.Status = CJobScheduleStatus.Pending; // cron job: chờ lần chạy tiếp theo
             }
+            job.CompletedAt = DateTimeOffset.UtcNow;
+            AppendLog(job, LogEntry.Info("Job hoàn thành thành công."));
+            await db.SaveChangesAsync(ct);
+
+            Notify("ScheduledImportJob",
+                $"Job '{job.Name}' hoàn thành. Project '{uniqueName}' đã được tạo từ {job.SourceUrl}");
         }
 
         /// <summary>
@@ -268,6 +273,52 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
         private static void Notify(string eventType, string message)
         {
             Console.WriteLine($"[NOTIFICATION] {DateTimeOffset.UtcNow:O} | {eventType} | {message}");
+        }
+
+        /// <summary>
+        /// Lấy TimeZoneInfo từ tên múi giờ (VD: "Asia/Ho_Chi_Minh", "UTC").
+        /// Linux dùng IANA timezone names, Windows dùng Windows timezone IDs.
+        /// Xử lý các alias phổ biến (Asia/Saigon → Asia/Ho_Chi_Minh).
+        /// Nếu không tìm thấy, fallback về UTC.
+        /// </summary>
+        private static readonly Dictionary<string, string> TimeZoneAliases = new(StringComparer.OrdinalIgnoreCase)
+        {
+            { "asia/saigon", "Asia/Ho_Chi_Minh" },
+            { "asia/shanghai", "Asia/Shanghai" },
+            { "us/eastern", "America/New_York" },
+            { "us/central", "America/Chicago" },
+            { "us/mountain", "America/Denver" },
+            { "us/pacific", "America/Los_Angeles" },
+        };
+
+        private static TimeZoneInfo GetTimeZoneInfo(string? timeZone)
+        {
+            if (string.IsNullOrWhiteSpace(timeZone) || timeZone == "UTC")
+                return TimeZoneInfo.Utc;
+
+            // Resolve alias
+            if (TimeZoneAliases.TryGetValue(timeZone, out var mapped))
+                timeZone = mapped;
+
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(timeZone);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Fallback: thử tìm trên Windows (chuyển IANA → Windows ID)
+                try
+                {
+                    if (TimeZoneInfo.TryConvertIanaIdToWindowsId(timeZone, out var winId) && winId != null)
+                        return TimeZoneInfo.FindSystemTimeZoneById(winId);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            return TimeZoneInfo.Utc;
         }
     }
 }

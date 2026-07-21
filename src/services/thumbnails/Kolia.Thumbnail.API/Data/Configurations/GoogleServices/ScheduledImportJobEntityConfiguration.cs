@@ -47,6 +47,10 @@ namespace Kolia.Thumbnail.API.Data.Configurations.GoogleServices
             builder.Property(x => x.CronDescription)
                 .HasMaxLength(500);
 
+            builder.Property(x => x.TimeZone)
+                .HasMaxLength(100)
+                .HasDefaultValue("UTC");
+
             builder.HasOne(x => x.GoogleServiceAccount)
                 .WithMany(x => x.ScheduledJobs)
                 .HasForeignKey(x => x.GoogleServiceAccountId)

@@ -14,6 +14,7 @@ namespace Kolia.Thumbnail.API.DTOs.GoogleServices
         DateTimeOffset? ScheduledAt,
         string? CronExpression,
         string? CronDescription,
+        string? TimeZone,
         int MaxRetries = 3);
 
     /// <summary>
@@ -28,6 +29,7 @@ namespace Kolia.Thumbnail.API.DTOs.GoogleServices
         DateTimeOffset? ScheduledAt,
         string? CronExpression,
         string? CronDescription,
+        string? TimeZone,
         int MaxRetries);
 
     /// <summary>
@@ -39,6 +41,7 @@ namespace Kolia.Thumbnail.API.DTOs.GoogleServices
         string? Description,
         CGoogleServiceType SourceType,
         string SourceUrl,
+        Guid GoogleServiceAccountId,
         string? ServiceAccountName,
         string? ServiceAccountEmail,
         CJobScheduleStatus Status,
@@ -47,6 +50,7 @@ namespace Kolia.Thumbnail.API.DTOs.GoogleServices
         Guid? CreatedBriefId,
         string? CronExpression,
         string? CronDescription,
+        string? TimeZone,
         DateTimeOffset? ScheduledAt,
         DateTimeOffset? StartedAt,
         DateTimeOffset? CompletedAt,
@@ -68,6 +72,7 @@ namespace Kolia.Thumbnail.API.DTOs.GoogleServices
         string? ErrorMessage,
         string? CronExpression,
         string? CronDescription,
+        string? TimeZone,
         DateTimeOffset? ScheduledAt,
         Guid? CreatedProjectId,
         int RetryCount,

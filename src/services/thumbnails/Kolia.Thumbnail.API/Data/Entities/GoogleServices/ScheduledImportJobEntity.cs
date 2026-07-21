@@ -31,6 +31,12 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
         public string? CronDescription { get; set; }
 
         /// <summary>
+        /// Múi giờ của cron expression (VD: "Asia/Ho_Chi_Minh", "UTC").
+        /// Mặc định UTC. Dùng để tính toán lịch chạy chính xác theo giờ địa phương.
+        /// </summary>
+        public string? TimeZone { get; set; }
+
+        /// <summary>
         /// Thời điểm lên lịch chạy một lần.
         /// Chỉ dùng khi CronExpression = null.
         /// Nếu cả CronExpression và ScheduledAt đều null, job chạy ngay khi tạo.
