@@ -185,7 +185,7 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
 
             // Bước 3: AI thành công → mới tạo Project
             var timestamp = DateTimeOffset.UtcNow.ToString("dd/MM/yyyy HH:mm:ss");
-            var projectName = $"Auto-Generated Project {timestamp}";
+            var projectName = $"{job.Name} {timestamp}";
 
             var counter = 0;
             string uniqueName;
