@@ -74,6 +74,7 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
 
     const containerRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLButtonElement>(null)
+    const menuRef = useRef<HTMLDivElement>(null)
     const listRef = useRef<HTMLUListElement>(null)
     const requestIdRef = useRef(0)
     const menuIdRef = useRef(`select-dropdown-menu-${Math.random().toString(36).slice(2, 9)}`)
@@ -90,7 +91,19 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
     const updateMenuPosition = useCallback(() => {
         if (!triggerRef.current) return
         const rect = triggerRef.current.getBoundingClientRect()
-        setMenuStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+        
+        // Measure real height or fallback to 280
+        const menuHeight = menuRef.current ? menuRef.current.getBoundingClientRect().height : 280
+        
+        let top = rect.bottom + 4
+        const spaceBelow = window.innerHeight - rect.bottom
+        const spaceAbove = rect.top
+
+        if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+            top = rect.top - menuHeight - 4
+        }
+
+        setMenuStyle({ top, left: rect.left, width: rect.width })
     }, [])
 
     useEffect(() => {
@@ -105,7 +118,7 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
             const target = e.target as Node
             if (containerRef.current?.contains(target)) return
             // Also ignore clicks inside the portal menu
-            const menuEl = document.getElementById(menuIdRef.current)
+            const menuEl = menuRef.current
             if (menuEl?.contains(target)) return
             setIsOpen(false)
         }
@@ -118,10 +131,15 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
         window.addEventListener('scroll', handleReposition, true)
         window.addEventListener('resize', handleReposition)
 
+        const rafId = requestAnimationFrame(() => {
+            updateMenuPosition()
+        })
+
         return () => {
             document.removeEventListener('mousedown', handleClickOutside)
             window.removeEventListener('scroll', handleReposition, true)
             window.removeEventListener('resize', handleReposition)
+            cancelAnimationFrame(rafId)
         }
     }, [isOpen, updateMenuPosition])
 
@@ -306,6 +324,7 @@ export function SelectDropdown<T>(props: SelectDropdownProps<T>) {
 
             {isOpen && menuStyle && createPortal(
                 <div
+                    ref={menuRef}
                     id={menuIdRef.current}
                     className="z-50 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg"
                     style={{ position: 'fixed', top: menuStyle.top, left: menuStyle.left, width: menuStyle.width }}

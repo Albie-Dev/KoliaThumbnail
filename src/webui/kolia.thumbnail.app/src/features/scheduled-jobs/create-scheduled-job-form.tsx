@@ -11,6 +11,7 @@ import { SelectDropdown } from '../../components/selects/select-dropdown'
 import { FormField, FormGroup, FormLabel } from '../../components/ui/form'
 import { FormSection } from '../../components/ui/form-section'
 import { CronBuilder } from './cron-builder'
+import { DateTimePicker } from '../../components/ui/date-time-picker'
 import { createScheduledJobSchema, type CreateScheduledJobInput as CreateScheduledJobFormInput } from './schema'
 import { createScheduledJob, checkAccess, type CheckAccessResult, type CreateScheduledJobInput as CreateScheduledJobApiInput } from './api'
 import { getGoogleServiceAccountsWithPaging } from '../google-services/api'
@@ -294,10 +295,11 @@ export const CreateScheduledJobForm = forwardRef<CreateScheduledJobFormHandle, P
           {watch('scheduleType') === 'once' && (
             <FormGroup>
               <FormLabel htmlFor="scheduledAt">Thời gian chạy</FormLabel>
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 id="scheduledAt"
-                {...register('scheduledAt')}
+                value={watch('scheduledAt') || ''}
+                onChange={(e) => setValue('scheduledAt', e.target.value, { shouldValidate: true })}
+                placeholder="Chọn thời gian chạy..."
               />
               <FormField error={errors.scheduledAt?.message} />
             </FormGroup>

@@ -7,6 +7,7 @@ import {
   useMemo,
   type InputHTMLAttributes,
 } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Calendar,
   Clock,
@@ -98,30 +99,84 @@ export function DateTimePicker({
   const [viewDate, setViewDate] = useState<Date>(selectedDate ?? new Date())
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const hiddenInputRef = useRef<HTMLInputElement>(null)
+  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number } | null>(null)
+
+  const updateMenuPosition = useCallback(() => {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    
+    // Default fallback or measured height of the date time picker dialog is ~330px
+    const menuHeight = menuRef.current ? menuRef.current.getBoundingClientRect().height : 330
+    const menuWidth = 264
+    
+    let top = rect.bottom + 6
+    let left = rect.left
+
+    const spaceBelow = window.innerHeight - rect.bottom
+    const spaceAbove = rect.top
+
+    if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+      top = rect.top - menuHeight - 6
+    }
+
+    // Align horizontally
+    if (left + menuWidth > window.innerWidth) {
+      left = Math.max(8, window.innerWidth - menuWidth - 8)
+    }
+    if (left < 8) {
+      left = 8
+    }
+
+    setMenuStyle({ top, left })
+  }, [])
 
   useEffect(() => {
     if (open) setViewDate(selectedDate ?? new Date())
   }, [open, selectedDate])
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+    if (!open) {
+      setMenuStyle(null)
+      return
     }
+
+    updateMenuPosition()
+
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node
+      if (containerRef.current?.contains(target)) return
+      if (menuRef.current?.contains(target)) return
+      setOpen(false)
+    }
+
     function handleEscape(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside)
-      document.addEventListener('keydown', handleEscape)
+
+    function handleReposition() {
+      updateMenuPosition()
     }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    window.addEventListener('scroll', handleReposition, true)
+    window.addEventListener('resize', handleReposition)
+
+    const rafId = requestAnimationFrame(() => {
+      updateMenuPosition()
+    })
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
+      window.removeEventListener('scroll', handleReposition, true)
+      window.removeEventListener('resize', handleReposition)
+      cancelAnimationFrame(rafId)
     }
-  }, [open])
+  }, [open, updateMenuPosition])
 
   const commit = useCallback(
     (next: Date) => {
@@ -235,6 +290,7 @@ export function DateTimePicker({
       />
 
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
@@ -269,10 +325,15 @@ export function DateTimePicker({
         )}
       </button>
 
-      {open && (
+      {open && menuStyle && createPortal(
         <div
+          ref={menuRef}
           role="dialog"
-          className="absolute left-0 top-full z-50 mt-1.5 w-[264px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-lg shadow-slate-900/5"
+          className="fixed z-50 w-[264px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-lg shadow-slate-900/5"
+          style={{
+            top: menuStyle.top,
+            left: menuStyle.left,
+          }}
         >
           <div className="mb-2 flex items-center justify-between">
             <button
@@ -371,7 +432,8 @@ export function DateTimePicker({
               Xong
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
