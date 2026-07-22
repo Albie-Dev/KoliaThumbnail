@@ -61,8 +61,10 @@ namespace Kolia.Thumbnail.API.Services.News
                 _                      => 10
             };
 
-            var keywords = keywordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            var keywords = keywordsRaw
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(k => k.Trim())
+                .Where(k => k.Length > 0)
                 .Concat(suggestedKeywordsSelected ?? [])
                 .Distinct()
                 .ToList();
@@ -85,10 +87,7 @@ namespace Kolia.Thumbnail.API.Services.News
             };
             _db.NewsSearchRequests.Add(searchRequest);
 
-            // Batch scoring
-            var scoringBatch = crawledItems
-                .Select(c => (Guid.CreateVersion7(DateTimeOffset.UtcNow), c.Title, c.SourceName, c.SummaryRaw))
-                .ToList();
+            // Batch scoring (executed below after newsItems are built)
 
             // Map crawled items → NewsItemEntity, chấm điểm
             var newsItems = new List<NewsItemEntity>();
@@ -99,7 +98,7 @@ namespace Kolia.Thumbnail.API.Services.News
                     ProjectId = projectId,
                     NewsSearchRequestId = searchRequest.Id,
                     SourceType = CSourceType.Crawled,
-                    MarketType = marketScope,
+                    MarketType = crawled.MarketType,
                     Title = crawled.Title,
                     SourceName = crawled.SourceName,
                     SourceUrl = crawled.SourceUrl,
@@ -110,7 +109,7 @@ namespace Kolia.Thumbnail.API.Services.News
                 newsItems.Add(item);
             }
 
-            // Gọi batch scoring 1 lần duy nhất
+            // Gọi batch scoring 1 lần duy nhất (Bug #6 fix — bật lại đoạn bị comment)
             if (newsItems.Count > 0)
             {
                 var batchInput = newsItems
@@ -127,11 +126,13 @@ namespace Kolia.Thumbnail.API.Services.News
                         item.ImportanceImpactScore = score.ImportanceImpactScore;
                         item.EmotionPotentialScore = score.EmotionPotentialScore;
                         item.NoveltyDataScore = score.NoveltyDataScore;
+                        item.DataQualityScore = score.DataQualityScore;
                         item.TotalScore = score.TotalScore;
                         item.Recommendation = score.Recommendation;
                         item.RelevanceLevel = score.RelevanceLevel;
                         item.SummaryOverview = score.SummaryOverview;
                         item.SuggestedKeywordsForThumbnail = score.SuggestedKeywordsForThumbnail;
+                        item.EmotionTags = score.EmotionTags;
                     }
                 }
             }
@@ -180,10 +181,13 @@ namespace Kolia.Thumbnail.API.Services.News
                 item.ImportanceImpactScore = score.ImportanceImpactScore;
                 item.EmotionPotentialScore = score.EmotionPotentialScore;
                 item.NoveltyDataScore = score.NoveltyDataScore;
+                item.DataQualityScore = score.DataQualityScore;
                 item.TotalScore = score.TotalScore;
                 item.Recommendation = score.Recommendation;
                 item.RelevanceLevel = score.RelevanceLevel;
                 item.SummaryOverview = score.SummaryOverview;
+                item.SuggestedKeywordsForThumbnail = score.SuggestedKeywordsForThumbnail;
+                item.EmotionTags = score.EmotionTags;
             }
 
             _db.NewsItems.Add(item);

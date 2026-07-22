@@ -1,4 +1,6 @@
+using Kolia.Thumbnail.API.Data.Entities;
 using Kolia.Thumbnail.API.Data.Entities.News;
+using Kolia.Thumbnail.API.Data.Extensions;
 using Kolia.Thumbnail.API.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -30,9 +32,46 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
             builder.Property(x => x.Priority)
                 .HasDefaultValue(0);
 
-            // Seed 3 nguồn mẫu theo D.10 mục 10.
-            // Dùng anonymous object để vượt qua protected set của BaseEntity.Id và CreationTime.
-            var ts = Entities.SeedConstants.FixedSeedTimestamp;
+            // ── New fields ──────────────────────────────────────────────
+
+            builder.Property(x => x.SourceGroup)
+                .IsRequired()
+                .HasDefaultValue(CNewsSourceGroup.InternationalFinance)
+                .HasSentinel(default(CNewsSourceGroup));
+
+            builder.Property(x => x.FetchMode)
+                .IsRequired()
+                .HasDefaultValue(CSourceFetchMode.RssDirect)
+                .HasSentinel(default(CSourceFetchMode));
+
+            builder.Property(x => x.Domain)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            builder.Property(x => x.LastFailedAt)
+                .IsRequired(false);
+
+            builder.Property(x => x.ConsecutiveFailureCount)
+                .HasDefaultValue(0);
+
+            builder.Property(x => x.LastEtag)
+                .IsRequired(false)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.LastModifiedHeader)
+                .IsRequired(false)
+                .HasMaxLength(200);
+
+            builder.Property(x => x.LastFetchedAt)
+                .IsRequired(false);
+
+            // Unique index on Domain to prevent duplicate sources per domain
+            builder.HasIndex(x => x.Domain)
+                .IsUnique()
+                .HasDatabaseName("IX_NewsSources_Domain");
+
+            // Seed 3 nguồn mẫu (giữ nguyên dữ liệu cũ, bổ sung field mới)
+            var ts = SeedConstants.FixedSeedTimestamp;
             builder.HasData(
                 new
                 {
@@ -42,6 +81,14 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
                     Region = CMarketScope.Domestic,
                     IsTrusted = true,
                     Priority = 1,
+                    SourceGroup = CNewsSourceGroup.VietnamFinance,
+                    FetchMode = CSourceFetchMode.RssDirect,
+                    Domain = "vnexpress.net",
+                    LastFailedAt = (DateTimeOffset?)null,
+                    ConsecutiveFailureCount = 0,
+                    LastEtag = (string?)null,
+                    LastModifiedHeader = (string?)null,
+                    LastFetchedAt = (DateTimeOffset?)null,
                     CreationTime = ts,
                     LastModificationTime = (DateTimeOffset?)null,
                     IsDeleted = false,
@@ -55,6 +102,14 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
                     Region = CMarketScope.International,
                     IsTrusted = true,
                     Priority = 2,
+                    SourceGroup = CNewsSourceGroup.InternationalFinance,
+                    FetchMode = CSourceFetchMode.RssDirect,
+                    Domain = "coindesk.com",
+                    LastFailedAt = (DateTimeOffset?)null,
+                    ConsecutiveFailureCount = 0,
+                    LastEtag = (string?)null,
+                    LastModifiedHeader = (string?)null,
+                    LastFetchedAt = (DateTimeOffset?)null,
                     CreationTime = ts,
                     LastModificationTime = (DateTimeOffset?)null,
                     IsDeleted = false,
@@ -68,12 +123,23 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
                     Region = CMarketScope.International,
                     IsTrusted = true,
                     Priority = 3,
+                    SourceGroup = CNewsSourceGroup.OfficialData,
+                    FetchMode = CSourceFetchMode.RssDirect,
+                    Domain = "federalreserve.gov",
+                    LastFailedAt = (DateTimeOffset?)null,
+                    ConsecutiveFailureCount = 0,
+                    LastEtag = (string?)null,
+                    LastModifiedHeader = (string?)null,
+                    LastFetchedAt = (DateTimeOffset?)null,
                     CreationTime = ts,
                     LastModificationTime = (DateTimeOffset?)null,
                     IsDeleted = false,
                     DeletionTime = (DateTimeOffset?)null
                 }
             );
+
+            // Bổ sung toàn bộ 30 nguồn còn lại theo spec khách hàng (6 nhóm)
+            builder.HasData(NewsSourceSeedData.GetAllSeedObjects());
         }
     }
 }

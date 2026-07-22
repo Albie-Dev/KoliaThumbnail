@@ -1,3 +1,4 @@
+using Kolia.Thumbnail.API.Attributes;
 using Kolia.Thumbnail.API.Enums;
 
 namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
@@ -9,6 +10,10 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
     public class ScheduledImportJobEntity : BaseEntity
     {
         /// <summary>Tên job do người dùng đặt</summary>
+        [Queryable(
+            Searchable = true,
+            Sortable = true
+        )]
         public string Name { get; set; } = null!;
 
         /// <summary>Mô tả job</summary>
@@ -25,6 +30,10 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
         /// VD: "*/5 * * * *" = mỗi 5 phút, "0 9 * * 1" = 9h sáng thứ 2 hàng tuần.
         /// Nếu có CronExpression, ScheduledAt bị bỏ qua.
         /// </summary>
+        [Queryable(
+            Searchable = true,
+            Sortable = true
+        )]
         public string? CronExpression { get; set; }
 
         /// <summary>Mô tả cron bằng tiếng Việt để hiển thị (VD: "Mỗi 5 phút", "9h sáng thứ 2 hàng tuần")</summary>
@@ -41,6 +50,11 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
         /// Chỉ dùng khi CronExpression = null.
         /// Nếu cả CronExpression và ScheduledAt đều null, job chạy ngay khi tạo.
         /// </summary>
+        [Queryable(
+            Filterable = true,
+            RangeFilterable = true,
+            Sortable = true
+        )]
         public DateTimeOffset? ScheduledAt { get; set; }
 
         /// <summary>Thời điểm job thực sự bắt đầu chạy</summary>
@@ -50,6 +64,10 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
         public DateTimeOffset? CompletedAt { get; set; }
 
         /// <summary>Trạng thái hiện tại của job</summary>
+        [Queryable(
+            Filterable = true,
+            Sortable = true
+        )]
         public CJobScheduleStatus Status { get; set; } = CJobScheduleStatus.Pending;
 
         /// <summary>Thông báo lỗi nếu job thất bại</summary>
@@ -78,6 +96,10 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
         /// <summary>
         /// Số lần thử lại.
         /// </summary>
+        [Queryable(
+            Filterable = true,
+            Sortable = true
+        )]
         public int RetryCount { get; set; } = 0;
 
         /// <summary>

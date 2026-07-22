@@ -66,11 +66,13 @@ namespace Kolia.Thumbnail.API.Engines
                     ImportanceImpactScore: 18,
                     EmotionPotentialScore: 17,
                     NoveltyDataScore: 12,
-                    TotalScore: 72,
+                    DataQualityScore: 5,
+                    TotalScore: 77,
                     Recommendation: CNewsRecommendation.ShouldSelect,
                     RelevanceLevel: CRelevanceLevel.High,
                     SummaryOverview: $"Tóm tắt: {item.Title}",
-                    SuggestedKeywordsForThumbnail: "Bitcoin;Finance;Fed"
+                    SuggestedKeywordsForThumbnail: "Bitcoin;Finance;Fed",
+                    EmotionTags: CEmotionTag.Anger
                 );
             }
             return Task.FromResult(res);

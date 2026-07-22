@@ -1,10 +1,8 @@
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Entities.ExternalRequests;
-using Kolia.Thumbnail.API.Data.Entities.Socials;
 using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Exceptions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Kolia.Thumbnail.API.Engines.Social
 {
@@ -93,16 +91,55 @@ namespace Kolia.Thumbnail.API.Engines.Social
             Guid? projectId,
             CancellationToken ct = default)
         {
-            _logger.LogInformation("RssCrawlAsync: scope={Scope}, days={Days}", marketScope, timeRangeDays);
+            var keywordList = keywords.ToList();
+            _logger.LogInformation("RssCrawlAsync: scope={Scope}, days={Days}, keywords={Keywords}",
+                marketScope, timeRangeDays, string.Join(",", keywordList));
             try
             {
-                return await _rssEngine.CrawlAsync(keywords, marketScope, timeRangeDays, maxCount, ct);
+                var items = await _rssEngine.CrawlAsync(keywordList, marketScope, timeRangeDays, maxCount, ct);
+
+                if (items.Count == 0)
+                {
+                    // All fallback tiers exhausted — log warning and enqueue for later retry.
+                    // Do NOT throw: return empty list so NewsService can still create the search request.
+                    // User sees "0 tin" rather than a 500 error — far better UX.
+                    _logger.LogWarning(
+                        "RssCrawlAsync: 0 results after full fallback pipeline for keywords={Keywords}",
+                        string.Join(",", keywordList));
+                    await EnqueueNewsCrawlRetryAsync(keywordList, marketScope, timeRangeDays, maxCount, projectId, ct);
+                }
+
+                return items;
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            catch (Exception ex) // safety net — pipeline should absorb all errors internally
             {
-                await EnqueueRetryAsync(CExternalRequestPurpose.NewsCrawl, string.Join(",", keywords), null, null, maxCount, projectId, ct);
-                throw new ExternalServiceException("RSS crawl thất bại — yêu cầu đã được ghi vào hàng đợi.", ex);
+                _logger.LogError(ex, "RssCrawlAsync: unexpected error outside pipeline fallback.");
+                await EnqueueNewsCrawlRetryAsync(keywordList, marketScope, timeRangeDays, maxCount, projectId, ct);
+                throw new ExternalServiceException(
+                    "RSS crawl thất bại toàn bộ — yêu cầu đã được ghi vào hàng đợi.", ex);
             }
+        }
+
+        private async Task EnqueueNewsCrawlRetryAsync(
+            List<string> keywords, CMarketScope marketScope, int timeRangeDays,
+            int maxResults, Guid? projectId, CancellationToken ct)
+        {
+            _db.ExternalRequestQueues.Add(new ExternalRequestQueueEntity
+            {
+                Purpose = CExternalRequestPurpose.NewsCrawl,
+                ProjectId = projectId,
+                PayloadJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    keyword = string.Join(",", keywords),
+                    marketScope,
+                    timeRangeDays,
+                    maxResults
+                }),
+                Status = CExternalRequestStatus.Pending,
+                NextRetryAt = DateTimeOffset.UtcNow.AddMinutes(30),
+                RetryCount = 0
+            });
+            await _db.SaveChangesAsync(ct);
         }
 
         // ── Private Helpers ──────────────────────────────────────────

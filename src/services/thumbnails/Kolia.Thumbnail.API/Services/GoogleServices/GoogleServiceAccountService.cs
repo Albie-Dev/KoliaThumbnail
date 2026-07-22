@@ -51,6 +51,12 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
 
             query = query.ApplyQuery(request);
 
+            var jobCounts = await _db.Set<ScheduledImportJobEntity>()
+                .Where(x => !x.IsDeleted)
+                .GroupBy(x => x.GoogleServiceAccountId)
+                .Select(g => new { ServiceAccountId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ServiceAccountId, x => x.Count, ct);
+
             return await query.ToPagedResponseAsync<GoogleServiceAccountEntity, GoogleServiceAccountSummaryDto>(
                 request,
                 selector: e => new GoogleServiceAccountSummaryDto(
@@ -59,7 +65,7 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                     e.ClientEmail,
                     e.ProjectId,
                     e.IsEnabled,
-                    e.ScheduledJobs.Count,
+                    jobCounts.TryGetValue(e.Id, out var count) ? count : 0,
                     e.CreationTime),
                 cancellationToken: ct);
         }
@@ -203,7 +209,6 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
                 }
             }
 
-            entity.LastModificationTime = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
 
             _logger.LogInformation("Updated GoogleServiceAccount: {Name} ({Email})", entity.Name, entity.ClientEmail);
@@ -225,9 +230,8 @@ namespace Kolia.Thumbnail.API.Services.GoogleServices
 
             if (hasRunningJobs)
                 throw new BusinessException("Không thể xoá service account vì còn job đang chờ xử lý.");
-
-            entity.IsDeleted = true;
-            entity.DeletionTime = DateTimeOffset.UtcNow;
+            
+            _db.Remove(entity);
             await _db.SaveChangesAsync(ct);
 
             _logger.LogInformation("Deleted GoogleServiceAccount: {Name} ({Email})", entity.Name, entity.ClientEmail);

@@ -49,6 +49,11 @@ namespace Kolia.Thumbnail.API.Enums
         /// <summary>
         /// Hy vọng — kỳ vọng tích cực về tương lai
         /// </summary>
-        Hope = 128
+        Hope = 128,
+
+        /// <summary>
+        /// Tài sản tăng mạnh, người xem sợ lỡ sóng
+        /// </summary>
+        FOMO = 256
     }
 }

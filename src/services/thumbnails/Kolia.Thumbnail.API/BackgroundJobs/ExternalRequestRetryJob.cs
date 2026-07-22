@@ -70,10 +70,10 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
                                     break;
 
                                 case CExternalRequestPurpose.NewsCrawl:
-                                    // RSS crawl — retry trực tiếp
+                                    // RSS crawl — retry with persisted MarketScope (Bug fix: was hard-coded to Domestic)
                                     await executor.RssCrawlAsync(
                                         (payload.Keyword ?? string.Empty).Split(','),
-                                        CMarketScope.Domestic, // dùng market scope mặc định
+                                        payload.MarketScope ?? CMarketScope.Domestic,
                                         payload.TimeRangeDays ?? 7,
                                         payload.MaxResults ?? 10,
                                         item.ProjectId,
@@ -133,6 +133,7 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
             CThumbnailTimeFilter? TimeFilter,
             CThumbnailSortFilter? SortFilter,
             int? MaxResults,
-            int? TimeRangeDays);
+            int? TimeRangeDays,
+            CMarketScope? MarketScope);
     }
 }

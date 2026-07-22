@@ -3,6 +3,7 @@ using System;
 using Kolia.Thumbnail.API.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Kolia.Thumbnail.API.Data.Migrations
 {
     [DbContext(typeof(ThumbnailDbContext))]
-    partial class ThumbnailDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260722085337_AddMewItemsColumn")]
+    partial class AddMewItemsColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1139,26 +1142,11 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ConsecutiveFailureCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
                     b.Property<DateTimeOffset>("CreationTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset?>("DeletionTime")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Domain")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("FetchMode")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -1168,22 +1156,8 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("LastEtag")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTimeOffset?>("LastFailedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("LastFetchedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTimeOffset?>("LastModificationTime")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LastModifiedHeader")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1203,16 +1177,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<int>("SourceGroup")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
-
                     b.HasKey("Id");
-
-                    b.HasIndex("Domain")
-                        .IsUnique()
-                        .HasDatabaseName("IX_NewsSources_Domain");
 
                     b.ToTable("NewsSources", (string)null);
 
@@ -1220,467 +1185,35 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                         new
                         {
                             Id = new Guid("11111111-0001-7000-8000-000000000001"),
-                            ConsecutiveFailureCount = 0,
                             CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "vnexpress.net",
-                            FetchMode = 1,
                             IsDeleted = false,
                             IsTrusted = true,
                             Name = "VnExpress",
                             Priority = 1,
                             Region = 1,
-                            RssOrFeedUrl = "https://vnexpress.net/rss/kinh-doanh.rss",
-                            SourceGroup = 3
+                            RssOrFeedUrl = "https://vnexpress.net/rss/kinh-doanh.rss"
                         },
                         new
                         {
                             Id = new Guid("11111111-0001-7000-8000-000000000002"),
-                            ConsecutiveFailureCount = 0,
                             CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "coindesk.com",
-                            FetchMode = 1,
                             IsDeleted = false,
                             IsTrusted = true,
                             Name = "CoinDesk",
                             Priority = 2,
                             Region = 2,
-                            RssOrFeedUrl = "https://www.coindesk.com/arc/outboundfeeds/rss/",
-                            SourceGroup = 1
+                            RssOrFeedUrl = "https://www.coindesk.com/arc/outboundfeeds/rss/"
                         },
                         new
                         {
                             Id = new Guid("11111111-0001-7000-8000-000000000003"),
-                            ConsecutiveFailureCount = 0,
                             CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "federalreserve.gov",
-                            FetchMode = 1,
                             IsDeleted = false,
                             IsTrusted = true,
                             Name = "Federal Reserve",
                             Priority = 3,
                             Region = 2,
-                            RssOrFeedUrl = "https://www.federalreserve.gov/feeds/press_all.xml",
-                            SourceGroup = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000001"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "reuters.com",
-                            FetchMode = 2,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Reuters Business",
-                            Priority = 10,
-                            Region = 2,
-                            RssOrFeedUrl = "https://feeds.reuters.com/reuters/businessNews",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000002"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "cnbc.com",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "CNBC",
-                            Priority = 11,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.cnbc.com/id/10001147/device/rss/rss.html",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000003"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "marketwatch.com",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "MarketWatch",
-                            Priority = 12,
-                            Region = 2,
-                            RssOrFeedUrl = "https://feeds.content.dowjones.io/public/rss/mw_topstories",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000004"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "ft.com",
-                            FetchMode = 3,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Financial Times",
-                            Priority = 13,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.ft.com",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000005"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "cointelegraph.com",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Cointelegraph",
-                            Priority = 14,
-                            Region = 2,
-                            RssOrFeedUrl = "https://cointelegraph.com/rss",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000006"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "investing.com",
-                            FetchMode = 2,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Investing.com",
-                            Priority = 15,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.investing.com/rss/news.rss",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000007"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "nytimes.com",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "NY Times Business",
-                            Priority = 16,
-                            Region = 2,
-                            RssOrFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000008"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "wsj.com",
-                            FetchMode = 3,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "WSJ Markets",
-                            Priority = 17,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.wsj.com",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000009"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "economist.com",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "The Economist",
-                            Priority = 18,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.economist.com/finance-and-economics/rss.xml",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000010"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "foreignaffairs.com",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Foreign Affairs",
-                            Priority = 19,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.foreignaffairs.com/rss.xml",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000011"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "asia.nikkei.com",
-                            FetchMode = 3,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Nikkei Asia",
-                            Priority = 20,
-                            Region = 2,
-                            RssOrFeedUrl = "https://asia.nikkei.com",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000012"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "bloomberg.com",
-                            FetchMode = 3,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Bloomberg",
-                            Priority = 21,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.bloomberg.com",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0002-7000-8000-000000000013"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "fidelity.com",
-                            FetchMode = 2,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Fidelity Insights",
-                            Priority = 22,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.fidelity.com/learning-center/trading-investing/markets-economy-finance/stock-market-outlook",
-                            SourceGroup = 1
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0003-7000-8000-000000000002"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "bls.gov",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "BLS News Release",
-                            Priority = 31,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.bls.gov/feed/news_release.rss",
-                            SourceGroup = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0003-7000-8000-000000000003"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "bea.gov",
-                            FetchMode = 4,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "BEA (Bureau of Economic Analysis)",
-                            Priority = 32,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.bea.gov/rss.xml",
-                            SourceGroup = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0003-7000-8000-000000000004"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "gold.org",
-                            FetchMode = 4,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "World Gold Council",
-                            Priority = 33,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.gold.org/goldhub/research/rss",
-                            SourceGroup = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0003-7000-8000-000000000005"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "imf.org",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "IMF News",
-                            Priority = 34,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.imf.org/en/News/rss?language=eng",
-                            SourceGroup = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0003-7000-8000-000000000006"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "worldbank.org",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "World Bank News",
-                            Priority = 35,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.worldbank.org/en/news/all?qterm=&lang_exact=English&format=rss",
-                            SourceGroup = 2
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0004-7000-8000-000000000001"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "cafef.vn",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "CafeF",
-                            Priority = 40,
-                            Region = 1,
-                            RssOrFeedUrl = "https://cafef.vn/thi-truong-chung-khoan.rss",
-                            SourceGroup = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0004-7000-8000-000000000002"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "cafebiz.vn",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "CafeBiz",
-                            Priority = 41,
-                            Region = 1,
-                            RssOrFeedUrl = "https://cafebiz.vn/rss/home.rss",
-                            SourceGroup = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0004-7000-8000-000000000003"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "vneconomy.vn",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "VnEconomy",
-                            Priority = 42,
-                            Region = 1,
-                            RssOrFeedUrl = "https://vneconomy.vn/tai-chinh.rss",
-                            SourceGroup = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0004-7000-8000-000000000004"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "vietstock.vn",
-                            FetchMode = 4,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Vietstock",
-                            Priority = 43,
-                            Region = 1,
-                            RssOrFeedUrl = "https://vietstock.vn/144/chung-khoan/co-phieu.rss",
-                            SourceGroup = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0004-7000-8000-000000000005"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "ssi.com.vn",
-                            FetchMode = 5,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "SSI Research",
-                            Priority = 44,
-                            Region = 1,
-                            RssOrFeedUrl = "https://www.ssi.com.vn/en/research",
-                            SourceGroup = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0004-7000-8000-000000000006"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "mbs.com.vn",
-                            FetchMode = 5,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "MBS Research",
-                            Priority = 45,
-                            Region = 1,
-                            RssOrFeedUrl = "https://www.mbs.com.vn/en/research",
-                            SourceGroup = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0004-7000-8000-000000000007"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "vndirect.com.vn",
-                            FetchMode = 5,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "VNDirect",
-                            Priority = 46,
-                            Region = 1,
-                            RssOrFeedUrl = "https://www.vndirect.com.vn/en/research",
-                            SourceGroup = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0005-7000-8000-000000000001"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "tradingview.com",
-                            FetchMode = 5,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "TradingView News",
-                            Priority = 50,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.tradingview.com/news/",
-                            SourceGroup = 4
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0005-7000-8000-000000000002"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "kitco.com",
-                            FetchMode = 4,
-                            IsDeleted = false,
-                            IsTrusted = true,
-                            Name = "Kitco (Gold)",
-                            Priority = 51,
-                            Region = 2,
-                            RssOrFeedUrl = "https://www.kitco.com/rss/",
-                            SourceGroup = 4
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-0006-7000-8000-000000000001"),
-                            ConsecutiveFailureCount = 0,
-                            CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Domain = "trends.google.com",
-                            FetchMode = 1,
-                            IsDeleted = false,
-                            IsTrusted = false,
-                            Name = "Google Trends VN",
-                            Priority = 60,
-                            Region = 1,
-                            RssOrFeedUrl = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=VN",
-                            SourceGroup = 5
+                            RssOrFeedUrl = "https://www.federalreserve.gov/feeds/press_all.xml"
                         });
                 });
 

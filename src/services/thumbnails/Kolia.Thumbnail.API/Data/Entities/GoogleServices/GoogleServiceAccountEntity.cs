@@ -1,3 +1,5 @@
+using Kolia.Thumbnail.API.Attributes;
+
 namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
 {
     /// <summary>
@@ -8,6 +10,10 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
     public class GoogleServiceAccountEntity : BaseEntity
     {
         /// <summary>Tên hiển thị của service account (do người dùng đặt)</summary>
+        [Queryable(
+            Searchable = true,
+            Sortable = true
+        )]
         public string Name { get; set; } = null!;
 
         /// <summary>Mô tả ngắn về mục đích sử dụng</summary>
@@ -17,6 +23,10 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
         /// Email của service account (client_email từ JSON).
         /// Dùng để hiển thị và hướng dẫn người dùng share quyền.
         /// </summary>
+        [Queryable(
+            Searchable = true,
+            Sortable = true
+        )]
         public string ClientEmail { get; set; } = null!;
 
         /// <summary>
@@ -72,6 +82,10 @@ namespace Kolia.Thumbnail.API.Data.Entities.GoogleServices
         public string? Scopes { get; set; }
 
         /// <summary>Có đang được kích hoạt hay không</summary>
+        [Queryable(
+            Filterable = true,
+            Sortable = true
+        )]
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>

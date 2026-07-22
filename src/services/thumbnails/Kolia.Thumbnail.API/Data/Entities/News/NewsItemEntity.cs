@@ -105,6 +105,16 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// </summary>
         public string? SuggestedKeywordsForThumbnail { get; set; }
 
+        /// <summary>
+        /// Điểm có dữ liệu/số liệu nổi bật (0–15)
+        /// </summary>
+        public int DataQualityScore { get; set; }
+
+        /// <summary>
+        /// Cảm xúc có thể khai thác (bitmask: FOMO, Fear, Curiosity, Doubt, DecisionPressure, Urgency)
+        /// </summary>
+        public CEmotionTag EmotionTags { get; set; }
+
         // Navigation
         public virtual ProjectEntity Project { get; set; } = null!;
         public virtual NewsSearchRequestEntity? NewsSearchRequest { get; set; }

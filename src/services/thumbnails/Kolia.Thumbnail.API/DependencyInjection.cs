@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -8,6 +9,7 @@ using Kolia.Thumbnail.API.Engines;
 using Kolia.Thumbnail.API.Engines.AI;
 using Kolia.Thumbnail.API.BackgroundJobs;
 using Kolia.Thumbnail.API.Engines.Providers.Domain;
+using Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching;
 using Kolia.Thumbnail.API.Engines.Social;
 using Kolia.Thumbnail.API.Engines.Providers;
 using Kolia.Thumbnail.API.Engines.Providers.Sheets;
@@ -31,6 +33,8 @@ using Kolia.Thumbnail.API.Services.GoogleServices;
 using Kolia.Thumbnail.API.Interfaces.GoogleServices;
 using Kolia.Thumbnail.API.Socials;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 
 namespace Kolia.Thumbnail.API
 {
@@ -113,9 +117,120 @@ namespace Kolia.Thumbnail.API
             services.AddScoped<IVideoTitleGenerationEngine, AiVideoTitleGenerationEngine>();
             services.AddScoped<IContentRelevanceFilterEngine, AiContentRelevanceFilterEngine>();
 
-            // Social engines thật
-            services.AddHttpClient<RealRssNewsSourceEngine>();
+            // Social engines — RSS with enterprise Polly resilience (retry + circuit breaker + timeout)
+            services.AddHttpClient<RealRssNewsSourceEngine>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(12);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 " +
+                    "KoliaNewsBot/1.0 (+https://kolia.example/bot)");
+                client.DefaultRequestHeaders.Accept.ParseAdd(
+                    "application/rss+xml, application/xml, text/xml, */*");
+            })
+            .AddResilienceHandler("rss-fetch-pipeline", builder =>
+            {
+                builder.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = 3,
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    Delay = TimeSpan.FromSeconds(1),
+                    ShouldHandle = args => ValueTask.FromResult(
+                        args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests
+                        || args.Outcome.Result?.StatusCode >= HttpStatusCode.InternalServerError
+                        || args.Outcome.Exception is HttpRequestException or TaskCanceledException)
+                });
+                builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+                {
+                    FailureRatio = 0.5,
+                    SamplingDuration = TimeSpan.FromSeconds(60),
+                    MinimumThroughput = 4,
+                    BreakDuration = TimeSpan.FromMinutes(5)
+                });
+                builder.AddTimeout(TimeSpan.FromSeconds(12));
+            });
             services.AddScoped<IRssNewsSourceEngine, RealRssNewsSourceEngine>();
+
+            // Named HttpClient for GoogleNewsFallbackFetcher (lightweight — no Polly needed,
+            // Google News is reliable enough)
+            services.AddHttpClient<GoogleNewsFallbackFetcher>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(10);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 KoliaNewsBot/1.0");
+            });
+
+            services.AddHttpClient<SitemapFallbackFetcher>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(10);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 KoliaNewsBot/1.0");
+            });
+
+            // Named HttpClient for AdminNewsSourceService URL validation + test-fetch
+            // Uses named client (injected via IHttpClientFactory) to avoid typed-client+interface conflict
+            services.AddHttpClient("admin-news-source", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(15);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 KoliaNewsBot/1.0 (admin-test)");
+            });
+
+            services.AddScoped<IAdminNewsSourceService>(sp =>
+            {
+                var db = sp.GetRequiredService<Data.Contexts.ThumbnailDbContext>();
+                var registry = sp.GetRequiredService<NewsSourceRegistry>();
+                var cacheStore = sp.GetRequiredService<ResponseCacheStore>();
+                var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("admin-news-source");
+                var logger = sp.GetRequiredService<ILogger<AdminNewsSourceService>>();
+                return new AdminNewsSourceService(db, registry, cacheStore, httpClient, logger);
+            });
+            // Named HttpClient for NewsSourceHealthCheckJob
+            services.AddHttpClient("HealthCheck", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(8);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 KoliaNewsBot/1.0 (health-check)");
+            });
+
+            // ── RSS Pipeline infrastructure (singletons — in-memory state shared across requests) ──
+            services.AddSingleton<DomainRateLimiterRegistry>();
+            services.AddSingleton<CircuitBreakerRegistry>();
+            services.AddSingleton<ResponseCacheStore>();
+            services.AddSingleton<NewsSourceRegistry>();
+
+            // SourceFetchPipeline: Tier 1 RSS fetcher also needs Polly resilience
+            services.AddHttpClient<SourceFetchPipeline>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(12);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 " +
+                    "KoliaNewsBot/1.0 (+https://kolia.example/bot)");
+                client.DefaultRequestHeaders.Accept.ParseAdd(
+                    "application/rss+xml, application/xml, text/xml, */*");
+            })
+            .AddResilienceHandler("rss-tier1-pipeline", builder =>
+            {
+                builder.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = 2,
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    Delay = TimeSpan.FromSeconds(1),
+                    ShouldHandle = args => ValueTask.FromResult(
+                        args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests
+                        || args.Outcome.Result?.StatusCode >= HttpStatusCode.InternalServerError
+                        || args.Outcome.Exception is HttpRequestException or TaskCanceledException)
+                });
+                builder.AddTimeout(TimeSpan.FromSeconds(10));
+            });
+
+            // GoogleNewsFallbackFetcher & SitemapFallbackFetcher:
+            // AddHttpClient already registers as transient — no extra AddScoped needed
+            // Gold price fetcher (feature-flagged stub)
+            services.AddScoped<IGoldPriceFetcher, DomesticGoldPriceFetcher>();
             services.AddHttpClient<RealYouTubeSearchEngine>();
             services.AddScoped<IYouTubeSearchEngine, RealYouTubeSearchEngine>();
 
@@ -135,6 +250,7 @@ namespace Kolia.Thumbnail.API
             services.AddScoped<ICharacterService, CharacterService>();
             services.AddScoped<ISocialExecutorService, SocialExecutorService>();
             services.AddScoped<IProjectStepGuard, ProjectStepGuard>();
+            // IAdminNewsSourceService is registered via factory lambda in the HttpClient section above
 
             // Google Services
             services.AddScoped<IGoogleServiceAccountService, GoogleServiceAccountService>();
@@ -144,6 +260,7 @@ namespace Kolia.Thumbnail.API
             // Background Jobs
             services.AddHostedService<ExternalRequestRetryJob>();
             services.AddHostedService<ScheduledImportJobRunner>();
+            services.AddHostedService<NewsSourceHealthCheckJob>(); // Phase 2: proactive health checks
 
             // FluentValidation
             services.AddFluentValidationAutoValidation();

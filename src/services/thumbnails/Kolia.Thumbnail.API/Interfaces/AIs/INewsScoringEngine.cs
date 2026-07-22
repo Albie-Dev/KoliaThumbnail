@@ -10,11 +10,13 @@ namespace Kolia.Thumbnail.API.Engines.AI
         int ImportanceImpactScore,
         int EmotionPotentialScore,
         int NoveltyDataScore,
+        int DataQualityScore,
         int TotalScore,
         CNewsRecommendation Recommendation,
         CRelevanceLevel RelevanceLevel,
         string SummaryOverview,
-        string? SuggestedKeywordsForThumbnail);
+        string? SuggestedKeywordsForThumbnail,
+        CEmotionTag EmotionTags);
 
     /// <summary>
     /// Engine AI chấm điểm và tóm tắt danh sách bản tin theo batch (Phần 2).

@@ -14,7 +14,9 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         public string Name { get; set; } = null!;
 
         /// <summary>
-        /// URL RSS feed hoặc Sitemap để crawl
+        /// URL RSS feed hoặc Sitemap để crawl.
+        /// Với các nguồn không có RSS ổn định, lưu URL trang chủ/section để dùng làm base
+        /// cho Tier 2 (Google News site-restricted) hoặc Tier 3 (sitemap).
         /// </summary>
         public string RssOrFeedUrl { get; set; } = null!;
 
@@ -32,5 +34,50 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// Thứ tự ưu tiên khi fetch (số nhỏ = ưu tiên cao hơn)
         /// </summary>
         public int Priority { get; set; } = 0;
+
+        // ── New fields for multi-source fallback pipeline ──────────────
+
+        /// <summary>
+        /// Nhóm nguồn theo spec khách hàng (1-5, xem enum CNewsSourceGroup)
+        /// </summary>
+        public CNewsSourceGroup SourceGroup { get; set; }
+
+        /// <summary>
+        /// Cách fetch: RssDirect, GoogleNewsFallback, SitemapFallback, Custom…
+        /// Quyết định tier nào được thử đầu tiên trong SourceFetchPipeline.
+        /// </summary>
+        public CSourceFetchMode FetchMode { get; set; } = CSourceFetchMode.RssDirect;
+
+        /// <summary>
+        /// Domain gốc (vd "cafef.vn") — dùng để tra DomainRateLimiterRegistry
+        /// </summary>
+        public string Domain { get; set; } = null!;
+
+        /// <summary>
+        /// Thời điểm domain này bị lỗi/429 gần nhất (cập nhật bởi SourceFetchPipeline)
+        /// </summary>
+        public DateTimeOffset? LastFailedAt { get; set; }
+
+        /// <summary>
+        /// Số lỗi liên tiếp — dùng cho circuit breaker cấp DB (bổ trợ cho in-memory).
+        /// Reset về 0 khi fetch thành công.
+        /// </summary>
+        public int ConsecutiveFailureCount { get; set; } = 0;
+
+        /// <summary>
+        /// ETag của lần fetch gần nhất — dùng conditional GET (If-None-Match)
+        /// </summary>
+        public string? LastEtag { get; set; }
+
+        /// <summary>
+        /// Giá trị Last-Modified header của lần fetch gần nhất — dùng conditional GET
+        /// </summary>
+        public string? LastModifiedHeader { get; set; }
+
+        /// <summary>
+        /// Thời điểm fetch thành công gần nhất
+        /// </summary>
+        public DateTimeOffset? LastFetchedAt { get; set; }
     }
 }
+
