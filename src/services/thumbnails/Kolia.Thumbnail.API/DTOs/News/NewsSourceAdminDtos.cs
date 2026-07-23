@@ -3,6 +3,11 @@ using Kolia.Thumbnail.API.Enums;
 
 namespace Kolia.Thumbnail.API.DTOs.News
 {
+    /// <summary>Request DTO cho bulk set trust (bật/tắt hàng loạt).</summary>
+    public sealed record BulkSetTrustRequestDto(
+        List<Guid> Ids,
+        bool IsTrusted);
+
     /// <summary>DTO tạo mới một NewsSource qua Admin API.</summary>
     public sealed record NewsSourceCreateDto(
         string Name,
@@ -12,7 +17,13 @@ namespace Kolia.Thumbnail.API.DTOs.News
         int Priority,
         CNewsSourceGroup SourceGroup,
         CSourceFetchMode FetchMode,
-        string Domain);
+        string Domain,
+        string? ApiEndpoint = null,
+        string? ApiKey = null,
+        string? ApiQueryParamsTemplate = null,
+        string? ApiResponseJsonPath = null,
+        CApiPaginationType? ApiPaginationType = null,
+        string? ApiRequestHeaders = null);
 
     /// <summary>DTO cập nhật một NewsSource qua Admin API.</summary>
     public sealed record NewsSourceUpdateDto(
@@ -23,7 +34,13 @@ namespace Kolia.Thumbnail.API.DTOs.News
         int Priority,
         CNewsSourceGroup SourceGroup,
         CSourceFetchMode FetchMode,
-        string Domain);
+        string Domain,
+        string? ApiEndpoint = null,
+        string? ApiKey = null,
+        string? ApiQueryParamsTemplate = null,
+        string? ApiResponseJsonPath = null,
+        CApiPaginationType? ApiPaginationType = null,
+        string? ApiRequestHeaders = null);
 
     /// <summary>
     /// DTO trả về danh sách nguồn tin, kèm thông tin trạng thái vận hành
@@ -43,7 +60,10 @@ namespace Kolia.Thumbnail.API.DTOs.News
         DateTimeOffset? LastFetchedAt,
         DateTimeOffset? LastFailedAt,
         int ConsecutiveFailureCount,
-        string OperationalStatus);
+        string OperationalStatus,
+        string? ApiEndpoint = null,
+        string? ApiResponseJsonPath = null,
+        CApiPaginationType? ApiPaginationType = null);
 
     /// <summary>DTO chi tiết một NewsSource.</summary>
     public sealed record NewsSourceDetailDto(
@@ -63,7 +83,13 @@ namespace Kolia.Thumbnail.API.DTOs.News
         string? LastModifiedHeader,
         string OperationalStatus,
         DateTimeOffset CreationTime,
-        DateTimeOffset? LastModificationTime);
+        DateTimeOffset? LastModificationTime,
+        string? ApiEndpoint = null,
+        string? ApiKey = null,
+        string? ApiQueryParamsTemplate = null,
+        string? ApiResponseJsonPath = null,
+        CApiPaginationType? ApiPaginationType = null,
+        string? ApiRequestHeaders = null);
 
     /// <summary>
     /// DTO kết quả test fetch qua POST /admin/news-sources/{id}/test.
@@ -102,7 +128,10 @@ namespace Kolia.Thumbnail.API.DTOs.News
                 LastFetchedAt: e.LastFetchedAt,
                 LastFailedAt: e.LastFailedAt,
                 ConsecutiveFailureCount: e.ConsecutiveFailureCount,
-                OperationalStatus: ComputeStatus(e));
+                OperationalStatus: ComputeStatus(e),
+                ApiEndpoint: e.ApiEndpoint,
+                ApiResponseJsonPath: e.ApiResponseJsonPath,
+                ApiPaginationType: e.ApiPaginationType);
 
         public static NewsSourceDetailDto ToDetail(NewsSourceEntity e) =>
             new(
@@ -122,7 +151,13 @@ namespace Kolia.Thumbnail.API.DTOs.News
                 LastModifiedHeader: e.LastModifiedHeader,
                 OperationalStatus: ComputeStatus(e),
                 CreationTime: e.CreationTime,
-                LastModificationTime: e.LastModificationTime);
+                LastModificationTime: e.LastModificationTime,
+                ApiEndpoint: e.ApiEndpoint,
+                ApiKey: e.ApiKey,
+                ApiQueryParamsTemplate: e.ApiQueryParamsTemplate,
+                ApiResponseJsonPath: e.ApiResponseJsonPath,
+                ApiPaginationType: e.ApiPaginationType,
+                ApiRequestHeaders: e.ApiRequestHeaders);
 
         private static string ComputeStatus(NewsSourceEntity e)
         {

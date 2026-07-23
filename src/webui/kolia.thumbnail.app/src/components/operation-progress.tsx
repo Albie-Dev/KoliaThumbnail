@@ -16,7 +16,7 @@ interface Props {
 }
 
 function resolveBaseUrl() {
-  return import.meta.env.VITE_API_BASE_URL ?? 'https://holes-interactive-variations-given.trycloudflare.com'
+  return import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'
 }
 
 export function OperationProgress({ open, onClose, operationId, title }: Props) {

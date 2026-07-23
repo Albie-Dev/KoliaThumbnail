@@ -10,7 +10,7 @@ import { cn } from '../../lib/utils'
 
 export interface DataTableColumn<T> {
   key: string
-  header: string
+  header: ReactNode
   sortable?: boolean
   render?: (item: T) => ReactNode
 }

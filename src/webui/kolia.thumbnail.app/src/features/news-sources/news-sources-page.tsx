@@ -16,6 +16,7 @@ import {
   getNewsSourcesWithPaging,
   deleteNewsSource,
   toggleNewsSource,
+  bulkSetTrustNewsSources,
   type NewsSourceListItemDto,
 } from './api'
 import { SortDirection, FilterOperator, type SortRequestDto, type RangeFilterRequestDto, type FilterRequestDto } from '../../types/paging.types'
@@ -68,6 +69,29 @@ export function NewsSourcesPage() {
 
   // ── Test fetch dialog state ──────────────────────────────────────────
   const [testFetchTarget, setTestFetchTarget] = useState<NewsSourceListItemDto | null>(null)
+
+  // ── Bulk shutdown ────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+
+  const { mutate: doBulkSetTrust, isPending: isBulkSetting } = useMutation({
+    mutationFn: ({ ids, isTrusted }: { ids: string[]; isTrusted: boolean }) =>
+      bulkSetTrustNewsSources(ids, isTrusted),
+    onSuccess: () => {
+      toast.success('Đã cập nhật trạng thái hàng loạt thành công.')
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['news-sources'] })
+    },
+    onError: () => {
+      toast.error('Không thể cập nhật trạng thái hàng loạt.')
+    },
+  })
+
+  const handleBulkShutdown = useCallback(() => {
+    if (selectedIds.size === 0) return
+    doBulkSetTrust({ ids: Array.from(selectedIds), isTrusted: false })
+    setBulkConfirmOpen(false)
+  }, [selectedIds, doBulkSetTrust])
 
   // ── Sync applied filter values to URL query state ──────────────────────
   const [appliedCreationFrom, setAppliedCreationFrom] = useQueryState('creationFrom', parseAsString.withDefault(''))
@@ -173,8 +197,60 @@ export function NewsSourcesPage() {
       }),
   })
 
+  // ── Selection logic (after data is available) ──────────────────────────
+  const isAllPageSelected = useMemo(
+    () => (data?.items?.length ?? 0) > 0 && (data?.items ?? []).every((item) => selectedIds.has(item.id)),
+    [data?.items, selectedIds],
+  )
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (!data) return
+    if (isAllPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        data.items.forEach((item) => next.delete(item.id))
+        return next
+      })
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        data.items.forEach((item) => next.add(item.id))
+        return next
+      })
+    }
+  }, [data, isAllPageSelected])
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  // ── Clear selection when data changes (e.g. page, filter, sort) ──────
+  useEffect(() => { setSelectedIds(new Set()) }, [data?.items])
+
   const columns = useMemo(
     () => [
+      {
+        key: 'select',
+        header: (
+          <Checkbox
+            checked={isAllPageSelected}
+            onCheckedChange={handleToggleSelectAll}
+            aria-label="Chọn tất cả"
+          />
+        ),
+        render: (item: NewsSourceListItemDto) => (
+          <Checkbox
+            checked={selectedIds.has(item.id)}
+            onCheckedChange={() => handleToggleSelect(item.id)}
+            aria-label={`Chọn ${item.name}`}
+          />
+        ),
+      },
       {
         key: 'name',
         header: 'Tên',
@@ -309,7 +385,7 @@ export function NewsSourcesPage() {
           ),
       },
     ],
-    [open, setDeleteTarget, doToggle],
+    [open, setDeleteTarget, doToggle, isAllPageSelected, handleToggleSelectAll, selectedIds, handleToggleSelect],
   )
 
   const handleApplyFilter = () => {
@@ -435,10 +511,29 @@ export function NewsSourcesPage() {
         onResetFilter={handleResetFilter}
         // ── Create button ───────────────────────────────────────
         actions={
-          <Button onClick={() => open({ type: 'create-news-source' })}>
-            <Plus className="h-4 w-4" />
-            Tạo nguồn tin
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  Đã chọn {selectedIds.size}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBulkConfirmOpen(true)}
+                  disabled={isBulkSetting}
+                  className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 hover:dark:bg-red-950/40"
+                >
+                  <PowerOff className="h-4 w-4" />
+                  Tắt hàng loạt
+                </Button>
+              </div>
+            )}
+            <Button onClick={() => open({ type: 'create-news-source' })}>
+              <Plus className="h-4 w-4" />
+              Tạo nguồn tin
+            </Button>
+          </div>
         }
       />
 
@@ -456,6 +551,21 @@ export function NewsSourcesPage() {
         loading={isDeleting}
         confirmLabel="Xoá"
         variant="danger"
+      />
+
+      {/* Bulk shutdown confirm dialog */}
+      <ConfirmDialog
+        open={bulkConfirmOpen}
+        onClose={() => setBulkConfirmOpen(false)}
+        title="Xác nhận tắt hàng loạt"
+        message={
+          `Bạn có chắc chắn muốn tắt ${selectedIds.size} nguồn tin đã chọn? ` +
+          'Sau khi tắt, hệ thống sẽ không fetch tin từ các nguồn này.'
+        }
+        onConfirm={handleBulkShutdown}
+        loading={isBulkSetting}
+        confirmLabel="Tắt"
+        variant="warning"
       />
 
       {/* Test fetch dialog */}

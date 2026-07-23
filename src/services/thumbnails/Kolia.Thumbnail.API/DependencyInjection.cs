@@ -175,6 +175,19 @@ namespace Kolia.Thumbnail.API
                 client.Timeout = TimeSpan.FromSeconds(15);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(
                     "Mozilla/5.0 KoliaNewsBot/1.0 (admin-test)");
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                // Some RSS feeds only support older TLS versions (1.0, 1.1)
+                SslOptions = new System.Net.Security.SslClientAuthenticationOptions
+                {
+                    EnabledSslProtocols =
+                        System.Security.Authentication.SslProtocols.Tls12 |
+                        System.Security.Authentication.SslProtocols.Tls13
+                },
+                // Allow auto-redirect
+                AllowAutoRedirect = true,
+                MaxAutomaticRedirections = 5,
             });
 
             services.AddScoped<IAdminNewsSourceService>(sp =>
@@ -182,9 +195,10 @@ namespace Kolia.Thumbnail.API
                 var db = sp.GetRequiredService<Data.Contexts.ThumbnailDbContext>();
                 var registry = sp.GetRequiredService<NewsSourceRegistry>();
                 var cacheStore = sp.GetRequiredService<ResponseCacheStore>();
+                var restApiFetcher = sp.GetRequiredService<IRestApiFetcher>();
                 var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("admin-news-source");
                 var logger = sp.GetRequiredService<ILogger<AdminNewsSourceService>>();
-                return new AdminNewsSourceService(db, registry, cacheStore, httpClient, logger);
+                return new AdminNewsSourceService(db, registry, cacheStore, restApiFetcher, httpClient, logger);
             });
             // Named HttpClient for NewsSourceHealthCheckJob
             services.AddHttpClient("HealthCheck", client =>
@@ -229,6 +243,15 @@ namespace Kolia.Thumbnail.API
 
             // GoogleNewsFallbackFetcher & SitemapFallbackFetcher:
             // AddHttpClient already registers as transient — no extra AddScoped needed
+
+            // RestApiFetcher: dùng typed HttpClient riêng với timeout chuẩn + JSON content-type
+            services.AddHttpClient<IRestApiFetcher, RestApiFetcher>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(15);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 KoliaNewsBot/1.0 (rest-api)");
+                client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            });
             // Gold price fetcher (feature-flagged stub)
             services.AddScoped<IGoldPriceFetcher, DomesticGoldPriceFetcher>();
             services.AddHttpClient<RealYouTubeSearchEngine>();

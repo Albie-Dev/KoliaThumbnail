@@ -24,6 +24,9 @@ namespace Kolia.Thumbnail.API.Services.News
         /// <summary>Toggles IsTrusted for a source without changing other fields.</summary>
         Task<NewsSourceDetailDto> ToggleAsync(Guid id, CancellationToken ct);
 
+        /// <summary>Bulk set IsTrusted for multiple sources (bật/tắt hàng loạt).</summary>
+        Task BulkSetTrustAsync(List<Guid> ids, bool isTrusted, CancellationToken ct);
+
         /// <summary>
         /// Performs a live test-fetch for the source (using the real pipeline)
         /// WITHOUT affecting circuit-breaker or operational stats.

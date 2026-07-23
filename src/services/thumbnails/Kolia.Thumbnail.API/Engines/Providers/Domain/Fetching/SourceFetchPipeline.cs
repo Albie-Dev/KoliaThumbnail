@@ -23,6 +23,7 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching
         private readonly DomainRateLimiterRegistry _rateLimiter;
         private readonly GoogleNewsFallbackFetcher _googleNewsFetcher;
         private readonly SitemapFallbackFetcher _sitemapFetcher;
+        private readonly IRestApiFetcher _restApiFetcher;
         private readonly ResponseCacheStore _cache;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<SourceFetchPipeline> _logger;
@@ -32,6 +33,7 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching
             DomainRateLimiterRegistry rateLimiter,
             GoogleNewsFallbackFetcher googleNewsFetcher,
             SitemapFallbackFetcher sitemapFetcher,
+            IRestApiFetcher restApiFetcher,
             ResponseCacheStore cache,
             IServiceScopeFactory scopeFactory,
             ILogger<SourceFetchPipeline> logger)
@@ -40,6 +42,7 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching
             _rateLimiter = rateLimiter;
             _googleNewsFetcher = googleNewsFetcher;
             _sitemapFetcher = sitemapFetcher;
+            _restApiFetcher = restApiFetcher;
             _cache = cache;
             _scopeFactory = scopeFactory;
             _logger = logger;
@@ -54,6 +57,22 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching
         {
             // Rate limiter: enforce per-domain concurrency=1 + inter-request delay
             using var rateLimitHandle = await _rateLimiter.AcquireAsync(source.Domain, ct);
+
+            // TIER 0: REST API — standalone mode, skip all RSS/Google/Sitemap tiers
+            if (source.FetchMode is CSourceFetchMode.RestApi)
+            {
+                var restResults = await _restApiFetcher.FetchAsync(source, keywords, cutoff, maxCount, ct);
+                if (restResults.Count > 0)
+                {
+                    await MarkFetchedOkAsync(source);
+                    return restResults;
+                }
+
+                // Fallback: stale cache
+                var staleRest = await _cache.TryGetStaleAsync(source.Domain, ct);
+                await MarkFetchFailedAsync(source);
+                return staleRest ?? [];
+            }
 
             // TIER 1: RSS/Atom direct
             if (source.FetchMode is CSourceFetchMode.RssDirect or CSourceFetchMode.GoogleNewsFallback

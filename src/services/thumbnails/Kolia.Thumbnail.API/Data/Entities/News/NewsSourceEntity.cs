@@ -88,6 +88,46 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// </summary>
         [Queryable(Sortable = true, RangeFilterable = true)]
         public DateTimeOffset? LastFetchedAt { get; set; }
+
+        // ── REST API fetch fields ─────────────────────────────────────
+
+        /// <summary>
+        /// URL endpoint của REST API (vd: https://newsapi.org/v2/everything).
+        /// Chỉ dùng khi FetchMode = RestApi (7).
+        /// </summary>
+        public string? ApiEndpoint { get; set; }
+
+        /// <summary>
+        /// API key/token để xác thực (gửi qua header 'X-Api-Key' hoặc query param tuỳ cấu hình).
+        /// Chỉ dùng khi FetchMode = RestApi (7).
+        /// </summary>
+        public string? ApiKey { get; set; }
+
+        /// <summary>
+        /// Chuỗi JSON template cho query params, vd:
+        /// {"q":"{keywords}","from":"{cutoff}","sortBy":"publishedAt","pageSize":100}
+        /// Các placeholder: {keywords}, {cutoff}, {maxCount}
+        /// </summary>
+        public string? ApiQueryParamsTemplate { get; set; }
+
+        /// <summary>
+        /// JSON path để trích xuất mảng items từ response, vd:
+        /// "articles" cho {"articles": [...]}
+        /// "data.items" cho {"data": {"items": [...]}}
+        /// "response.docs" cho {"response": {"docs": [...]}} (NYT API style)
+        /// </summary>
+        public string? ApiResponseJsonPath { get; set; }
+
+        /// <summary>
+        /// Kiểu phân trang (None/Offset/Page/Cursor).
+        /// </summary>
+        public CApiPaginationType? ApiPaginationType { get; set; }
+
+        /// <summary>
+        /// Additional request headers dạng JSON object, vd:
+        /// {"Authorization": "Bearer token123", "Accept": "application/json"}
+        /// </summary>
+        public string? ApiRequestHeaders { get; set; }
     }
 }
 

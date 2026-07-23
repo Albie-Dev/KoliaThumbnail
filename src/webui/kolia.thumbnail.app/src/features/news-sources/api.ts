@@ -22,12 +22,20 @@ export interface NewsSourceListItemDto {
   isDeleted?: boolean
   creationTime?: string | null
   lastModificationTime?: string | null
+  // REST API fields
+  apiEndpoint?: string | null
+  apiResponseJsonPath?: string | null
+  apiPaginationType?: number | null
 }
 
 export interface NewsSourceDetailDto extends NewsSourceListItemDto {
   lastEtag?: string | null
   lastModifiedHeader?: string | null
   deletionTime?: string | null
+  // REST API detail fields
+  apiKey?: string | null
+  apiQueryParamsTemplate?: string | null
+  apiRequestHeaders?: string | null
 }
 
 export interface NewsSourceTestFetchResultDto {
@@ -105,4 +113,11 @@ export async function testFetchNewsSource(
 
 export async function deleteNewsSource(id: string): Promise<void> {
   await httpClient.delete(`/admin/news-sources/${id}`)
+}
+
+export async function bulkSetTrustNewsSources(
+  ids: string[],
+  isTrusted: boolean,
+): Promise<void> {
+  await httpClient.post('/admin/news-sources/bulk/set-trust', { ids, isTrusted })
 }

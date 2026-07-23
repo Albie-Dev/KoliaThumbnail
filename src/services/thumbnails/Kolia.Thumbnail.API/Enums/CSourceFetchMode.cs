@@ -41,6 +41,13 @@ namespace Kolia.Thumbnail.API.Enums
         /// Custom scraper riêng (vd: giá vàng SJC/PNJ/DOJI).
         /// Cần implement IGoldPriceFetcher hoặc scraper tương tự.
         /// </summary>
-        Custom = 6
+        Custom = 6,
+
+        /// <summary>
+        /// REST API — gọi HTTP GET đến ApiEndpoint với headers/params cấu hình,
+        /// parse JSON response theo ApiResponseJsonPath để lấy danh sách item.
+        /// Dùng cho các nguồn có API công khai (NewsAPI, Guardian, ...).
+        /// </summary>
+        RestApi = 7
     }
 }

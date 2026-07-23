@@ -134,6 +134,23 @@ namespace Kolia.Thumbnail.API.Controllers.Admins
         }
 
         /// <summary>
+        /// Bật/tắt IsTrusted hàng loạt cho nhiều nguồn cùng lúc.
+        /// Dùng khi muốn shutdown/bật lại nhiều nguồn một lần.
+        /// </summary>
+        [HttpPost("bulk/set-trust", Name = "BulkSetTrustNewsSources")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> BulkSetTrust(
+            [FromBody] BulkSetTrustRequestDto request, CancellationToken ct)
+        {
+            if (request.Ids.Count == 0)
+                return BadRequest(new { error = "Danh sách Ids không được để trống." });
+
+            await _service.BulkSetTrustAsync(request.Ids, request.IsTrusted, ct);
+            return NoContent();
+        }
+
+        /// <summary>
         /// Test thử fetch ngay (preview kết quả thật, không ảnh hưởng circuit breaker vận hành).
         /// Dùng để xác nhận URL mới đúng trước khi để hệ thống dùng thật.
         /// </summary>

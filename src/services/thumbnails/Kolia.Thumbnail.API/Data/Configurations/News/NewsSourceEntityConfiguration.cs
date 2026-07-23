@@ -65,6 +65,32 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
             builder.Property(x => x.LastFetchedAt)
                 .IsRequired(false);
 
+            // ── REST API fetch fields ────────────────────────────────────
+
+            builder.Property(x => x.ApiEndpoint)
+                .IsRequired(false)
+                .HasMaxLength(1000);
+
+            builder.Property(x => x.ApiKey)
+                .IsRequired(false)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.ApiQueryParamsTemplate)
+                .IsRequired(false)
+                .HasMaxLength(2000);
+
+            builder.Property(x => x.ApiResponseJsonPath)
+                .IsRequired(false)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.ApiPaginationType)
+                .IsRequired(false)
+                .HasSentinel(default(CApiPaginationType?));
+
+            builder.Property(x => x.ApiRequestHeaders)
+                .IsRequired(false)
+                .HasMaxLength(2000);
+
             // Unique index on Domain to prevent duplicate sources per domain
             builder.HasIndex(x => x.Domain)
                 .IsUnique()
@@ -89,6 +115,12 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
                     LastEtag = (string?)null,
                     LastModifiedHeader = (string?)null,
                     LastFetchedAt = (DateTimeOffset?)null,
+                    ApiEndpoint = (string?)null,
+                    ApiKey = (string?)null,
+                    ApiQueryParamsTemplate = (string?)null,
+                    ApiResponseJsonPath = (string?)null,
+                    ApiPaginationType = (CApiPaginationType?)null,
+                    ApiRequestHeaders = (string?)null,
                     CreationTime = ts,
                     LastModificationTime = (DateTimeOffset?)null,
                     IsDeleted = false,
@@ -110,6 +142,12 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
                     LastEtag = (string?)null,
                     LastModifiedHeader = (string?)null,
                     LastFetchedAt = (DateTimeOffset?)null,
+                    ApiEndpoint = (string?)null,
+                    ApiKey = (string?)null,
+                    ApiQueryParamsTemplate = (string?)null,
+                    ApiResponseJsonPath = (string?)null,
+                    ApiPaginationType = (CApiPaginationType?)null,
+                    ApiRequestHeaders = (string?)null,
                     CreationTime = ts,
                     LastModificationTime = (DateTimeOffset?)null,
                     IsDeleted = false,
@@ -131,6 +169,12 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
                     LastEtag = (string?)null,
                     LastModifiedHeader = (string?)null,
                     LastFetchedAt = (DateTimeOffset?)null,
+                    ApiEndpoint = (string?)null,
+                    ApiKey = (string?)null,
+                    ApiQueryParamsTemplate = (string?)null,
+                    ApiResponseJsonPath = (string?)null,
+                    ApiPaginationType = (CApiPaginationType?)null,
+                    ApiRequestHeaders = (string?)null,
                     CreationTime = ts,
                     LastModificationTime = (DateTimeOffset?)null,
                     IsDeleted = false,

@@ -3,6 +3,7 @@ using System;
 using Kolia.Thumbnail.API.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Kolia.Thumbnail.API.Data.Migrations
 {
     [DbContext(typeof(ThumbnailDbContext))]
-    partial class ThumbnailDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723033041_PendingModelChanges")]
+    partial class PendingModelChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1139,29 +1142,6 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("ApiEndpoint")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("ApiKey")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int?>("ApiPaginationType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ApiQueryParamsTemplate")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("ApiRequestHeaders")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("ApiResponseJsonPath")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<int>("ConsecutiveFailureCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1297,7 +1277,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "Reuters Business",
                             Priority = 10,
                             Region = 2,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en",
+                            RssOrFeedUrl = "https://feeds.reuters.com/reuters/businessNews",
                             SourceGroup = 1
                         },
                         new
@@ -1372,7 +1352,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "Investing.com",
                             Priority = 15,
                             Region = 2,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:investing.com/news&hl=en-US&gl=US&ceid=US:en",
+                            RssOrFeedUrl = "https://www.investing.com/rss/news.rss",
                             SourceGroup = 1
                         },
                         new
@@ -1462,7 +1442,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "Bloomberg",
                             Priority = 21,
                             Region = 2,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:bloomberg.com&hl=en-US&gl=US&ceid=US:en",
+                            RssOrFeedUrl = "https://www.bloomberg.com",
                             SourceGroup = 1
                         },
                         new
@@ -1477,7 +1457,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "Fidelity Insights",
                             Priority = 22,
                             Region = 2,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:fidelity.com&hl=en-US&gl=US&ceid=US:en",
+                            RssOrFeedUrl = "https://www.fidelity.com/learning-center/trading-investing/markets-economy-finance/stock-market-outlook",
                             SourceGroup = 1
                         },
                         new
@@ -1492,7 +1472,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "BLS News Release",
                             Priority = 31,
                             Region = 2,
-                            RssOrFeedUrl = "https://www.bls.gov/feed/bls_latest.rss",
+                            RssOrFeedUrl = "https://www.bls.gov/feed/news_release.rss",
                             SourceGroup = 2
                         },
                         new
@@ -1501,13 +1481,13 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             ConsecutiveFailureCount = 0,
                             CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Domain = "bea.gov",
-                            FetchMode = 1,
+                            FetchMode = 3,
                             IsDeleted = false,
                             IsTrusted = true,
                             Name = "BEA (Bureau of Economic Analysis)",
                             Priority = 32,
                             Region = 2,
-                            RssOrFeedUrl = "https://apps.bea.gov/rss/rss.xml",
+                            RssOrFeedUrl = "https://www.bea.gov/rss.xml",
                             SourceGroup = 2
                         },
                         new
@@ -1531,29 +1511,25 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             ConsecutiveFailureCount = 0,
                             CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Domain = "imf.org",
-                            FetchMode = 2,
+                            FetchMode = 1,
                             IsDeleted = false,
                             IsTrusted = true,
                             Name = "IMF News",
                             Priority = 34,
                             Region = 2,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:imf.org/en/News&hl=en-US&gl=US&ceid=US:en",
+                            RssOrFeedUrl = "https://www.imf.org/en/News/rss?language=eng",
                             SourceGroup = 2
                         },
                         new
                         {
                             Id = new Guid("11111111-0003-7000-8000-000000000006"),
-                            ApiEndpoint = "https://search.worldbank.org/api/v2/news",
-                            ApiPaginationType = 2,
-                            ApiQueryParamsTemplate = "format=json&rows={maxCount}&displayconttype_exact=Press%20Release&lang_exact=English",
-                            ApiResponseJsonPath = "documents",
                             ConsecutiveFailureCount = 0,
                             CreationTime = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Domain = "worldbank.org",
-                            FetchMode = 7,
+                            FetchMode = 1,
                             IsDeleted = false,
                             IsTrusted = true,
-                            Name = "World Bank News (REST API)",
+                            Name = "World Bank News",
                             Priority = 35,
                             Region = 2,
                             RssOrFeedUrl = "https://www.worldbank.org/en/news/all?qterm=&lang_exact=English&format=rss",
@@ -1631,7 +1607,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "SSI Research",
                             Priority = 44,
                             Region = 1,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:ssi.com.vn&hl=vi&gl=VN&ceid=VN:vi",
+                            RssOrFeedUrl = "https://www.ssi.com.vn/en/research",
                             SourceGroup = 3
                         },
                         new
@@ -1646,7 +1622,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "MBS Research",
                             Priority = 45,
                             Region = 1,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:mbs.com.vn&hl=vi&gl=VN&ceid=VN:vi",
+                            RssOrFeedUrl = "https://www.mbs.com.vn/en/research",
                             SourceGroup = 3
                         },
                         new
@@ -1661,7 +1637,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "VNDirect",
                             Priority = 46,
                             Region = 1,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:vndirect.com.vn&hl=vi&gl=VN&ceid=VN:vi",
+                            RssOrFeedUrl = "https://www.vndirect.com.vn/en/research",
                             SourceGroup = 3
                         },
                         new
@@ -1676,7 +1652,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "TradingView News",
                             Priority = 50,
                             Region = 2,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:tradingview.com/news/tradingview&hl=en-US&gl=US&ceid=US:en",
+                            RssOrFeedUrl = "https://www.tradingview.com/news/",
                             SourceGroup = 4
                         },
                         new
@@ -1691,7 +1667,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "Kitco (Gold)",
                             Priority = 51,
                             Region = 2,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:kitco.com/news&hl=en-US&gl=US&ceid=US:en",
+                            RssOrFeedUrl = "https://www.kitco.com/rss/",
                             SourceGroup = 4
                         },
                         new
@@ -1706,7 +1682,7 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                             Name = "Google Trends VN",
                             Priority = 60,
                             Region = 1,
-                            RssOrFeedUrl = "https://news.google.com/rss/search?q=th%E1%BB%8B+tr%C6%B0%E1%BB%9Dng+ch%E1%BB%A9ng+kho%C3%A1n+Vi%E1%BB%87t+Nam&hl=vi&gl=VN&ceid=VN:vi",
+                            RssOrFeedUrl = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=VN",
                             SourceGroup = 5
                         });
                 });

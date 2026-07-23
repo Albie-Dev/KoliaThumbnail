@@ -14,6 +14,7 @@ namespace Kolia.Thumbnail.API.Services.News
         private readonly ThumbnailDbContext _db;
         private readonly NewsSourceRegistry _registry;
         private readonly ResponseCacheStore _responseCache;
+        private readonly IRestApiFetcher _restApiFetcher;
         private readonly HttpClient _httpClient;
         private readonly ILogger<AdminNewsSourceService> _logger;
 
@@ -21,12 +22,14 @@ namespace Kolia.Thumbnail.API.Services.News
             ThumbnailDbContext db,
             NewsSourceRegistry registry,
             ResponseCacheStore responseCache,
+            IRestApiFetcher restApiFetcher,
             HttpClient httpClient,
             ILogger<AdminNewsSourceService> logger)
         {
             _db = db;
             _registry = registry;
             _responseCache = responseCache;
+            _restApiFetcher = restApiFetcher;
             _httpClient = httpClient;
             _logger = logger;
         }
@@ -78,8 +81,8 @@ namespace Kolia.Thumbnail.API.Services.News
 
         public async Task<NewsSourceDetailDto> CreateAsync(NewsSourceCreateDto dto, CancellationToken ct)
         {
-            // Validate URL is reachable before saving
-            await ValidateUrlReachableAsync(dto.RssOrFeedUrl, ct);
+            // Validate URL is reachable before saving (non-blocking — chỉ warning log)
+            await TryValidateUrlReachableAsync(dto.RssOrFeedUrl, ct);
 
             var entity = new NewsSourceEntity
             {
@@ -91,7 +94,13 @@ namespace Kolia.Thumbnail.API.Services.News
                 SourceGroup = dto.SourceGroup,
                 FetchMode = dto.FetchMode,
                 Domain = dto.Domain,
-                ConsecutiveFailureCount = 0
+                ConsecutiveFailureCount = 0,
+                ApiEndpoint = dto.ApiEndpoint,
+                ApiKey = dto.ApiKey,
+                ApiQueryParamsTemplate = dto.ApiQueryParamsTemplate,
+                ApiResponseJsonPath = dto.ApiResponseJsonPath,
+                ApiPaginationType = dto.ApiPaginationType,
+                ApiRequestHeaders = dto.ApiRequestHeaders
             };
 
             _db.NewsSources.Add(entity);
@@ -108,9 +117,9 @@ namespace Kolia.Thumbnail.API.Services.News
             var entity = await _db.NewsSources.FindAsync([id], ct)
                 ?? throw new KeyNotFoundException($"NewsSource {id} không tìm thấy.");
 
-            // If URL changed, validate reachability first
+            // If URL changed, validate reachability first (non-blocking — chỉ warning log)
             if (entity.RssOrFeedUrl != dto.RssOrFeedUrl)
-                await ValidateUrlReachableAsync(dto.RssOrFeedUrl, ct);
+                await TryValidateUrlReachableAsync(dto.RssOrFeedUrl, ct);
 
             entity.Name = dto.Name;
             entity.RssOrFeedUrl = dto.RssOrFeedUrl;
@@ -120,6 +129,12 @@ namespace Kolia.Thumbnail.API.Services.News
             entity.SourceGroup = dto.SourceGroup;
             entity.FetchMode = dto.FetchMode;
             entity.Domain = dto.Domain;
+            entity.ApiEndpoint = dto.ApiEndpoint;
+            entity.ApiKey = dto.ApiKey;
+            entity.ApiQueryParamsTemplate = dto.ApiQueryParamsTemplate;
+            entity.ApiResponseJsonPath = dto.ApiResponseJsonPath;
+            entity.ApiPaginationType = dto.ApiPaginationType;
+            entity.ApiRequestHeaders = dto.ApiRequestHeaders;
             entity.LastModificationTime = DateTimeOffset.UtcNow;
 
             await _db.SaveChangesAsync(ct);
@@ -147,11 +162,73 @@ namespace Kolia.Thumbnail.API.Services.News
             return NewsSourceMapper.ToDetail(entity);
         }
 
+        public async Task BulkSetTrustAsync(List<Guid> ids, bool isTrusted, CancellationToken ct)
+        {
+            if (ids.Count == 0) return;
+
+            var entities = await _db.NewsSources
+                .Where(s => ids.Contains(s.Id))
+                .ToListAsync(ct);
+
+            var now = DateTimeOffset.UtcNow;
+            foreach (var entity in entities)
+            {
+                entity.IsTrusted = isTrusted;
+                entity.LastModificationTime = now;
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            _registry.InvalidateCache();
+
+            // Invalidate response cache for each domain
+            foreach (var entity in entities)
+            {
+                _responseCache.Invalidate(entity.Domain);
+            }
+
+            _logger.LogInformation(
+                "Admin bulk set IsTrusted={Value} for {Count} NewsSource(s) (requested {Total} ids).",
+                isTrusted, entities.Count, ids.Count);
+        }
+
         public async Task<NewsSourceTestFetchResultDto> TestFetchAsync(
             Guid id, List<string> keywords, CancellationToken ct)
         {
             var entity = await _db.NewsSources.FindAsync([id], ct)
                 ?? throw new KeyNotFoundException($"NewsSource {id} không tìm thấy.");
+
+            // REST API mode — use RestApiFetcher for test
+            if (entity.FetchMode is CSourceFetchMode.RestApi)
+            {
+                try
+                {
+                    var cutoff = DateTimeOffset.UtcNow.AddDays(-30);
+                    var items = await _restApiFetcher.FetchAsync(entity, keywords, cutoff, 5, ct);
+
+                    var previews = items.Select(i => new NewsSourcePreviewItemDto(
+                        Title: i.Title,
+                        SourceUrl: i.SourceUrl,
+                        PublishedTime: i.PublishedTime,
+                        SummaryRaw: i.SummaryRaw)).ToList();
+
+                    return new NewsSourceTestFetchResultDto(
+                        Success: true,
+                        TierUsed: "REST-API",
+                        ItemCount: previews.Count,
+                        Items: previews,
+                        ErrorMessage: null);
+                }
+                catch (Exception ex)
+                {
+                    return new NewsSourceTestFetchResultDto(
+                        Success: false,
+                        TierUsed: "REST-API",
+                        ItemCount: 0,
+                        Items: [],
+                        ErrorMessage: ex.Message);
+                }
+            }
 
             // Use a simple direct RSS fetch for test — does NOT touch circuit breaker stats
             try
@@ -206,32 +283,40 @@ namespace Kolia.Thumbnail.API.Services.News
 
         // ── Private helpers ──────────────────────────────────────────
 
-        private async Task ValidateUrlReachableAsync(string url, CancellationToken ct)
+        private async Task TryValidateUrlReachableAsync(string url, CancellationToken ct)
         {
             try
             {
-                using var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
-                var response = await _httpClient.SendAsync(headRequest, ct);
-                if (!response.IsSuccessStatusCode)
+                // Try HEAD first (lightweight)
+                try
                 {
-                    // Some feeds don't support HEAD — try GET with a short timeout
-                    using var getRequest = new HttpRequestMessage(HttpMethod.Get, url);
-                    var getResponse = await _httpClient.SendAsync(getRequest, ct);
-                    if (!getResponse.IsSuccessStatusCode)
-                        throw new InvalidOperationException(
-                            $"URL '{url}' trả về HTTP {(int)getResponse.StatusCode}. " +
-                            "Vui lòng kiểm tra lại URL trước khi lưu.");
+                    using var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
+                    var response = await _httpClient.SendAsync(headRequest, ct);
+                    if (response.IsSuccessStatusCode)
+                        return;
                 }
-            }
-            catch (InvalidOperationException)
-            {
-                throw;
+                catch
+                {
+                    // HEAD failed — fall through to GET
+                }
+
+                // Fallback: GET request
+                using var getRequest = new HttpRequestMessage(HttpMethod.Get, url);
+                var getResponse = await _httpClient.SendAsync(getRequest, ct);
+                if (getResponse.IsSuccessStatusCode)
+                    return;
+
+                _logger.LogWarning(
+                    "URL validation warning: '{Url}' trả về HTTP {StatusCode}. " +
+                    "Vẫn lưu nguồn tin, admin có thể dùng Test Fetch để kiểm tra sau.",
+                    url, (int)getResponse.StatusCode);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"Không thể kết nối tới URL '{url}': {ex.Message}. " +
-                    "Vui lòng kiểm tra URL và thử lại.", ex);
+                _logger.LogWarning(ex,
+                    "URL validation warning: Không thể kết nối tới '{Url}'. " +
+                    "Vẫn lưu nguồn tin, admin có thể dùng Test Fetch để kiểm tra sau.",
+                    url);
             }
         }
 

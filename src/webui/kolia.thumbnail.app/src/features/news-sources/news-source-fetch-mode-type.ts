@@ -11,6 +11,12 @@ export const CSourceFetchMode = {
   GoogleNewsSiteRestricted: 3,
   /// <summary>Sử dụng sitemap.xml (Tier 3)</summary>
   SitemapFallback: 4,
+  /// <summary>Sitemap hoặc Google News</summary>
+  SitemapOrGoogleNews: 5,
+  /// <summary>Custom scraper riêng</summary>
+  Custom: 6,
+  /// <summary>REST API — gọi HTTP GET đến ApiEndpoint, parse JSON response</summary>
+  RestApi: 7,
 } as const
 
 export type CSourceFetchMode = (typeof CSourceFetchMode)[keyof typeof CSourceFetchMode]
@@ -20,6 +26,9 @@ export const SOURCE_FETCH_MODE_OPTIONS: { id: CSourceFetchMode; label: string }[
   { id: CSourceFetchMode.GoogleNewsFallback, label: 'RSS + Google News fallback' },
   { id: CSourceFetchMode.GoogleNewsSiteRestricted, label: 'Google News site-restricted' },
   { id: CSourceFetchMode.SitemapFallback, label: 'Sitemap' },
+  { id: CSourceFetchMode.SitemapOrGoogleNews, label: 'Sitemap hoặc Google News' },
+  { id: CSourceFetchMode.Custom, label: 'Custom scraper' },
+  { id: CSourceFetchMode.RestApi, label: 'REST API' },
 ]
 
 export function getSourceFetchModeLabel(v: number): string | undefined {

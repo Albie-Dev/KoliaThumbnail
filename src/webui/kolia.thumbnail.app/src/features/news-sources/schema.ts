@@ -1,9 +1,11 @@
 import { z } from 'zod'
 import { CNewsSourceGroup } from './news-source-group-type'
 import { CSourceFetchMode } from './news-source-fetch-mode-type'
+import { CApiPaginationType } from './news-source-api-pagination-type'
 
 const NEWS_SOURCE_GROUP_VALUES = Object.values(CNewsSourceGroup) as [number, ...number[]]
 const SOURCE_FETCH_MODE_VALUES = Object.values(CSourceFetchMode) as [number, ...number[]]
+const API_PAGINATION_TYPE_VALUES = Object.values(CApiPaginationType) as [number, ...number[]]
 
 export const createNewsSourceSchema = z.object({
   name: z.string().min(1, 'Tên không được để trống'),
@@ -20,6 +22,16 @@ export const createNewsSourceSchema = z.object({
     { message: 'Phương thức fetch không hợp lệ' },
   ),
   domain: z.string().min(1, 'Domain không được để trống'),
+  // REST API fields
+  apiEndpoint: z.string().url('URL không hợp lệ').optional().or(z.literal('')),
+  apiKey: z.string().optional().or(z.literal('')),
+  apiQueryParamsTemplate: z.string().optional().or(z.literal('')),
+  apiResponseJsonPath: z.string().optional().or(z.literal('')),
+  apiPaginationType: z.number().refine(
+    (val) => (API_PAGINATION_TYPE_VALUES as readonly number[]).includes(val),
+    { message: 'Kiểu phân trang không hợp lệ' },
+  ).optional(),
+  apiRequestHeaders: z.string().optional().or(z.literal('')),
 })
 
 export type CreateNewsSourceInput = z.infer<typeof createNewsSourceSchema>
