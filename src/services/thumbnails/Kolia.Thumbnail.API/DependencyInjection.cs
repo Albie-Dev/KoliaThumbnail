@@ -241,6 +241,7 @@ namespace Kolia.Thumbnail.API
             // ── Register Domain Services ──────────────────────────────────
             services.AddScoped<IProjectService, ProjectService>();
             services.AddScoped<IContentBriefService, ContentBriefService>();
+            services.AddSingleton<OperationProgressStore>();
             services.AddScoped<INewsService, NewsService>();
             services.AddScoped<IThumbnailLibraryService, ThumbnailLibraryService>();
             services.AddScoped<IDisplayTextService, DisplayTextService>();

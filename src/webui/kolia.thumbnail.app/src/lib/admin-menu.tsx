@@ -17,6 +17,7 @@ import {
   Share2,
   Globe,
   KeyRound,
+  Rss,
   Cloud,
   CalendarClock,
   type LucideIcon,
@@ -93,6 +94,10 @@ const ThumbnailGenerationPage = lazy(() =>
 
 const GoogleServicesPage = lazy(() =>
   import('../features/google-services/google-service-page').then((m) => ({ default: m.GoogleServicesPage })),
+)
+
+const NewsSourcesPage = lazy(() =>
+  import('../features/news-sources/news-sources-page').then((m) => ({ default: m.NewsSourcesPage })),
 )
 
 const ScheduledJobsPage = lazy(() =>
@@ -304,6 +309,13 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         icon: Cloud,
         iconColor: '#4285F4', // Google Blue
         component: GoogleServicesPage,
+      },
+      {
+        key: '/configuration/news-sources',
+        label: 'Nguồn tin tức',
+        icon: Rss,
+        iconColor: '#f97316', // orange-500
+        component: NewsSourcesPage,
       },
     ],
   },

@@ -1,5 +1,7 @@
 import { httpClient } from '../../lib/api/http-client'
-import type { CMarketScope, CNewsTimeRange, CNewsCountFilter } from '../../types/enums/pipeline.enums'
+import { buildPagedQuery } from '../../lib/api/build-paged-query'
+import type { BackendPagedResponse, PagedResult, PagedRequestParams } from '../../types/paging.types'
+import type { CMarketScope, CNewsTimeRange, CNewsCountFilter, CRelevanceLevel } from '../../types/enums/pipeline.enums'
 
 // ── DTOs ──────────────────────────────────────────────────────────────────
 
@@ -21,18 +23,19 @@ export interface NewsItemDto {
   noveltyDataScore: number
   totalScore: number
   recommendation: number
-  relevanceLevel: number
+  relevanceLevel: CRelevanceLevel
   isSelectedByTeam: boolean
   suggestedKeywordsForThumbnail?: string | null
   hasDeepAnalysis: boolean
   keywordBatchGroup?: string | null
+  emotionTags: number
 }
 
 export interface NewsSearchResultDto {
+  searchRequestId: string
+  marketScope: number
+  timeRange: number
   items: NewsItemDto[]
-  totalCount: number
-  selectedCount: number
-  scannedSourceCount: number
 }
 
 export interface NewsDeepAnalysisDto {
@@ -49,10 +52,30 @@ export interface NewsDeepAnalysisDto {
   missingDataNote?: string | null
 }
 
+// ── Paging helpers ────────────────────────────────────────────────────────
+
+function toPagedResult(payload: BackendPagedResponse<NewsItemDto>): PagedResult<NewsItemDto> {
+  return {
+    items: payload.items,
+    pageNumber: payload.pageInfo.pageNumber,
+    pageSize: payload.pageInfo.pageSize,
+    totalCount: payload.pageInfo.totalRecords,
+    totalPages: payload.pageInfo.totalPages,
+  }
+}
+
 // ── API functions ─────────────────────────────────────────────────────────
 
 export async function getNews(projectId: string): Promise<NewsItemDto[]> {
   return httpClient.get<NewsItemDto[]>(`/api/v1/projects/${projectId}/news`)
+}
+
+export async function getNewsPaging(projectId: string, params: PagedRequestParams) {
+  const query = buildPagedQuery({ includeTotalCount: true, includeItems: true, ...params })
+  const response = await httpClient.get<BackendPagedResponse<NewsItemDto>>(
+    `/api/v1/projects/${projectId}/news/paging?${query.toString()}`,
+  )
+  return toPagedResult(response)
 }
 
 export async function searchNews(
@@ -64,8 +87,10 @@ export async function searchNews(
     keywordsRaw: string
     suggestedKeywordsSelected?: string[]
   },
+  operationId?: string,
 ): Promise<NewsSearchResultDto> {
-  return httpClient.post<NewsSearchResultDto>(`/api/v1/projects/${projectId}/news/search`, data)
+  const query = operationId ? `?operationId=${operationId}` : ''
+  return httpClient.post<NewsSearchResultDto>(`/api/v1/projects/${projectId}/news/search${query}`, data)
 }
 
 export async function importNewsManual(projectId: string, url: string): Promise<NewsItemDto> {
@@ -87,9 +112,11 @@ export async function selectNewsItem(
 export async function deepAnalyzeNews(
   projectId: string,
   newsItemId: string,
+  operationId?: string,
 ): Promise<NewsDeepAnalysisDto> {
+  const query = operationId ? `?operationId=${operationId}` : ''
   return httpClient.post<NewsDeepAnalysisDto>(
-    `/api/v1/projects/${projectId}/news/items/${newsItemId}/deep-analyze`,
+    `/api/v1/projects/${projectId}/news/items/${newsItemId}/deep-analyze${query}`,
     {},
   )
 }

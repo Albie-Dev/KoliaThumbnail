@@ -1,5 +1,7 @@
 using Kolia.Thumbnail.API.Data.Entities.News;
+using Kolia.Thumbnail.API.DTOs.News;
 using Kolia.Thumbnail.API.Enums;
+using Kolia.Thumbnail.API.Models.Commons;
 
 namespace Kolia.Thumbnail.API.Services.News
 {
@@ -18,6 +20,7 @@ namespace Kolia.Thumbnail.API.Services.News
             CNewsCountFilter countFilter,
             string keywordsRaw,
             IEnumerable<string>? suggestedKeywordsSelected,
+            Guid operationId = default,
             CancellationToken ct = default);
 
         /// <summary>
@@ -33,9 +36,17 @@ namespace Kolia.Thumbnail.API.Services.News
             CancellationToken ct = default);
 
         /// <summary>
+        /// Lấy NewsItems phân trang của 1 project.
+        /// </summary>
+        Task<PagedResponseDto<NewsItemDto>> GetPagedByProjectAsync(Guid projectId,
+            PagedRequestDto request,
+            CancellationToken ct = default);
+
+        /// <summary>
         /// Phân tích sâu 4 tầng cho 1 bản tin. Tạo NewsDeepAnalysisEntity mới nếu chưa có.
         /// </summary>
         Task<NewsDeepAnalysisEntity> DeepAnalyzeAsync(Guid newsItemId,
+            Guid operationId = default,
             CancellationToken ct = default);
 
         /// <summary>

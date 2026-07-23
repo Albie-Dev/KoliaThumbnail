@@ -1,8 +1,12 @@
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Entities.News;
+using Kolia.Thumbnail.API.DTOs.News;
 using Kolia.Thumbnail.API.Engines.AI;
 using Kolia.Thumbnail.API.Engines.Social;
 using Kolia.Thumbnail.API.Enums;
+using Kolia.Thumbnail.API.Exceptions;
+using Kolia.Thumbnail.API.Extensions;
+using Kolia.Thumbnail.API.Models.Commons;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kolia.Thumbnail.API.Services.News
@@ -13,17 +17,41 @@ namespace Kolia.Thumbnail.API.Services.News
         private readonly ISocialExecutorService _socialExecutor;
         private readonly INewsScoringEngine _scoringEngine;
         private readonly INewsDeepAnalysisEngine _deepAnalysisEngine;
+        private readonly OperationProgressStore _progressStore;
+        private readonly ILogger<NewsService> _logger;
 
         public NewsService(
             ThumbnailDbContext db,
             ISocialExecutorService socialExecutor,
             INewsScoringEngine scoringEngine,
-            INewsDeepAnalysisEngine deepAnalysisEngine)
+            INewsDeepAnalysisEngine deepAnalysisEngine,
+            OperationProgressStore progressStore,
+            ILogger<NewsService> logger)
         {
             _db = db;
             _socialExecutor = socialExecutor;
             _scoringEngine = scoringEngine;
             _deepAnalysisEngine = deepAnalysisEngine;
+            _progressStore = progressStore;
+            _logger = logger;
+        }
+
+        private OperationProgress? StartProgress(Guid operationId, string title)
+        {
+            if (operationId == Guid.Empty) return null;
+            return _progressStore.Create(operationId, title);
+        }
+
+        private void LogProgress(OperationProgress? progress, string message, bool isError = false)
+        {
+            if (progress == null) return;
+            _progressStore.AppendLog(progress.OperationId, message, isError);
+        }
+
+        private void CompleteProgress(OperationProgress? progress, string? error = null)
+        {
+            if (progress == null) return;
+            _progressStore.Complete(progress.OperationId, error);
         }
 
         public async Task<NewsSearchRequestEntity> SearchAsync(
@@ -33,8 +61,12 @@ namespace Kolia.Thumbnail.API.Services.News
             CNewsCountFilter countFilter,
             string keywordsRaw,
             IEnumerable<string>? suggestedKeywordsSelected,
+            Guid operationId = default,
             CancellationToken ct = default)
         {
+            var progress = StartProgress(operationId, "Tìm kiếm tin tức");
+            LogProgress(progress, "🔍 Bắt đầu tìm kiếm tin tức...");
+
             // Lấy chủ đề từ ContentBrief để chấm điểm relevance
             var brief = await _db.ContentBriefs
                 .FirstOrDefaultAsync(b => b.ProjectId == projectId, ct);
@@ -46,8 +78,8 @@ namespace Kolia.Thumbnail.API.Services.News
                 CNewsTimeRange.Last24Hours => 1,
                 CNewsTimeRange.Last48Hours => 2,
                 CNewsTimeRange.Last72Hours => 3,
-                CNewsTimeRange.Last7Days   => 7,
-                CNewsTimeRange.Last30Days  => 30,
+                CNewsTimeRange.Last7Days => 7,
+                CNewsTimeRange.Last30Days => 30,
                 _ => 7
             };
 
@@ -57,8 +89,8 @@ namespace Kolia.Thumbnail.API.Services.News
                 CNewsCountFilter.Top10 => 10,
                 CNewsCountFilter.Top20 => 20,
                 CNewsCountFilter.Top30 => 30,
-                CNewsCountFilter.All   => UnlimitedCountCap,
-                _                      => 10
+                CNewsCountFilter.All => UnlimitedCountCap,
+                _ => 10
             };
 
             var keywords = keywordsRaw
@@ -69,9 +101,10 @@ namespace Kolia.Thumbnail.API.Services.News
                 .Distinct()
                 .ToList();
 
-            // Crawl từ social executor (rate-limit safe)
+            LogProgress(progress, $"📡 Crawl {maxCount} tin từ {keywords.Count} keyword...");
             var crawledItems = await _socialExecutor.RssCrawlAsync(
                 keywords, marketScope, timeRangeDays, maxCount, projectId, ct);
+            LogProgress(progress, $"✅ Crawl xong — {crawledItems.Count} tin được thu thập.");
 
             // Tạo NewsSearchRequest
             var searchRequest = new NewsSearchRequestEntity
@@ -108,7 +141,7 @@ namespace Kolia.Thumbnail.API.Services.News
                 };
                 newsItems.Add(item);
             }
-
+            LogProgress(progress, $"🤖 Chấm điểm AI cho {newsItems.Count} tin...");
             // Gọi batch scoring 1 lần duy nhất (Bug #6 fix — bật lại đoạn bị comment)
             if (newsItems.Count > 0)
             {
@@ -116,32 +149,42 @@ namespace Kolia.Thumbnail.API.Services.News
                     .Select(n => (n.Id, n.Title, n.SourceName, n.SummaryOverview))
                     .ToList();
 
-                var scores = await _scoringEngine.ScoreBatchAsync(batchInput, topicContext, ct);
-
-                foreach (var item in newsItems)
+                try
                 {
-                    if (scores.TryGetValue(item.Id, out var score))
+                    var scores = await _scoringEngine.ScoreBatchAsync(batchInput, topicContext, ct);
+                    foreach (var item in newsItems)
                     {
-                        item.RelevanceToTopicScore = score.RelevanceToTopicScore;
-                        item.ImportanceImpactScore = score.ImportanceImpactScore;
-                        item.EmotionPotentialScore = score.EmotionPotentialScore;
-                        item.NoveltyDataScore = score.NoveltyDataScore;
-                        item.DataQualityScore = score.DataQualityScore;
-                        item.TotalScore = score.TotalScore;
-                        item.Recommendation = score.Recommendation;
-                        item.RelevanceLevel = score.RelevanceLevel;
-                        item.SummaryOverview = score.SummaryOverview;
-                        item.SuggestedKeywordsForThumbnail = score.SuggestedKeywordsForThumbnail;
-                        item.EmotionTags = score.EmotionTags;
+                        if (scores.TryGetValue(item.Id, out var score))
+                        {
+                            item.RelevanceToTopicScore = score.RelevanceToTopicScore;
+                            item.ImportanceImpactScore = score.ImportanceImpactScore;
+                            item.EmotionPotentialScore = score.EmotionPotentialScore;
+                            item.NoveltyDataScore = score.NoveltyDataScore;
+                            item.DataQualityScore = score.DataQualityScore;
+                            item.TotalScore = score.TotalScore;
+                            item.Recommendation = score.Recommendation;
+                            item.RelevanceLevel = score.RelevanceLevel;
+                            item.SummaryOverview = score.SummaryOverview;
+                            item.SuggestedKeywordsForThumbnail = score.SuggestedKeywordsForThumbnail;
+                            item.EmotionTags = score.EmotionTags;
+                        }
                     }
+                }
+                catch (ExternalServiceException ex)
+                {
+                    _logger.LogError(ex,
+                        "Scoring thất bại toàn bộ cho request này — trả về tin CHƯA chấm điểm thay vì lỗi 500.");
                 }
             }
 
             _db.NewsItems.AddRange(newsItems);
             await _db.SaveChangesAsync(ct);
 
+            LogProgress(progress, $"✅ Lưu thành công {newsItems.Count} tin vào database.");
+
             // Load lại entity để trả về với navigation đầy đủ
             searchRequest.NewsItems = newsItems;
+            CompleteProgress(progress);
             return searchRequest;
         }
 
@@ -204,17 +247,88 @@ namespace Kolia.Thumbnail.API.Services.News
                 .ToListAsync(ct);
         }
 
-        public async Task<NewsDeepAnalysisEntity> DeepAnalyzeAsync(Guid newsItemId,
+        public async Task<PagedResponseDto<NewsItemDto>> GetPagedByProjectAsync(Guid projectId,
+            PagedRequestDto request,
             CancellationToken ct = default)
         {
+            IQueryable<NewsItemEntity> query = _db.NewsItems
+                .AsNoTracking()
+                .Where(n => n.ProjectId == projectId && !n.IsDeleted)
+                .OrderByDescending(n => n.TotalScore);
+
+            int totalRecords = 0;
+            if (request.IncludeTotalCount)
+                totalRecords = await query.CountAsync(ct);
+
+            IReadOnlyList<NewsItemDto> items = [];
+            if (request.IncludeItems && request.PageSize > 0)
+            {
+                var paged = await query
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync(ct);
+
+                items = paged.Select(n => new NewsItemDto(
+                    n.Id,
+                    n.ProjectId,
+                    n.NewsSearchRequestId,
+                    n.SourceType,
+                    n.Title,
+                    n.SourceName,
+                    n.SourceUrl,
+                    n.MarketType,
+                    n.PublishedTime,
+                    n.ScannedTime,
+                    n.SummaryOverview,
+                    n.RelevanceToTopicScore,
+                    n.ImportanceImpactScore,
+                    n.EmotionPotentialScore,
+                    n.NoveltyDataScore,
+                    n.TotalScore,
+                    n.Recommendation,
+                    n.RelevanceLevel,
+                    n.IsSelectedByTeam,
+                    n.SuggestedKeywordsForThumbnail,
+                    n.DeepAnalysis != null,
+                    n.NewsSearchRequestId.HasValue ? "Batch" : "Manual"
+                )).ToList();
+            }
+
+            return new PagedResponseDto<NewsItemDto>
+            {
+                Items = items,
+                PageInfo = new PageInfoDto
+                {
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize,
+                    TotalRecords = totalRecords,
+                    TotalPages = request.PageSize > 0 ? (int)Math.Ceiling((double)totalRecords / request.PageSize) : 0,
+                    HasPreviousPage = request.PageNumber > 1,
+                    HasNextPage = request.PageNumber * request.PageSize < totalRecords
+                }
+            };
+        }
+
+        public async Task<NewsDeepAnalysisEntity> DeepAnalyzeAsync(Guid newsItemId,
+            Guid operationId = default,
+            CancellationToken ct = default)
+        {
+            var progress = StartProgress(operationId, "Phân tích sâu tin tức");
+            LogProgress(progress, "🔍 Bắt đầu phân tích sâu...");
+
             var item = await _db.NewsItems
                 .Include(n => n.DeepAnalysis)
                 .FirstOrDefaultAsync(n => n.Id == newsItemId && !n.IsDeleted, ct)
                 ?? throw new KeyNotFoundException($"NewsItem {newsItemId} không tìm thấy.");
 
             if (item.DeepAnalysis != null)
+            {
+                LogProgress(progress, "✅ Đã có phân tích sâu từ trước.");
+                CompleteProgress(progress);
                 return item.DeepAnalysis;
+            }
 
+            LogProgress(progress, "🤖 Gọi AI phân tích 4 tầng...");
             var result = await _deepAnalysisEngine.AnalyzeAsync(
                 item.Title, item.SourceUrl, item.SourceName,
                 item.SummaryOverview, ct);
@@ -234,7 +348,18 @@ namespace Kolia.Thumbnail.API.Services.News
             };
 
             _db.NewsDeepAnalyses.Add(analysis);
+
+            // Cập nhật EmotionTags của NewsItem gốc từ kết quả phân tích sâu
+            // (phân tích sâu cho cảm xúc chính xác hơn scoring ban đầu)
+            if (result.EmotionTags != CEmotionTag.None)
+            {
+                item.EmotionTags = result.EmotionTags;
+            }
+
             await _db.SaveChangesAsync(ct);
+
+            LogProgress(progress, "✅ Phân tích sâu hoàn tất.");
+            CompleteProgress(progress);
             return analysis;
         }
 

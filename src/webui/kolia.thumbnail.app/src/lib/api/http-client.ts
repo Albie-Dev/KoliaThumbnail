@@ -2,7 +2,7 @@ import { ApiError } from './api-error'
 import type { ErrorResponseDto } from '../../types/api-error.types'
 
 function resolveBaseUrl() {
-  return import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'
+  return import.meta.env.VITE_API_BASE_URL ?? 'https://holes-interactive-variations-given.trycloudflare.com'
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

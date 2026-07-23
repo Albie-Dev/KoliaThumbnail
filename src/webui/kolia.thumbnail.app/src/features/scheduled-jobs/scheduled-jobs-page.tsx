@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Play, XCircle, Trash2, FileText, ExternalLink, Pencil, Clock, AlertCircle, Repeat, RefreshCw } from 'lucide-react'
+import { Plus, Play, XCircle, Trash2, FileText, ExternalLink, Pencil, Clock, AlertCircle, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { DataTable } from '../../components/data-table/data-table'
 import { useDataTableState } from '../../components/data-table/use-data-table-state'
@@ -117,7 +117,7 @@ export function ScheduledJobsPage() {
     return [{ field: 'SourceType', operator: FilterOperator.Equal, values: [Number(appliedSourceType)] }]
   }, [appliedSourceType])
 
-  const { data, isLoading, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['scheduled-jobs', page, pageSize, search, statusFilter, backendSorts, appliedSourceType],
     queryFn: () =>
       getScheduledJobsWithPaging({
@@ -366,24 +366,10 @@ export function ScheduledJobsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
         <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
           Scheduled Import Jobs
         </h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => void refetch()}
-            disabled={isFetching}
-            title="Làm mới"
-          >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button onClick={() => open({ type: 'create-scheduled-job' })}>
-            <Plus className="mr-1 h-4 w-4" /> Tạo Job mới
-          </Button>
-        </div>
       </div>
 
       <DataTable
@@ -406,6 +392,12 @@ export function ScheduledJobsPage() {
         filterContent={filterContent}
         onApplyFilter={handleApplyFilter}
         onResetFilter={handleResetFilter}
+        actions={
+          <Button onClick={() => open({ type: 'create-scheduled-job' })} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Tạo mới
+          </Button>
+        }
         emptyMessage="Chưa có Scheduled Import Job nào."
       />
 

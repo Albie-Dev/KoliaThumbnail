@@ -3,6 +3,8 @@ using Kolia.Thumbnail.API.Data.Entities.News;
 using Kolia.Thumbnail.API.DTOs.News;
 using Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching;
 using Kolia.Thumbnail.API.Enums;
+using Kolia.Thumbnail.API.Extensions;
+using Kolia.Thumbnail.API.Models.Commons;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kolia.Thumbnail.API.Services.News
@@ -29,20 +31,42 @@ namespace Kolia.Thumbnail.API.Services.News
             _logger = logger;
         }
 
-        public async Task<IReadOnlyList<NewsSourceListItemDto>> ListAsync(
-            CNewsSourceGroup? group, CMarketScope? region, bool? isTrusted, CancellationToken ct)
+        public async Task<PagedResponseDto<NewsSourceListItemDto>> ListAsync(
+            PagedRequestDto request,
+            CNewsSourceGroup? group,
+            CMarketScope? region,
+            bool? isTrusted,
+            bool? includeDeleted = null,
+            bool? deletedOnly = null,
+            CancellationToken ct = default)
         {
-            var query = _db.NewsSources.AsQueryable();
+            IQueryable<NewsSourceEntity> query = _db.NewsSources
+                .AsNoTracking();
+
+            if (includeDeleted.HasValue)
+            {
+                query = query.IgnoreQueryFilters();
+
+                if (deletedOnly == true)
+                {
+                    query = query.Where(x => x.IsDeleted);
+                }
+                else if (includeDeleted == false)
+                {
+                    query = query.Where(x => !x.IsDeleted);
+                }
+            }
 
             if (group.HasValue) query = query.Where(s => s.SourceGroup == group.Value);
             if (region.HasValue) query = query.Where(s => s.Region == region.Value);
             if (isTrusted.HasValue) query = query.Where(s => s.IsTrusted == isTrusted.Value);
 
-            var sources = await query
-                .OrderBy(s => s.Priority)
-                .ToListAsync(ct);
+            query = query.ApplyQuery(request);
 
-            return sources.Select(NewsSourceMapper.ToListItem).ToList();
+            return await query.ToPagedResponseAsync<NewsSourceEntity, NewsSourceListItemDto>(
+                request,
+                selector: NewsSourceMapper.ToListItem,
+                cancellationToken: ct);
         }
 
         public async Task<NewsSourceDetailDto> GetByIdAsync(Guid id, CancellationToken ct)
@@ -226,6 +250,12 @@ namespace Kolia.Thumbnail.API.Services.News
                     ? doc.Descendants(root.Name.Namespace + "entry").ToList()
                     : doc.Root?.Element("channel")?.Elements("item").ToList() ?? [];
 
+                // Chuẩn hoá keyword 1 lần: bỏ dấu + lowercase, bỏ keyword rỗng
+                var normalizedKeywords = keywords
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .Select(NormalizeForMatch)
+                    .ToList();
+
                 foreach (var entry in entries)
                 {
                     if (results.Count >= maxCount) break;
@@ -246,6 +276,14 @@ namespace Kolia.Thumbnail.API.Services.News
                         ? entry.Element(root.Name.Namespace + "content")?.Value ?? string.Empty
                         : entry.Element("description")?.Value ?? string.Empty;
 
+                    // ── ĐÂY LÀ PHẦN BỊ THIẾU: lọc theo keyword trước khi nhận vào kết quả ──
+                    if (normalizedKeywords.Count > 0)
+                    {
+                        var haystack = NormalizeForMatch(title + " " + summary);
+                        var isMatch = normalizedKeywords.Any(k => haystack.Contains(k, StringComparison.Ordinal));
+                        if (!isMatch) continue; // không khớp keyword nào → bỏ qua entry này
+                    }
+
                     var pubDateStr = isAtom
                         ? entry.Element(root.Name.Namespace + "published")?.Value
                         : entry.Element("pubDate")?.Value;
@@ -260,6 +298,25 @@ namespace Kolia.Thumbnail.API.Services.News
             }
             catch { /* Malformed XML — return what we have */ }
             return results;
+        }
+
+        /// <summary>Bỏ dấu tiếng Việt + lowercase để so khớp keyword không phân biệt hoa/thường/dấu.</summary>
+        private static string NormalizeForMatch(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return string.Empty;
+
+            var normalized = input.Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder();
+            foreach (var c in normalized)
+            {
+                var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+                if (category != System.Globalization.UnicodeCategory.NonSpacingMark)
+                    sb.Append(c);
+            }
+            return sb.ToString()
+                .Normalize(System.Text.NormalizationForm.FormC)
+                .Replace('đ', 'd').Replace('Đ', 'D')
+                .ToLowerInvariant();
         }
     }
 }

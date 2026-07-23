@@ -70,7 +70,7 @@ export async function importFileAndAnalyzeBrief(
   const formData = new FormData()
   formData.append('file', file)
 
-  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'}/api/v1/projects/${projectId}/brief/import-file`, {
+  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'https://holes-interactive-variations-given.trycloudflare.com'}/api/v1/projects/${projectId}/brief/import-file`, {
     method: 'POST',
     body: formData,
   })

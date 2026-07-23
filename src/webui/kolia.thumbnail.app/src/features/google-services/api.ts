@@ -95,7 +95,7 @@ export async function importGoogleServiceAccountFile(
   if (scopes) formData.append('scopes', scopes)
   formData.append('file', file)
 
-  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'https://holes-interactive-variations-given.trycloudflare.com'
   const res = await fetch(`${baseUrl}/api/v1/admin/google-service-accounts/import-file`, {
     method: 'POST',
     body: formData,

@@ -66,11 +66,25 @@ Tag cảm xúc (emotionTags) chọn từ: Hope, Fear, Surprise, Anger, Trust, An
                 MaxTokens = 2048
             };
 
-            var result = await _aiExecutor.ChatCompletionWithFallbackAsync(DefaultProvider, request, ct);
+            var result = await _aiExecutor.ChatCompletionWithFunctionAsync(CAIFunctionType.NewsScoring, request, ct);
 
             try
             {
-                var parsed = JsonSerializer.Deserialize<DeepAnalysisResponse>(result.Content,
+                // AI (Gemini) thường trả về JSON trong markdown code block.
+                // Strip ```json ... ``` hoặc ``` ... ``` nếu có trước khi parse.
+                var raw = result.Content;
+                var jsonStart = raw.IndexOf("```", StringComparison.Ordinal);
+                if (jsonStart >= 0)
+                {
+                    var firstNewline = raw.IndexOf('\n', jsonStart);
+                    var contentStart = firstNewline >= 0 ? firstNewline + 1 : jsonStart + 3;
+                    var jsonEnd = raw.LastIndexOf("```", StringComparison.Ordinal);
+                    raw = jsonEnd > contentStart
+                        ? raw[contentStart..jsonEnd].Trim()
+                        : raw[contentStart..].Trim();
+                }
+
+                var parsed = JsonSerializer.Deserialize<DeepAnalysisResponse>(raw,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                 if (parsed == null) throw new InvalidOperationException("Null response");

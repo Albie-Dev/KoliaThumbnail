@@ -82,6 +82,23 @@ namespace Kolia.Thumbnail.API.Data.Interceptors
                         break;
                 }
             }
+
+            // Normalise tất cả DateTimeOffset properties về UTC — Npgsql chỉ chấp nhận
+            // offset 0 (UTC) cho kiểu "timestamp with time zone". RSS crawl thường trả về
+            // ngày giờ với offset địa phương (+07:00…), gây lỗi khi SaveChangesAsync.
+            foreach (EntityEntry entry in context.ChangeTracker.Entries())
+            {
+                if (entry.State != EntityState.Added && entry.State != EntityState.Modified)
+                    continue;
+
+                foreach (var prop in entry.Properties)
+                {
+                    if (prop.CurrentValue is DateTimeOffset dto)
+                    {
+                        prop.CurrentValue = dto.ToUniversalTime();
+                    }
+                }
+            }
         }
     }
 }

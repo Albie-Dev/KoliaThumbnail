@@ -41,8 +41,22 @@ export function DataTableToolbar({
   onToggleColumn,
   onOpenFilter,
 }: DataTableToolbarProps) {
+  const [localSearch, setLocalSearch] = useState(search)
   const [columnsOpen, setColumnsOpen] = useState(false)
   const columnsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setLocalSearch(search)
+  }, [search])
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localSearch !== search) {
+        onSearchChange?.(localSearch)
+      }
+    }, 400)
+    return () => clearTimeout(handler)
+  }, [localSearch, search, onSearchChange])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,6 +70,11 @@ export function DataTableToolbar({
     }
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [columnsOpen])
+
+  const handleClear = () => {
+    setLocalSearch('')
+    onSearchClear?.()
+  }
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -71,15 +90,15 @@ export function DataTableToolbar({
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
               placeholder={searchPlaceholder}
               className="h-9 w-56 pl-9 pr-8"
             />
-            {search && (
+            {localSearch && (
               <button
                 type="button"
-                onClick={onSearchClear}
+                onClick={handleClear}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:dark:text-slate-300"
               >
                 <X className="h-3.5 w-3.5" />

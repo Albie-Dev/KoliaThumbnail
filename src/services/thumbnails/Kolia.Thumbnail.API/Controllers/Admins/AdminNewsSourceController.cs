@@ -1,5 +1,6 @@
 using Kolia.Thumbnail.API.DTOs.News;
 using Kolia.Thumbnail.API.Enums;
+using Kolia.Thumbnail.API.Models.Commons;
 using Kolia.Thumbnail.API.Services.News;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,22 +26,28 @@ namespace Kolia.Thumbnail.API.Controllers.Admins
         }
 
         /// <summary>
-        /// Liệt kê toàn bộ nguồn tin, filter tùy chọn theo nhóm / region / trạng thái.
+        /// Liệt kê nguồn tin phân trang, filter tùy chọn theo nhóm / region / trạng thái.
         /// </summary>
+        /// <param name="request">Tham số phân trang, search, sort</param>
         /// <param name="group">Filter theo SourceGroup (optional)</param>
         /// <param name="region">Filter theo Region — Domestic=1, International=2, Both=3 (optional)</param>
         /// <param name="isTrusted">Filter theo IsTrusted (optional)</param>
+        /// <param name="includeDeleted">Bao gồm cả bản ghi đã xoá mềm</param>
+        /// <param name="deletedOnly">Chỉ lấy bản ghi đã xoá mềm</param>
         /// <param name="ct">Cancellation token</param>
-        [HttpGet(Name = "ListNewsSources")]
-        [ProducesResponseType(typeof(IReadOnlyList<NewsSourceListItemDto>), StatusCodes.Status200OK)]
+        [HttpGet("paging", Name = "ListNewsSourcesPaging")]
+        [ProducesResponseType(typeof(PagedResponseDto<NewsSourceListItemDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> List(
+            [FromQuery] PagedRequestDto request,
             [FromQuery] CNewsSourceGroup? group,
             [FromQuery] CMarketScope? region,
             [FromQuery] bool? isTrusted,
-            CancellationToken ct)
+            [FromQuery] bool? includeDeleted = null,
+            [FromQuery] bool? deletedOnly = null,
+            CancellationToken ct = default)
         {
-            var sources = await _service.ListAsync(group, region, isTrusted, ct);
-            return Ok(sources);
+            var result = await _service.ListAsync(request, group, region, isTrusted, includeDeleted, deletedOnly, ct);
+            return Ok(result);
         }
 
         /// <summary>Chi tiết 1 nguồn tin.</summary>

@@ -1,12 +1,19 @@
 using Kolia.Thumbnail.API.DTOs.News;
 using Kolia.Thumbnail.API.Enums;
+using Kolia.Thumbnail.API.Models.Commons;
 
 namespace Kolia.Thumbnail.API.Services.News
 {
     public interface IAdminNewsSourceService
     {
-        Task<IReadOnlyList<NewsSourceListItemDto>> ListAsync(
-            CNewsSourceGroup? group, CMarketScope? region, bool? isTrusted, CancellationToken ct);
+        Task<PagedResponseDto<NewsSourceListItemDto>> ListAsync(
+            PagedRequestDto request,
+            CNewsSourceGroup? group,
+            CMarketScope? region,
+            bool? isTrusted,
+            bool? includeDeleted = null,
+            bool? deletedOnly = null,
+            CancellationToken ct = default);
 
         Task<NewsSourceDetailDto> GetByIdAsync(Guid id, CancellationToken ct);
 

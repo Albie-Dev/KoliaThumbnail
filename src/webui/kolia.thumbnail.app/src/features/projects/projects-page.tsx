@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Archive, Search, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -25,6 +25,22 @@ export function ProjectsPage() {
 
   const { page, setPage, pageSize, setPageSize, search, setSearch, sortBy, sortOrder } =
     useDataTableState(1, 12)
+
+  const [localSearch, setLocalSearch] = useState(search)
+
+  useEffect(() => {
+    setLocalSearch(search)
+  }, [search])
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localSearch !== search) {
+        setSearch(localSearch)
+        setPage(1)
+      }
+    }, 400)
+    return () => clearTimeout(handler)
+  }, [localSearch, search, setSearch, setPage])
 
   const [statusFilter, setStatusFilter] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProjectSummaryDto | null>(null)
@@ -90,11 +106,8 @@ export function ProjectsPage() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Tìm kiếm project..."
             className="pl-9"
           />

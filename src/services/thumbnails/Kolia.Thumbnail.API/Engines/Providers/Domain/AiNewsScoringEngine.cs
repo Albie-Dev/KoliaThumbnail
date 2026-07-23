@@ -89,14 +89,28 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain
                     new() { Role = "user", Content = userPrompt }
                 },
                 Temperature = 0.2,
-                MaxTokens = 4096
+                MaxTokens = 500000
             };
 
-            var result = await _aiExecutor.ChatCompletionWithFallbackAsync(DefaultProvider, request, ct);
+            var result = await _aiExecutor.ChatCompletionWithFunctionAsync(CAIFunctionType.NewsScoring, request, ct);
 
             try
             {
-                var scoredList = JsonSerializer.Deserialize<List<ScoredItemResponse>>(result.Content,
+                // AI (Gemini) thường trả về JSON trong markdown code block.
+                // Strip ```json ... ``` hoặc ``` ... ``` nếu có trước khi parse.
+                var raw = result.Content;
+                var jsonStart = raw.IndexOf("```", StringComparison.Ordinal);
+                if (jsonStart >= 0)
+                {
+                    var firstNewline = raw.IndexOf('\n', jsonStart);
+                    var contentStart = firstNewline >= 0 ? firstNewline + 1 : jsonStart + 3;
+                    var jsonEnd = raw.LastIndexOf("```", StringComparison.Ordinal);
+                    raw = jsonEnd > contentStart
+                        ? raw[contentStart..jsonEnd].Trim()
+                        : raw[contentStart..].Trim();
+                }
+
+                var scoredList = JsonSerializer.Deserialize<List<ScoredItemResponse>>(raw,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                 if (scoredList == null) return FallbackScoring(items);

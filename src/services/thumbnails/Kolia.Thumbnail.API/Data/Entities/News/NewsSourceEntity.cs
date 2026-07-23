@@ -1,3 +1,4 @@
+using Kolia.Thumbnail.API.Attributes;
 using Kolia.Thumbnail.API.Enums;
 
 namespace Kolia.Thumbnail.API.Data.Entities.News
@@ -11,6 +12,7 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// <summary>
         /// Tên nguồn tin, vd "VnExpress", "CoinDesk", "Federal Reserve"
         /// </summary>
+        [Queryable(Searchable = true, Sortable = true)]
         public string Name { get; set; } = null!;
 
         /// <summary>
@@ -23,16 +25,19 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// <summary>
         /// Phạm vi thị trường của nguồn tin (Domestic/International)
         /// </summary>
+        [Queryable(Filterable = true)]
         public CMarketScope Region { get; set; }
 
         /// <summary>
         /// True nếu đây là nguồn uy tín đã được team kiểm chứng
         /// </summary>
+        [Queryable(Filterable = true)]
         public bool IsTrusted { get; set; } = true;
 
         /// <summary>
         /// Thứ tự ưu tiên khi fetch (số nhỏ = ưu tiên cao hơn)
         /// </summary>
+        [Queryable(Filterable = true, Sortable = true, RangeFilterable = true)]
         public int Priority { get; set; } = 0;
 
         // ── New fields for multi-source fallback pipeline ──────────────
@@ -40,17 +45,20 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// <summary>
         /// Nhóm nguồn theo spec khách hàng (1-5, xem enum CNewsSourceGroup)
         /// </summary>
+        [Queryable(Filterable = true)]
         public CNewsSourceGroup SourceGroup { get; set; }
 
         /// <summary>
         /// Cách fetch: RssDirect, GoogleNewsFallback, SitemapFallback, Custom…
         /// Quyết định tier nào được thử đầu tiên trong SourceFetchPipeline.
         /// </summary>
+        [Queryable(Filterable = true)]
         public CSourceFetchMode FetchMode { get; set; } = CSourceFetchMode.RssDirect;
 
         /// <summary>
         /// Domain gốc (vd "cafef.vn") — dùng để tra DomainRateLimiterRegistry
         /// </summary>
+        [Queryable(Searchable = true, Sortable = true)]
         public string Domain { get; set; } = null!;
 
         /// <summary>
@@ -62,6 +70,7 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// Số lỗi liên tiếp — dùng cho circuit breaker cấp DB (bổ trợ cho in-memory).
         /// Reset về 0 khi fetch thành công.
         /// </summary>
+        [Queryable(Filterable = true)]
         public int ConsecutiveFailureCount { get; set; } = 0;
 
         /// <summary>
@@ -77,6 +86,7 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// <summary>
         /// Thời điểm fetch thành công gần nhất
         /// </summary>
+        [Queryable(Sortable = true, RangeFilterable = true)]
         public DateTimeOffset? LastFetchedAt { get; set; }
     }
 }

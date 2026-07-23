@@ -1,6 +1,7 @@
 using Kolia.Thumbnail.API.DTOs.News;
 using Kolia.Thumbnail.API.Exceptions;
 using Kolia.Thumbnail.API.Models;
+using Kolia.Thumbnail.API.Models.Commons;
 using Kolia.Thumbnail.API.Services.News;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +19,24 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         public NewsController(INewsService newsService)
         {
             _newsService = newsService;
+        }
+
+        /// <summary>
+        /// Lấy danh sách tin tức phân trang, sắp xếp theo tổng điểm giảm dần.
+        /// </summary>
+        /// <param name="projectId">Id dự án</param>
+        /// <param name="request">Tham số phân trang, search, sort</param>
+        /// <param name="ct">CancellationToken</param>
+        /// <returns>Danh sách NewsItemDto phân trang</returns>
+        [HttpGet("paging")]
+        [ProducesResponseType(typeof(PagedResponseDto<NewsItemDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponseDto<NewsItemDto>>> GetNewsPaging(
+            Guid projectId,
+            [FromQuery] PagedRequestDto request,
+            CancellationToken ct = default)
+        {
+            var result = await _newsService.GetPagedByProjectAsync(projectId, request, ct);
+            return Ok(result);
         }
 
         /// <summary>
@@ -64,16 +83,22 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// </summary>
         /// <param name="projectId">Id dự án</param>
         /// <param name="request">Bộ lọc tìm kiếm tin tức</param>
+        /// <param name="operationId">Id theo dõi tiến trình (optional)</param>
         /// <param name="ct">CancellationToken</param>
         /// <returns>NewsSearchResultDto chứa thông tin request và danh sách tin tức trả về</returns>
         [HttpPost("search")]
         [ProducesResponseType(typeof(NewsSearchResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<NewsSearchResultDto>> Search(Guid projectId, [FromBody] NewsSearchRequest request, CancellationToken ct = default)
+        public async Task<ActionResult<NewsSearchResultDto>> Search(
+            Guid projectId,
+            [FromBody] NewsSearchRequest request,
+            [FromQuery] Guid? operationId = null,
+            CancellationToken ct = default)
         {
             var reqResult = await _newsService.SearchAsync(
                 projectId, request.MarketScope, request.TimeRange, request.CountFilter,
-                request.KeywordsRaw, request.SuggestedKeywordsSelected, ct);
+                request.KeywordsRaw, request.SuggestedKeywordsSelected,
+                operationId ?? Guid.Empty, ct);
 
             var dtos = reqResult.NewsItems.Select(n => new NewsItemDto(
                 n.Id,
@@ -179,15 +204,19 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         /// Thực hiện phân tích sâu 4 tầng (vĩ mô, phản ứng thị trường, triển vọng, cảm xúc) cho bản tin được chỉ định.
         /// </summary>
         /// <param name="newsItemId">Id bản tin</param>
+        /// <param name="operationId">Id theo dõi tiến trình (optional)</param>
         /// <param name="ct">CancellationToken</param>
         /// <returns>NewsDeepAnalysisDto chứa kết quả phân tích</returns>
         /// <exception cref="NotFoundException">Ném ra khi không tìm thấy bản tin</exception>
         [HttpPost("items/{newsItemId:guid}/deep-analyze")]
         [ProducesResponseType(typeof(NewsDeepAnalysisDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<NewsDeepAnalysisDto>> DeepAnalyze(Guid newsItemId, CancellationToken ct = default)
+        public async Task<ActionResult<NewsDeepAnalysisDto>> DeepAnalyze(
+            Guid newsItemId,
+            [FromQuery] Guid? operationId = null,
+            CancellationToken ct = default)
         {
-            var analysis = await _newsService.DeepAnalyzeAsync(newsItemId, ct);
+            var analysis = await _newsService.DeepAnalyzeAsync(newsItemId, operationId ?? Guid.Empty, ct);
             var dto = new NewsDeepAnalysisDto(
                 analysis.Id,
                 analysis.NewsItemId,

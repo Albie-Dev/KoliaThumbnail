@@ -213,6 +213,16 @@ export const CRelevanceLevel = {
 
 export type CRelevanceLevel = (typeof CRelevanceLevel)[keyof typeof CRelevanceLevel]
 
+export const RELEVANCE_LEVEL_OPTIONS: { id: CRelevanceLevel; label: string }[] = [
+  { id: CRelevanceLevel.High, label: 'Cao' },
+  { id: CRelevanceLevel.Medium, label: 'Trung bình' },
+  { id: CRelevanceLevel.Low, label: 'Thấp' },
+]
+
+export function getRelevanceLevelLabel(level: CRelevanceLevel): string {
+  return RELEVANCE_LEVEL_OPTIONS.find((o) => o.id === level)?.label ?? ''
+}
+
 // ── CEmotionTag (flags, bitwise) ───────────────────────────────────────────
 export const CEmotionTag = {
   /// <summary>Không có</summary>

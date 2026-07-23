@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
@@ -27,6 +27,7 @@ export function GoogleServicesPage() {
     useDataTableState(1, 10)
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
+  const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>(statusFilter)
   const [deleteTarget, setDeleteTarget] = useState<GoogleServiceAccountSummaryDto | null>(null)
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
@@ -37,12 +38,30 @@ export function GoogleServicesPage() {
     },
   })
 
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['google-services'] })
+  }, [queryClient])
+
   const handleDeleteConfirm = useCallback(() => {
     if (!deleteTarget) return
     remove(deleteTarget.id, {
       onSuccess: () => setDeleteTarget(null),
     })
   }, [deleteTarget, remove])
+
+  // Sync local status filter when applied status changes (e.g. sidebar opens)
+  useEffect(() => {
+    setLocalStatusFilter(statusFilter)
+  }, [statusFilter])
+
+  const handleApplyFilter = useCallback(() => {
+    setStatusFilter(localStatusFilter)
+  }, [localStatusFilter])
+
+  const handleResetFilter = useCallback(() => {
+    setLocalStatusFilter('active')
+    setStatusFilter('active')
+  }, [])
 
   const includeDeleted = statusFilter === 'deleted' ? true : statusFilter === 'all' ? true : undefined
   const deletedOnly = statusFilter === 'deleted' ? true : undefined
@@ -151,21 +170,19 @@ export function GoogleServicesPage() {
     [open],
   )
 
+  const filterContent = (
+    <div className="space-y-5">
+      <StatusFilterGroup value={localStatusFilter} onChange={setLocalStatusFilter} />
+    </div>
+  )
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
         <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
           Google Service Accounts
         </h1>
-        <Button onClick={() => open({ type: 'create-google-service' })}>
-          <Plus className="mr-1 h-4 w-4" /> Thêm Service Account
-        </Button>
       </div>
-
-      <StatusFilterGroup
-        value={statusFilter}
-        onChange={setStatusFilter}
-      />
 
       <DataTable
         data={data?.items ?? []}
@@ -183,6 +200,16 @@ export function GoogleServicesPage() {
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSort={handleSort}
+        filterContent={filterContent}
+        onApplyFilter={handleApplyFilter}
+        onResetFilter={handleResetFilter}
+        onRetry={handleRefresh}
+        actions={
+          <Button onClick={() => open({ type: 'create-google-service' })} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Thêm mới
+          </Button>
+        }
         emptyMessage="Chưa có Google Service Account nào."
       />
 
