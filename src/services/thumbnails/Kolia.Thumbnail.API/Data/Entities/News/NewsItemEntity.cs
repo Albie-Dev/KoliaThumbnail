@@ -1,3 +1,4 @@
+using Kolia.Thumbnail.API.Attributes;
 using Kolia.Thumbnail.API.Data.Entities.Projects;
 using Kolia.Thumbnail.API.Enums;
 
@@ -26,26 +27,31 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// <summary>
         /// Tiêu đề bài báo
         /// </summary>
+        [Queryable(Searchable = true, Sortable = true)]
         public string Title { get; set; } = null!;
 
         /// <summary>
         /// Tên nguồn, vd "VnExpress", "CoinDesk"
         /// </summary>
+        [Queryable(Searchable = true, Sortable = true)]
         public string SourceName { get; set; } = null!;
 
         /// <summary>
         /// URL bài báo gốc
         /// </summary>
+        [Queryable(Sortable = true)]
         public string SourceUrl { get; set; } = null!;
 
         /// <summary>
         /// Loại thị trường của tin: nội địa hay quốc tế
         /// </summary>
+        [Queryable(Sortable = true, Filterable = true)]
         public CMarketScope MarketType { get; set; }
 
         /// <summary>
         /// Thời gian xuất bản bài báo
         /// </summary>
+        [Queryable(Sortable = true, RangeFilterable = true)]
         public DateTimeOffset? PublishedTime { get; set; }
 
         /// <summary>
@@ -56,6 +62,7 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// <summary>
         /// Tóm tắt 1 đoạn để hiển thị trong bảng tin
         /// </summary>
+        [Queryable(Searchable = true)]
         public string SummaryOverview { get; set; } = string.Empty;
 
         // ----- Điểm AI chấm (tổng 85 điểm) -----
@@ -83,17 +90,20 @@ namespace Kolia.Thumbnail.API.Data.Entities.News
         /// <summary>
         /// Tổng điểm (tính tại service = sum của 4 điểm thành phần)
         /// </summary>
+        [Queryable(Sortable = true)]
         public int TotalScore { get; set; }
 
         /// <summary>
         /// Nhãn đề xuất của AI: Nên chọn / Có thể chọn / Không ưu tiên
         /// </summary>
-        public CNewsRecommendation Recommendation { get; set; }
+        [Queryable(Sortable = true)]
+        public CNewsRecommendation Recommendation { get; set; } = CNewsRecommendation.None;
 
         /// <summary>
         /// Mức độ liên quan: Cao / Trung bình / Thấp
         /// </summary>
-        public CRelevanceLevel RelevanceLevel { get; set; }
+        [Queryable(Sortable = true)]
+        public CRelevanceLevel RelevanceLevel { get; set; }  = CRelevanceLevel.None;
 
         /// <summary>
         /// True khi team đã tick "Dùng cho Phần 4 và Phần 5"

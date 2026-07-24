@@ -18,6 +18,11 @@ namespace Kolia.Thumbnail.API.Enums
         /// <summary>
         /// Liên quan thấp — ít ảnh hưởng đến chủ đề
         /// </summary>
-        Low = 3
+        Low = 3,
+
+        /// <summary>
+        /// Chưa xác định
+        /// </summary>
+        None = 4
     }
 }

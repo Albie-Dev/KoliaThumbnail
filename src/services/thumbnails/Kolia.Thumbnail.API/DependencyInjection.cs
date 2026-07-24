@@ -116,6 +116,7 @@ namespace Kolia.Thumbnail.API
             services.AddScoped<IThumbnailImageGenerationEngine, AiThumbnailImageGenerationEngine>();
             services.AddScoped<IVideoTitleGenerationEngine, AiVideoTitleGenerationEngine>();
             services.AddScoped<IContentRelevanceFilterEngine, AiContentRelevanceFilterEngine>();
+            services.AddScoped<IKeywordTranslationEngine, AiKeywordTranslationEngine>();
 
             // Social engines — RSS with enterprise Polly resilience (retry + circuit breaker + timeout)
             services.AddHttpClient<RealRssNewsSourceEngine>(client =>
@@ -166,6 +167,35 @@ namespace Kolia.Thumbnail.API
                 client.Timeout = TimeSpan.FromSeconds(10);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(
                     "Mozilla/5.0 KoliaNewsBot/1.0");
+            });
+
+            services.AddHttpClient<IArticleContentFetcher, ArticleContentFetcher>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(12);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
+                client.DefaultRequestHeaders.Accept.ParseAdd(
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+                client.DefaultRequestHeaders.Add("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7");
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+            })
+            .AddResilienceHandler("article-fulltext-fetch", builder =>
+            {
+                builder.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = 2,
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    Delay = TimeSpan.FromSeconds(1),
+                    ShouldHandle = args => ValueTask.FromResult(
+                        args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests
+                        || args.Outcome.Result?.StatusCode >= HttpStatusCode.InternalServerError
+                        || args.Outcome.Exception is HttpRequestException or TaskCanceledException)
+                });
+                builder.AddTimeout(TimeSpan.FromSeconds(10));
             });
 
             // Named HttpClient for AdminNewsSourceService URL validation + test-fetch
@@ -274,6 +304,7 @@ namespace Kolia.Thumbnail.API
             services.AddScoped<ICharacterService, CharacterService>();
             services.AddScoped<ISocialExecutorService, SocialExecutorService>();
             services.AddScoped<IProjectStepGuard, ProjectStepGuard>();
+            services.AddScoped<IGoogleNewsUrlResolver, GoogleNewsUrlResolver>();
             // IAdminNewsSourceService is registered via factory lambda in the HttpClient section above
 
             // Google Services

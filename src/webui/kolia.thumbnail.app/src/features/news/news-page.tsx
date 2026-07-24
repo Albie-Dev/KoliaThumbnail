@@ -1,8 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, ExternalLink, Brain, Loader2 } from 'lucide-react'
+import { Search, ExternalLink, Brain, Loader2, Eye, ChevronUp } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { DataTable, type DataTableColumn } from '../../components/data-table/data-table'
+import { useDataTableState } from '../../components/data-table/use-data-table-state'
+import { SortDirection } from '../../types/paging.types'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
@@ -16,9 +19,12 @@ import {
   getNewsPaging,
   searchNews,
   getSuggestedKeywords,
+  getNewsSources,
   selectNewsItem,
+  getDeepAnalysis,
   deepAnalyzeNews,
   type NewsDeepAnalysisDto,
+  type NewsSourceSelectDto,
 } from './api'
 import { qk } from '../../lib/query-keys'
 import {
@@ -30,8 +36,9 @@ import {
   NEWS_TIME_RANGE_OPTIONS,
   NEWS_COUNT_FILTER_OPTIONS,
   NEWS_RECOMMENDATION_OPTIONS,
-  getRelevanceLevelLabel,
   decodeEmotionTags,
+  getEmotionBadgeClass,
+  RELEVANCE_LEVEL_OPTIONS,
 } from '../../types/enums/pipeline.enums'
 
 function ExpandableSummary({ text }: { text: string }) {
@@ -66,14 +73,16 @@ export function NewsPage() {
   const [countFilter, setCountFilter] = useState<number>(CNewsCountFilter.Top20)
   const [keywords, setKeywords] = useState<string[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedSources, setSelectedSources] = useState<NewsSourceSelectDto[]>([])
 
   // ── Paging state ─────────────────────────────────────────────────────
-  const [page, setPage] = useState(1)
-  const pageSize = 20
+  const { page, setPage, pageSize, setPageSize, search, setSearch, sortBy, sortOrder, handleSort } = useDataTableState(1, 20)
 
   // ── Deep analysis ────────────────────────────────────────────────────
   const [deepAnalyses, setDeepAnalyses] = useState<Map<string, NewsDeepAnalysisDto>>(new Map())
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set())
+  // ID của tin đang được xem deep analysis panel (null = không hiển thị)
+  const [viewingDeepId, setViewingDeepId] = useState<string | null>(null)
 
   // ── Operation progress (SSE) ─────────────────────────────────────────
   const [progressOpId, setProgressOpId] = useState<string | null>(null)
@@ -86,10 +95,33 @@ export function NewsPage() {
     enabled: !!activeProjectId,
   })
 
+  // ── Fetch all available news sources for "Select All" ───────────────────
+  const { data: allSources } = useQuery({
+    queryKey: activeProjectId ? ['news-sources', activeProjectId, marketScope] : ['news-sources', 'empty'],
+    queryFn: () => getNewsSources(activeProjectId!, {
+      pageNumber: 1,
+      pageSize: 1000, // Get all sources
+      region: marketScope as CMarketScope,
+    }),
+    enabled: !!activeProjectId,
+  })
+
   // ── Fetch news (phân trang) ──────────────────────────────────────────
   const { data: newsResult, isLoading, error, refetch } = useQuery({
-    queryKey: activeProjectId ? [...qk.news.list(activeProjectId), page, pageSize] : ['news', 'empty'],
-    queryFn: () => getNewsPaging(activeProjectId!, { pageNumber: page, pageSize }),
+    queryKey: activeProjectId ? [...qk.news.list(activeProjectId), page, pageSize, search, sortBy, sortOrder] : ['news', 'empty'],
+    queryFn: () => {
+      const sorts = sortBy ? [{
+        field: sortBy.charAt(0).toUpperCase() + sortBy.slice(1),
+        direction: sortOrder === 'desc' ? SortDirection.Desc : SortDirection.Asc
+      }] : undefined
+
+      return getNewsPaging(activeProjectId!, {
+        pageNumber: page,
+        pageSize,
+        searchText: search || undefined,
+        sorts
+      })
+    },
     enabled: !!activeProjectId,
   })
   const newsItems = newsResult?.items
@@ -105,6 +137,7 @@ export function NewsPage() {
         timeRange: timeRange as CNewsTimeRange,
         countFilter: countFilter as CNewsCountFilter,
         keywordsRaw: keywords.join('; '),
+        selectedSourceIds: selectedSources.map((s) => s.id),
       }, opId)
     },
     onSuccess: (result) => {
@@ -169,16 +202,286 @@ export function NewsPage() {
     })
   }, [newsItems, doSelect])
 
+  const handleSelectAllSources = useCallback(() => {
+    if (!allSources?.items || allSources.items.length === 0) return
+    setSelectedSources(allSources.items)
+  }, [allSources])
+
+  const handleClearSources = useCallback(() => {
+    setSelectedSources([])
+  }, [])
+
   const handleDeepAnalyze = useCallback(() => {
     const ids = Array.from(selectedIds)
     if (ids.length === 0) return
-    doDeepAnalyze(ids)
-  }, [selectedIds, doDeepAnalyze])
+
+    // Lọc ra các tin chưa được phân tích hoặc phân tích bị lỗi (Status = Failed / 2)
+    const unanalyzedIds = ids.filter((id) => {
+      const existing = deepAnalyses.get(id)
+      return !existing || existing.status === 2 // 2 = Failed
+    })
+
+    if (unanalyzedIds.length === 0) {
+      toast.info('Tất cả bản tin đã chọn đều đã có phân tích sâu.')
+      return
+    }
+
+    doDeepAnalyze(unanalyzedIds)
+  }, [selectedIds, deepAnalyses, doDeepAnalyze])
+
+  // Xem deep analysis của 1 tin: load nếu chưa có trong cache, rồi toggle panel
+  const handleViewDeep = useCallback(async (id: string) => {
+    if (viewingDeepId === id) {
+      setViewingDeepId(null)
+      return
+    }
+    if (!deepAnalyses.has(id) && activeProjectId) {
+      try {
+        const analysis = await getDeepAnalysis(activeProjectId, id)
+        setDeepAnalyses((prev) => new Map(prev).set(id, analysis))
+      } catch {
+        toast.error('Không tải được phân tích sâu.')
+        return
+      }
+    }
+    setViewingDeepId(id)
+  }, [viewingDeepId, deepAnalyses, activeProjectId])
+
+  // Phân tích sâu ngay từ cột trong bảng (1 tin)
+  const handleDeepAnalyzeSingle = useCallback((id: string) => {
+    doDeepAnalyze([id])
+  }, [doDeepAnalyze])
 
   const recommendationLabel = (rec: number) =>
     NEWS_RECOMMENDATION_OPTIONS.find((o) => o.id === rec)
 
   const newsList = newsItems ?? []
+
+  const columns: DataTableColumn<any>[] = useMemo(() => [
+    {
+      key: 'select',
+      header: (
+        <input
+          type="checkbox"
+          checked={newsList.length > 0 && selectedIds.size === newsList.length}
+          onChange={() => {
+            if (newsList.length > 0 && selectedIds.size === newsList.length) {
+              setSelectedIds(new Set())
+            } else {
+              setSelectedIds(new Set(newsList.map((n) => n.id)))
+            }
+          }}
+          className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-600"
+        />
+      ),
+      render: (item) => {
+        const isInSelected = selectedIds.has(item.id)
+        return (
+          <input
+            type="checkbox"
+            checked={isInSelected || item.isSelectedByTeam}
+            onChange={() => {
+              const wasChecked = isInSelected || item.isSelectedByTeam
+              if (wasChecked) {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev)
+                  next.delete(item.id)
+                  return next
+                })
+              } else {
+                setSelectedIds((prev) => new Set(prev).add(item.id))
+              }
+              toggleSelect(item.id, item.isSelectedByTeam)
+            }}
+            className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-600"
+          />
+        )
+      }
+    },
+    {
+      key: 'recommendation',
+      header: 'Đề xuất',
+      sortable: true,
+      render: (item) => {
+        const rec = recommendationLabel(item.recommendation)
+        if (!rec) return null
+        return (
+          <Badge variant={rec.id === 1 ? 'success' : rec.id === 2 ? 'secondary' : 'destructive'}
+            className='flex flex-wrap gap-1 min-w-[100px]'>
+            {rec.label}
+          </Badge>
+        )
+      }
+    },
+    {
+      key: 'publishedTime',
+      header: 'Thời gian',
+      sortable: true,
+      render: (item) => item.publishedTime ? new Date(item.publishedTime).toLocaleDateString('vi-VN') : '—'
+    },
+    {
+      key: 'title',
+      header: 'Link nguồn',
+      sortable: true,
+      render: (item) => (
+        <div className="flex flex-col gap-0.5 min-w-[300px]">
+          <a
+            href={item.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1"
+          >
+            {item.title}
+            <ExternalLink className="h-3 w-3 shrink-0" />
+          </a>
+          <span className="text-xs text-slate-400 dark:text-slate-500">{item.sourceName}</span>
+        </div>
+      )
+    },
+    {
+      key: 'marketType',
+      header: 'Nhóm',
+      sortable: true,
+      render: (item) => (
+        <Badge variant={item.marketType === CMarketScope.International ? 'lime' : 'secondary'}
+          className="flex flex-col gap-0.5 min-w-[60px]">
+          {item.marketType === CMarketScope.International ? 'Quốc tế' : 'Nội địa'}
+        </Badge>
+      )
+    },
+    {
+      key: 'summaryOverview',
+      header: 'Tóm tắt',
+      render: (item) => (
+        <div className="min-w-[250px]">
+          <ExpandableSummary text={item.summaryOverview} />
+        </div>
+      )
+    },
+    {
+      key: 'relevanceLevel',
+      header: 'Liên quan',
+      sortable: true,
+      render: (item) => {
+        const relevanceOption =
+          RELEVANCE_LEVEL_OPTIONS.find(o => o.id === item.relevanceLevel) ??
+          RELEVANCE_LEVEL_OPTIONS.find(o => o.id === CRelevanceLevel.None)!
+
+        const highlightedDataScore =
+          item.totalScore -
+          item.relevanceToTopicScore -
+          item.importanceImpactScore -
+          item.emotionPotentialScore -
+          item.noveltyDataScore
+
+        return (
+          <div className='flex flex-wrap gap-1 min-w-[80px]'
+            title={`Điểm chi tiết:
+      • Độ liên quan với chủ đề: ${item.relevanceToTopicScore}/30
+      • Độ quan trọng/tác động thị trường: ${item.importanceImpactScore}/20
+      • Khả năng tạo cảm xúc: ${item.emotionPotentialScore}/20
+      • Độ mới của tin: ${item.noveltyDataScore}/15
+      • Dữ liệu/số liệu nổi bật: ${highlightedDataScore}/15
+      • Tổng: ${item.totalScore}/100`}
+          >
+            <Badge className={relevanceOption.badgeClass}>
+              {relevanceOption.label}
+            </Badge>
+          </div>
+        )
+      }
+    },
+    {
+      key: 'emotionTags',
+      header: 'Cảm xúc',
+      render: (item) => {
+        const emotions = decodeEmotionTags(item.emotionTags ?? 0)
+        return (
+          <div className="flex flex-wrap gap-1 min-w-[150px]">
+            {emotions.map((emotion) => {
+              const emojiMap: Record<string, string> = {
+                'Sợ hãi': '😨',
+                'Nghi ngờ': '🤔',
+                'Tò mò': '🤩',
+                'Khẩn cấp': '🚨',
+                'Áp lực quyết định': '😰',
+                'Ngạc nhiên': '😲',
+                'Giận dữ': '😡',
+                'Hy vọng': '🌟',
+                'FOMO': '📈',
+              }
+              return (
+                <span
+                  key={emotion}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${getEmotionBadgeClass(emotion)}`}
+                >
+                  {emojiMap[emotion] && <span>{emojiMap[emotion]}</span>}
+                  {emotion}
+                </span>
+              )
+            })}
+          </div>
+        )
+      }
+    },
+    {
+      key: 'suggestedKeywordsForThumbnail',
+      header: 'Keyword research',
+      render: (item) => (
+        <div className="min-w-[150px]">
+          <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
+            {(item.suggestedKeywordsForThumbnail ?? '').split(',').filter(Boolean).map((kw: string, i: number) => (
+              <span key={kw.trim() + i}>{i > 0 && <>, </>}{kw.trim()}</span>
+            ))}
+          </p>
+        </div>
+      )
+    },
+    {
+      key: 'deepAnalysis',
+      header: 'Hành động',
+      stickyRight: true,
+      render: (item) => {
+        const isAnalyzing = analyzingIds.has(item.id)
+        const isViewing = viewingDeepId === item.id
+
+        if (item.hasDeepAnalysis || deepAnalyses.has(item.id)) {
+          return (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => handleViewDeep(item.id)}
+                title={isViewing ? 'Đóng phân tích sâu' : 'Xem phân tích sâu'}
+                aria-label={isViewing ? 'Đóng phân tích sâu' : 'Xem phân tích sâu'}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+              >
+                {isViewing ? <ChevronUp className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          )
+        }
+
+        return (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              disabled={isAnalyzing}
+              onClick={() => handleDeepAnalyzeSingle(item.id)}
+              title={isAnalyzing ? 'Đang phân tích…' : 'Phân tích sâu'}
+              aria-label={isAnalyzing ? 'Đang phân tích…' : 'Phân tích sâu'}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAnalyzing
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Brain className="h-3.5 w-3.5" />
+              }
+            </button>
+          </div>
+        )
+      }
+    }
+  ], [newsList, selectedIds, toggleSelect, recommendationLabel, analyzingIds, viewingDeepId, deepAnalyses, handleViewDeep, handleDeepAnalyzeSingle])
+
   const totalCount = newsResult?.totalCount ?? 0
   const totalPages = newsResult?.totalPages ?? 1
   const selectedCount = newsList.filter((n) => n.isSelectedByTeam).length
@@ -241,6 +544,68 @@ export function NewsPage() {
           </div>
         </div>
 
+        {/* News Source Selector */}
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between">
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+              Nguồn tin cụ thể
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedSources.length > 0}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    handleSelectAllSources()
+                  } else {
+                    handleClearSources()
+                  }
+                }}
+                className="h-3 w-3 rounded border-slate-300 dark:border-slate-600"
+              />
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {selectedSources.length > 0 ? `${selectedSources.length} nguồn` : 'Tất cả'}
+              </span>
+            </label>
+          </div>
+          <div className="relative">
+            <SelectDropdown<NewsSourceSelectDto>
+              fetchData={async (params) => {
+                const result = await getNewsSources(activeProjectId!, {
+                  ...params,
+                  region: marketScope as CMarketScope,
+                })
+                return {
+                  items: result.items,
+                  pageInfo: {
+                    pageNumber: result.pageNumber,
+                    pageSize: result.pageSize,
+                    totalRecords: result.totalCount,
+                    totalPages: result.totalPages,
+                    hasNextPage: result.pageNumber < result.totalPages,
+                    hasPreviousPage: result.pageNumber > 1,
+                  },
+                }
+              }}
+              getOptionId={(s) => s.id}
+              getOptionLabel={(s) => {
+                const regionLabel = s.region === CMarketScope.Domestic ? '🇻🇳 ' : s.region === CMarketScope.International ? '🌍 ' : '🌐 '
+                return `${regionLabel}${s.name}`
+              }}
+              placeholder="Tìm nguồn tin..."
+              multiple={true}
+              value={selectedSources}
+              onChange={setSelectedSources}
+              pageSize={20}
+            />
+          </div>
+          {selectedSources.length === 0 && (
+            <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
+              Tự động tìm theo phạm vi thị trường đã chọn
+            </p>
+          )}
+        </div>
+
         {/* Tags input */}
         <div className="mt-3">
           <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -274,428 +639,251 @@ export function NewsPage() {
       </div>
 
       {/* Block 2: Results */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-        {/* Summary bar */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-3">
-          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-            <span>Tổng: <strong className="text-slate-700 dark:text-slate-200">{totalCount}</strong></span>
-            <span>Đã chọn: <strong className="text-emerald-600 dark:text-emerald-400">{selectedCount}</strong></span>
-            <span>Nguồn đã quét: <strong>{scannedSources}</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSelectAll}>
-              Chọn tất cả
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDeepAnalyze}
-              disabled={selectedIds.size === 0 || analyzingIds.size > 0}
-            >
-              <Brain className="h-3.5 w-3.5" />
-              {analyzingIds.size > 0 ? 'Đang phân tích…' : 'Phân tích sâu'}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => navigate('/pipeline/reference?projectId=' + encodeURIComponent(activeProjectId!))}
-              disabled={selectedCount === 0}
-            >
-              Dùng tin đã chọn →
-            </Button>
-          </div>
-        </div>
-
-        {/* Loading/Error/Empty */}
-        {isLoading && (
-          <div className="flex items-center justify-center p-8">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-          </div>
-        )}
-        {error && (
-          <div className="flex flex-col items-center gap-2 p-8">
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {error instanceof Error ? error.message : 'Có lỗi xảy ra'}
-            </p>
-            <Button variant="outline" size="sm" onClick={() => void refetch()}>Thử lại</Button>
-          </div>
-        )}
-
-        {/* News table */}
-        {!isLoading && !error && newsList.length > 0 && (
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-                  <th className="w-10 px-3 py-2 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.size === newsList.length}
-                      onChange={() => {
-                        if (selectedIds.size === newsList.length) {
-                          setSelectedIds(new Set())
-                        } else {
-                          setSelectedIds(new Set(newsList.map((n) => n.id)))
-                        }
-                      }}
-                      className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-600"
-                    />
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Đề xuất</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Thời gian</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Link nguồn</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Nhóm</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Tóm tắt</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Mức độ liên quan</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Cảm xúc</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Keyword research</th>
-                </tr>
-              </thead>
-              <tbody>
-                {newsList.map((item) => {
-                  const emotions = decodeEmotionTags(item.emotionTags ?? 0)
-                  const rec = recommendationLabel(item.recommendation)
-                  const isInSelected = selectedIds.has(item.id)
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                    >
-                      <td className="px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={isInSelected || item.isSelectedByTeam}
-                          onChange={() => {
-                            const wasChecked = isInSelected || item.isSelectedByTeam
-                            // wasChecked = trạng thái checkbox TRƯỚC khi click
-                            // willBeChecked = trạng thái checkbox SAU khi click (luôn ngược lại)
-                            if (wasChecked) {
-                              setSelectedIds((prev) => {
-                                const next = new Set(prev)
-                                next.delete(item.id)
-                                return next
-                              })
-                            } else {
-                              setSelectedIds((prev) => new Set(prev).add(item.id))
-                            }
-                            // Gọi API với selected = ngược với server state hiện tại
-                            toggleSelect(item.id, item.isSelectedByTeam)
-                          }}
-                          className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-600"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        {rec && (
-                          <Badge variant={
-                            rec.id === 1 ? 'success' : rec.id === 2 ? 'secondary' : 'destructive'
-                          }>
-                            {rec.label}
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
-                        {item.publishedTime ? new Date(item.publishedTime).toLocaleDateString('vi-VN') : '—'}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col gap-0.5">
-                          <a
-                            href={item.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1"
-                          >
-                            {item.title}
-                            <ExternalLink className="h-3 w-3 shrink-0" />
-                          </a>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">{item.sourceName}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge variant="outline">
-                          {item.marketType === CMarketScope.International ? 'Quốc tế' : 'Nội địa'}
-                        </Badge>
-                      </td>
-                      <td className="max-w-xs px-3 py-2">
-                        <ExpandableSummary text={item.summaryOverview} />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge variant={item.relevanceLevel === CRelevanceLevel.High ? 'success' : item.relevanceLevel === CRelevanceLevel.Medium ? 'secondary' : 'outline'}>
-                          {getRelevanceLevelLabel(item.relevanceLevel)}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-wrap gap-1">
-                          {emotions.map((emotion) => (
-                            <span
-                              key={emotion}
-                              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] text-slate-600 dark:text-slate-300"
-                            >
-                              {emotion}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="max-w-xs px-3 py-2">
-                        <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
-                          {(item.suggestedKeywordsForThumbnail ?? '').split(',').filter(Boolean).map((kw, i) => (
-                            <span key={kw.trim() + i}>{i > 0 && <>, </>}{kw.trim()}</span>
-                          ))}
-                        </p>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Empty news */}
-        {!isLoading && !error && newsList.length === 0 && (
-          <div className="flex flex-col items-center gap-2 p-8 text-sm text-slate-400 dark:text-slate-500">
-            Chưa có tin tức nào — hãy tìm kiếm tin tức
-          </div>
-        )}
-
-        {/* Pagination */}
-        {!isLoading && !error && totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 px-4 py-3">
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Trang {page} / {totalPages}
-            </span>
+      <DataTable
+        columns={columns}
+        data={newsList}
+        isLoading={isLoading}
+        error={error instanceof Error ? error.message : error ? 'Có lỗi xảy ra' : null}
+        onRetry={() => void refetch()}
+        title="Tin tức"
+        emptyMessage="Chưa có tin tức nào — hãy tìm kiếm tin tức"
+        page={page}
+        pageSize={pageSize}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        search={search}
+        searchPlaceholder="Tìm nhanh trong trang hiện tại..."
+        onSearchChange={setSearch}
+        onSearchClear={() => setSearch('')}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleSort}
+        actions={
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700 pr-4">
+              <span>Tổng: <strong className="text-slate-700 dark:text-slate-200">{totalCount}</strong></span>
+              <span>Đã chọn: <strong className="text-emerald-600 dark:text-emerald-400">{selectedCount}</strong></span>
+              <span>Nguồn đã quét: <strong>{scannedSources}</strong></span>
+            </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                ← Trước
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                Chọn tất cả
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-                Sau →
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeepAnalyze}
+                disabled={selectedIds.size === 0 || analyzingIds.size > 0}
+              >
+                <Brain className="h-3.5 w-3.5" />
+                {analyzingIds.size > 0 ? 'Đang phân tích…' : 'Phân tích sâu'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate('/pipeline/reference?projectId=' + encodeURIComponent(activeProjectId!))}
+                disabled={selectedCount === 0}
+              >
+                Dùng tin đã chọn →
               </Button>
             </div>
           </div>
-        )}
-      </div>
+        }
+      />
 
-      {/* Deep analysis panel */}
-      {deepAnalyses.size > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Phân tích sâu từng tin
-          </h2>
-          <div className="grid grid-cols-1 gap-4">
-            {Array.from(deepAnalyses.entries()).map(([newsItemId, analysis]) => {
-              const newsItem = newsList.find((n) => n.id === newsItemId)
-              const emotions = decodeEmotionTags(analysis.emotionTags)
+      {/* Deep analysis panel — chỉ hiện khi user click "Xem" từ cột trong bảng */}
+      {viewingDeepId && deepAnalyses.has(viewingDeepId) && (() => {
+        const analysis = deepAnalyses.get(viewingDeepId)!
+        const newsItem = newsList.find((n) => n.id === viewingDeepId)
+        const emotions = decodeEmotionTags(analysis.emotionTags)
 
-              // Parse market reaction JSON object → key-value pairs
-              let marketEntries: { label: string; value: string; color: string }[] = []
-              try {
-                const parsed = JSON.parse(analysis.marketReactionJson)
-                if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-                  marketEntries = Object.entries(parsed).map(([k, v]) => ({
-                    label: k,
-                    value: String(v),
-                    color: k.toLowerCase().includes('tích cực') || k.toLowerCase().includes('tăng') ? 'emerald' : 'red',
-                  }))
-                } else if (Array.isArray(parsed)) {
-                  marketEntries = parsed.map((s: string) => ({ label: '', value: s, color: 'slate' }))
-                }
-              } catch { marketEntries = [{ label: '', value: analysis.marketReactionJson, color: 'slate' }] }
+        let sentimentLabel = 'Trung lập'
+        let sentimentBadgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+        const sVal = String(analysis.sentimentOverview?.sentiment ?? '').toLowerCase()
+        if (sVal === '1' || sVal.includes('optimistic') || sVal.includes('lạc quan')) {
+          sentimentLabel = '📈 Lạc quan'
+          sentimentBadgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+        } else if (sVal === '2' || sVal.includes('pessimistic') || sVal.includes('bi quan')) {
+          sentimentLabel = '📉 Bi quan'
+          sentimentBadgeClass = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-800'
+        } else if (sVal === '4' || sVal.includes('mixed') || sVal.includes('giằng co')) {
+          sentimentLabel = '🔄 Giằng co'
+          sentimentBadgeClass = 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+        } else {
+          sentimentLabel = '⚖️ Trung lập'
+          sentimentBadgeClass = 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+        }
 
-              // Parse sentiment JSON object → key-value pairs
-              let sentimentEntries: { label: string; value: string }[] = []
-              let fearGreedIndex: number | null = null
-              try {
-                const parsed = JSON.parse(analysis.sentimentOverviewJson)
-                if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-                  for (const [k, v] of Object.entries(parsed)) {
-                    if (k.toLowerCase().includes('fear') || k.toLowerCase().includes('greed') || k.toLowerCase().includes('index')) {
-                      fearGreedIndex = Number(v)
-                    } else {
-                      sentimentEntries.push({ label: k, value: String(v) })
-                    }
-                  }
-                } else if (Array.isArray(parsed)) {
-                  sentimentEntries = parsed.map((s: string) => ({ label: '', value: s }))
-                }
-              } catch { sentimentEntries = [{ label: '', value: analysis.sentimentOverviewJson }] }
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Phân tích sâu (4 Tầng)
+              </h2>
+              <button
+                type="button"
+                onClick={() => setViewingDeepId(null)}
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                ✕ Đóng
+              </button>
+            </div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+              {/* Header */}
+              <div className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                    {newsItem?.title ?? 'Phân tích tin tức'}
+                  </h3>
+                  {newsItem?.sourceName && (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{newsItem.sourceName}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {analysis.wasTranslatedFromForeign && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      🌐 Đã dịch từ nguồn quốc tế
+                    </Badge>
+                  )}
+                  {analysis.status === 2 && (
+                    <Badge variant="destructive" className="text-[10px]">
+                      ⚠️ Phân tích thất bại (Cần thử lại)
+                    </Badge>
+                  )}
+                </div>
+              </div>
 
-              const fgColor = fearGreedIndex !== null
-                ? fearGreedIndex < 25 ? 'bg-red-500' : fearGreedIndex < 45 ? 'bg-orange-500' : fearGreedIndex < 55 ? 'bg-yellow-500' : fearGreedIndex < 75 ? 'bg-lime-500' : 'bg-emerald-500'
-                : ''
-
-              return (
-                <div
-                  key={analysis.id}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden"
-                >
-                  {/* Header */}
-                  <div className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 py-3">
-                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
-                      {newsItem?.title ?? 'Phân tích tin tức'}
-                    </h3>
-                    {newsItem?.sourceName && (
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{newsItem.sourceName}</p>
-                    )}
+              <div className="p-4 space-y-5">
+                {/* Tầng 1: Macro Event Summary */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-base">📊</span>
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Tầng 1: Sự kiện vĩ mô theo hạng mục
+                    </h4>
                   </div>
-
-                  <div className="p-4 space-y-5">
-                    {/* Macro Event Summary */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-base">📊</span>
-                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                          Tóm tắt sự kiện vĩ mô
-                        </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {Array.isArray(analysis.macroEventSummary) && analysis.macroEventSummary.map((evt, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs rounded-lg border border-slate-100 dark:border-slate-800 p-2 bg-slate-50/50 dark:bg-slate-800/30">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 shrink-0 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px]">
+                          {evt.category}
+                        </span>
+                        <span className="text-slate-600 dark:text-slate-400 leading-relaxed">{evt.content}</span>
                       </div>
-                      <ul className="space-y-1.5">
-                        {analysis.macroEventSummary.map((item, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
-                            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Market Reaction & Sentiment side by side */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Market Reaction */}
-                      <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-base">📈</span>
-                          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            Phản ứng thị trường
-                          </h4>
-                        </div>
-                        <div className="space-y-2">
-                          {marketEntries.map((entry, i) => (
-                            <div key={i}>
-                              {entry.label && (
-                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase block mb-0.5">
-                                  {entry.label}
-                                </span>
-                              )}
-                              <span className={`text-xs font-medium ${
-                                entry.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
-                                entry.color === 'red' ? 'text-red-600 dark:text-red-400' :
-                                'text-slate-600 dark:text-slate-400'
-                              }`}>
-                                {entry.value}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Sentiment */}
-                      <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-base">🧠</span>
-                          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            Đánh giá tâm lý
-                          </h4>
-                        </div>
-                        <div className="space-y-2">
-                          {sentimentEntries.map((entry, i) => (
-                            <div key={i}>
-                              {entry.label && (
-                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase block mb-0.5">
-                                  {entry.label}
-                                </span>
-                              )}
-                              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                                {entry.value}
-                              </span>
-                            </div>
-                          ))}
-                          {fearGreedIndex !== null && (
-                            <div className="mt-2">
-                              <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase block mb-1">
-                                Fear & Greed Index
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                  <div className={`h-full rounded-full ${fgColor} transition-all`} style={{ width: `${fearGreedIndex}%` }} />
-                                </div>
-                                <span className={`text-xs font-bold ${
-                                  fearGreedIndex < 25 ? 'text-red-600' :
-                                  fearGreedIndex < 45 ? 'text-orange-500' :
-                                  fearGreedIndex < 55 ? 'text-yellow-500' :
-                                  fearGreedIndex < 75 ? 'text-lime-500' :
-                                  'text-emerald-500'
-                                }`}>
-                                  {fearGreedIndex}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expectations */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-base">🎯</span>
-                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                          Dự đoán kỳ vọng
-                        </h4>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="rounded-lg border-l-4 border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/20 dark:border-l-blue-600 p-3">
-                          <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase mb-1">Ngắn hạn</p>
-                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{analysis.expectationShortTerm}</p>
-                        </div>
-                        <div className="rounded-lg border-l-4 border-l-violet-400 bg-violet-50/50 dark:bg-violet-950/20 dark:border-l-violet-600 p-3">
-                          <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase mb-1">Dài hạn</p>
-                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{analysis.expectationLongTerm}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Emotions */}
-                    {emotions.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-base">💡</span>
-                          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            Cảm xúc có thể khai thác
-                          </h4>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {emotions.map((em) => {
-                            const emojiMap: Record<string, string> = {
-                              'Sợ hãi': '😨',
-                              'Nghi ngờ': '🤔',
-                              'Tò mò': '🤩',
-                              'Khẩn cấp': '🚨',
-                              'Áp lực quyết định': '😰',
-                              'Ngạc nhiên': '😲',
-                              'Giận dữ': '😡',
-                              'Hy vọng': '🌟',
-                            }
-                            return (
-                              <span key={em} className="inline-flex items-center gap-1 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">
-                                {emojiMap[em] && <span>{emojiMap[em]}</span>}
-                                {em}
-                              </span>
-                            )
-                          })}
-                        </div>
-                        {analysis.emotionReason && (
-                          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed border-l-2 border-slate-200 dark:border-slate-700 pl-3">
-                            {analysis.emotionReason}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </div>
-              )
-            })}
+
+                {/* Tầng 2 & 4 side by side */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-base">📈</span>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Tầng 2: Phản ứng thị trường & Ý kiến
+                      </h4>
+                    </div>
+                    <div className="space-y-2">
+                      {Array.isArray(analysis.marketReaction) && analysis.marketReaction.map((entry, i) => (
+                        <div key={i} className="border-b border-slate-100 dark:border-slate-800/60 pb-1.5 last:border-0 last:pb-0">
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-0.5">
+                            {entry.marketOrTopic}
+                          </span>
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {entry.content}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-base">🧠</span>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Tầng 4: Đánh giá tâm lý tổng quan
+                      </h4>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">Trạng thái:</span>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${sentimentBadgeClass}`}>
+                          {sentimentLabel}
+                        </span>
+                      </div>
+                      {analysis.sentimentOverview?.rationale && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+                          {analysis.sentimentOverview.rationale}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tầng 3: Expectations */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-base">🎯</span>
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Tầng 3: Dự đoán kỳ vọng (1-3 tháng & 6-12 tháng)
+                    </h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="rounded-lg border-l-4 border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/20 dark:border-l-blue-600 p-3">
+                      <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase mb-1">Ngắn hạn (1-3 tháng)</p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{analysis.expectationShortTerm}</p>
+                    </div>
+                    <div className="rounded-lg border-l-4 border-l-violet-400 bg-violet-50/50 dark:bg-violet-950/20 dark:border-l-violet-600 p-3">
+                      <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase mb-1">Dài hạn (6-12 tháng)</p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{analysis.expectationLongTerm}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Emotions */}
+                {emotions.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-base">💡</span>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Tag Cảm xúc khai thác
+                      </h4>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {emotions.map((em) => {
+                        const emojiMap: Record<string, string> = {
+                          'Sợ hãi': '😨', 'Nghi ngờ': '🤔', 'Tò mò': '🤩',
+                          'Khẩn cấp': '🚨', 'Áp lực quyết định': '😰', 'Ngạc nhiên': '😲',
+                          'Giận dữ': '😡', 'Hy vọng': '🌟', 'FOMO': '📈',
+                        }
+                        return (
+                          <span key={em} className="inline-flex items-center gap-1 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+                            {emojiMap[em] && <span>{emojiMap[em]}</span>}
+                            {em}
+                          </span>
+                        )
+                      })}
+                    </div>
+                    {analysis.emotionReason && (
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                        {analysis.emotionReason}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Missing Data Note */}
+                {analysis.missingDataNote && (
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                    * Ghi chú dữ liệu: {analysis.missingDataNote}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Progress overlay */}
       <OperationProgress
@@ -707,3 +895,4 @@ export function NewsPage() {
     </div>
   )
 }
+

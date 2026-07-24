@@ -1,5 +1,4 @@
 using Kolia.Thumbnail.API.Data.Entities;
-using Kolia.Thumbnail.API.Data.Entities.News;
 using Kolia.Thumbnail.API.Enums;
 
 namespace Kolia.Thumbnail.API.Data.Extensions
@@ -10,6 +9,16 @@ namespace Kolia.Thumbnail.API.Data.Extensions
     /// NewsSourceEntityConfiguration.HasData — file này bổ sung THÊM toàn bộ phần còn lại.
     /// URL đã được xác minh (curl -I) tại thời điểm viết seed; dùng AdminNewsSourceController
     /// để cập nhật nếu URL thay đổi mà không cần deploy lại.
+    ///
+    /// [ĐÃ SỬA] Các nguồn quốc tế dùng Google News RSS site-search mà domain gốc là trang
+    /// tin tổng hợp (không thuần tài chính) đã được bổ sung filter chủ đề
+    /// "(economy OR finance OR markets OR business)" giống pattern của WsjMarkets/TradingView,
+    /// để tránh lấy nhầm tin ngoài phạm vi Kinh tế/Tài chính/Thị trường:
+    ///   - Reuters Business  (site:reuters.com — trang tin tổng hợp, có chính trị/thế giới/thể thao)
+    ///   - Bloomberg         (site:bloomberg.com — trang tin tổng hợp, có chính trị/công nghệ)
+    ///   - Financial Times   (URL cũ "https://www.ft.com" KHÔNG phải Google News RSS hợp lệ — đã sửa lại đúng format)
+    /// Các nguồn domain vốn đã thuần tài chính/thị trường (Investing.com, Fidelity, IMF,
+    /// World Gold Council, Kitco...) giữ nguyên vì không cần filter thêm.
     /// </summary>
     public static class NewsSourceSeedData
     {
@@ -21,12 +30,13 @@ namespace Kolia.Thumbnail.API.Data.Extensions
         {
             Id = Guid.Parse("11111111-0002-7000-8000-000000000001"),
             Name = "Reuters Business",
-            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en",
+            // [FIXED] thêm filter chủ đề vì reuters.com là trang tin tổng hợp
+            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:reuters.com+(economy+OR+finance+OR+markets+OR+business)&hl=en-US&gl=US&ceid=US:en",
             Region = CMarketScope.International,
             IsTrusted = true,
             Priority = 10,
             SourceGroup = CNewsSourceGroup.InternationalFinance,
-            FetchMode = CSourceFetchMode.GoogleNewsFallback,
+            FetchMode = CSourceFetchMode.GoogleNewsSiteRestricted,
             Domain = "reuters.com",
             LastFailedAt = (DateTimeOffset?)null,
             ConsecutiveFailureCount = 0,
@@ -105,7 +115,10 @@ namespace Kolia.Thumbnail.API.Data.Extensions
         {
             Id = Guid.Parse("11111111-0002-7000-8000-000000000004"),
             Name = "Financial Times",
-            RssOrFeedUrl = "https://www.ft.com",
+            // [FIXED] URL cũ "https://www.ft.com" không phải Google News RSS hợp lệ
+            // (không có q=, không lọc gì) — sửa lại đúng format kèm filter chủ đề,
+            // vì ft.com cũng đưa tin tổng hợp ngoài tài chính.
+            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:ft.com+(economy+OR+finance+OR+markets+OR+business)&hl=en-US&gl=US&ceid=US:en",
             Region = CMarketScope.International,
             IsTrusted = true,
             Priority = 13,
@@ -217,7 +230,7 @@ namespace Kolia.Thumbnail.API.Data.Extensions
         {
             Id = Guid.Parse("11111111-0002-7000-8000-000000000008"),
             Name = "WSJ Markets",
-            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:wsj.com&hl=en-US&gl=US&ceid=US:en",
+            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:wsj.com+(economy+OR+finance+OR+markets+OR+business)&hl=en-US&gl=US&ceid=US:en",
             Region = CMarketScope.International,
             IsTrusted = true,
             Priority = 17,
@@ -301,7 +314,7 @@ namespace Kolia.Thumbnail.API.Data.Extensions
         {
             Id = Guid.Parse("11111111-0002-7000-8000-000000000011"),
             Name = "Nikkei Asia",
-            RssOrFeedUrl = "https://asia.nikkei.com",
+            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:asia.nikkei.com/economy&hl=en-US&gl=US&ceid=US:en",
             Region = CMarketScope.International,
             IsTrusted = true,
             Priority = 20,
@@ -329,7 +342,9 @@ namespace Kolia.Thumbnail.API.Data.Extensions
         {
             Id = Guid.Parse("11111111-0002-7000-8000-000000000012"),
             Name = "Bloomberg",
-            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:bloomberg.com&hl=en-US&gl=US&ceid=US:en",
+            // [FIXED] thêm filter chủ đề vì bloomberg.com cũng đưa tin tổng hợp
+            // (chính trị, công nghệ...) chứ không chỉ riêng tài chính/thị trường.
+            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:bloomberg.com+(economy+OR+finance+OR+markets+OR+business)&hl=en-US&gl=US&ceid=US:en",
             Region = CMarketScope.International,
             IsTrusted = true,
             Priority = 21,
@@ -702,7 +717,7 @@ namespace Kolia.Thumbnail.API.Data.Extensions
         {
             Id = Guid.Parse("11111111-0005-7000-8000-000000000001"),
             Name = "TradingView News",
-            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:tradingview.com/news/tradingview&hl=en-US&gl=US&ceid=US:en",
+            RssOrFeedUrl = "https://news.google.com/rss/search?q=site:tradingview.com/news+(economic-category+OR+markets+OR+finance+OR+economy)&hl=en-US&gl=US&ceid=US:en",
             Region = CMarketScope.International,
             IsTrusted = true,
             Priority = 50,

@@ -77,6 +77,7 @@ namespace Kolia.Thumbnail.API.BackgroundJobs
                                         payload.TimeRangeDays ?? 7,
                                         payload.MaxResults ?? 10,
                                         item.ProjectId,
+                                        null,
                                         stoppingToken);
                                     break;
 

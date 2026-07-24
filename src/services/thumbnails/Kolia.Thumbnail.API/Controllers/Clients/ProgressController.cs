@@ -40,6 +40,11 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
             });
         }
 
+        private static readonly JsonSerializerOptions CamelCaseOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         /// <summary>
         /// SSE stream: client dùng EventSource để nhận log realtime.
         /// </summary>
@@ -54,50 +59,57 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
             var lastLogCount = 0;
             var waitStart = DateTimeOffset.UtcNow;
 
-            while (!ct.IsCancellationRequested)
+            try
             {
-                var progress = _store.Get(operationId);
-
-                // Nếu chưa có progress entry, đợi tối đa 10s (search API chưa kịp tạo)
-                if (progress == null)
+                while (!ct.IsCancellationRequested)
                 {
-                    if ((DateTimeOffset.UtcNow - waitStart).TotalSeconds > 10)
+                    var progress = _store.Get(operationId);
+
+                    // Nếu chưa có progress entry, đợi tối đa 10s (search API chưa kịp tạo)
+                    if (progress == null)
                     {
-                        await Response.WriteAsync("event: error\ndata: Operation not found or timed out\n\n", ct);
+                        if ((DateTimeOffset.UtcNow - waitStart).TotalSeconds > 10)
+                        {
+                            await Response.WriteAsync("event: error\ndata: Operation not found or timed out\n\n", ct);
+                            await Response.Body.FlushAsync(ct);
+                            break;
+                        }
+                        await Response.WriteAsync("data: \n\n", ct); // keep-alive
+                        await Response.Body.FlushAsync(ct);
+                        await Task.Delay(300, ct);
+                        continue;
+                    }
+
+                    // Gửi các log mới với camelCase JSON
+                    for (var i = lastLogCount; i < progress.Logs.Count; i++)
+                    {
+                        var logJson = JsonSerializer.Serialize(progress.Logs[i], CamelCaseOptions);
+                        await Response.WriteAsync($"data: {logJson}\n\n", ct);
+                        lastLogCount++;
+                    }
+
+                    // Gửi status event khi hoàn thành
+                    if (progress.Status != "running")
+                    {
+                        var statusPayload = JsonSerializer.Serialize(new
+                        {
+                            type = "status",
+                            status = progress.Status,
+                            errorMessage = progress.ErrorMessage
+                        }, CamelCaseOptions);
+                        await Response.WriteAsync($"event: done\ndata: {statusPayload}\n\n", ct);
                         await Response.Body.FlushAsync(ct);
                         break;
                     }
+
                     await Response.WriteAsync("data: \n\n", ct); // keep-alive
                     await Response.Body.FlushAsync(ct);
-                    await Task.Delay(300, ct);
-                    continue;
+                    await Task.Delay(500, ct);
                 }
-
-                // Gửi các log mới
-                for (var i = lastLogCount; i < progress.Logs.Count; i++)
-                {
-                    var logJson = JsonSerializer.Serialize(progress.Logs[i]);
-                    await Response.WriteAsync($"data: {logJson}\n\n", ct);
-                    lastLogCount++;
-                }
-
-                // Gửi status event khi hoàn thành
-                if (progress.Status != "running")
-                {
-                    var statusPayload = JsonSerializer.Serialize(new
-                    {
-                        type = "status",
-                        progress.Status,
-                        progress.ErrorMessage
-                    });
-                    await Response.WriteAsync($"event: done\ndata: {statusPayload}\n\n", ct);
-                    await Response.Body.FlushAsync(ct);
-                    break;
-                }
-
-                await Response.WriteAsync("data: \n\n", ct); // keep-alive
-                await Response.Body.FlushAsync(ct);
-                await Task.Delay(500, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // Client ngắt kết nối SSE stream — kết thúc bình thường
             }
         }
     }

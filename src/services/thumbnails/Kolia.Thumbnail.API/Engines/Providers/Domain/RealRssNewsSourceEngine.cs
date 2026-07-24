@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Kolia.Thumbnail.API.Engines.AI;
 using Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching;
 using Kolia.Thumbnail.API.Engines.Social;
 using Kolia.Thumbnail.API.Enums;
@@ -17,6 +18,7 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain
         private readonly SourceFetchPipeline _pipeline;
         private readonly CircuitBreakerRegistry _circuitBreaker;
         private readonly ResponseCacheStore _cache;
+        private readonly IKeywordTranslationEngine _keywordTranslator;
         private readonly ILogger<RealRssNewsSourceEngine> _logger;
 
         public RealRssNewsSourceEngine(
@@ -25,6 +27,7 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain
             SourceFetchPipeline pipeline,
             CircuitBreakerRegistry circuitBreaker,
             ResponseCacheStore cache,
+            IKeywordTranslationEngine keywordTranslator,
             ILogger<RealRssNewsSourceEngine> logger)
         {
             _httpClient = httpClient;
@@ -32,17 +35,21 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain
             _pipeline = pipeline;
             _circuitBreaker = circuitBreaker;
             _cache = cache;
+            _keywordTranslator = keywordTranslator;
             _logger = logger;
         }
 
         public async Task<IReadOnlyList<CrawledNewsItem>> CrawlAsync(
             IEnumerable<string> keywords, CMarketScope marketScope,
-            int timeRangeDays, int maxCount, CancellationToken ct = default)
+            int timeRangeDays, int maxCount,
+            Action<NewsSourceSearchLog>? onSourceSearched = null,
+            CancellationToken ct = default)
         {
             var keywordList = keywords.ToList();
             if (keywordList.Count == 0) return [];
 
-            // 1. Load sources from DB via registry (cached 5 min)
+            var translatedKeywords = await _keywordTranslator.TranslateAndExpandAsync(keywordList, ct);
+
             var sources = await _sourceRegistry.GetActiveSourcesAsync(marketScope, ct);
             if (sources.Count == 0)
             {
@@ -53,7 +60,6 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain
             var cutoffTime = DateTimeOffset.UtcNow.AddDays(-timeRangeDays);
             var results = new ConcurrentBag<CrawledNewsItem>();
 
-            // 2. Parallel fetch with global concurrency cap = 6, per-domain=1 via DomainRateLimiterRegistry
             await Parallel.ForEachAsync(sources, new ParallelOptions
             {
                 MaxDegreeOfParallelism = 6,
@@ -71,28 +77,65 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain
                         _logger.LogDebug(
                             "CrawlAsync: circuit open for {Domain} — served {Count} cached items.",
                             source.Domain, cached.Count);
+
+                        onSourceSearched?.Invoke(new NewsSourceSearchLog(
+                            source.Name, "(cache — circuit open)", cached.Count,
+                            Success: true, ServedFromCache: true));
+                    }
+                    else
+                    {
+                        onSourceSearched?.Invoke(new NewsSourceSearchLog(
+                            source.Name, "(circuit open, no cache)", 0,
+                            Success: false, ErrorMessage: "Circuit breaker đang mở, không có cache dự phòng"));
                     }
                     return;
                 }
 
-                var items = await _pipeline.FetchWithFallbackAsync(
-                    source, keywordList, cutoffTime, maxCount, token);
+                var sourceKeywords = source.Region switch
+                {
+                    CMarketScope.International => translatedKeywords.EnglishKeywords.Concat(translatedKeywords.OriginalKeywords).Distinct().ToList(),
+                    CMarketScope.Domestic => translatedKeywords.VietnameseKeywords.Concat(translatedKeywords.OriginalKeywords).Distinct().ToList(),
+                    _ => translatedKeywords.CombinedKeywords.ToList()
+                };
+                if (sourceKeywords.Count == 0) sourceKeywords = keywordList;
 
-                if (items.Count > 0)
+                var keywordsJoined = string.Join(", ", sourceKeywords);
+
+                try
                 {
-                    _circuitBreaker.RecordSuccess(source.Domain);
-                    await _cache.SetAsync(source.Domain, keywordList, items, token);
-                    foreach (var i in items) results.Add(i);
+                    var items = await _pipeline.FetchWithFallbackAsync(
+                        source, sourceKeywords, cutoffTime, maxCount, token);
+
+                    if (items.Count > 0)
+                    {
+                        _circuitBreaker.RecordSuccess(source.Domain);
+                        await _cache.SetAsync(source.Domain, keywordList, items, token);
+                        foreach (var i in items) results.Add(i);
+
+                        onSourceSearched?.Invoke(new NewsSourceSearchLog(
+                            source.Name, keywordsJoined, items.Count, Success: true));
+                    }
+                    else
+                    {
+                        _circuitBreaker.RecordFailure(source.Domain);
+                        _logger.LogDebug("CrawlAsync: all tiers failed for {Domain}.", source.Domain);
+
+                        onSourceSearched?.Invoke(new NewsSourceSearchLog(
+                            source.Name, keywordsJoined, 0,
+                            Success: false, ErrorMessage: "Không có tin nào sau khi thử hết các tier fallback"));
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Only count as failure when ALL tiers + cache returned nothing
                     _circuitBreaker.RecordFailure(source.Domain);
-                    _logger.LogDebug("CrawlAsync: all tiers failed for {Domain}.", source.Domain);
+                    _logger.LogWarning(ex, "CrawlAsync: exception fetching {Domain}.", source.Domain);
+
+                    onSourceSearched?.Invoke(new NewsSourceSearchLog(
+                        source.Name, keywordsJoined, 0,
+                        Success: false, ErrorMessage: ex.Message));
                 }
             });
 
-            // 3. Return deduplicated results ordered by publication time
             return results
                 .DistinctBy(i => i.SourceUrl)
                 .OrderByDescending(i => i.PublishedTime)
@@ -128,6 +171,40 @@ namespace Kolia.Thumbnail.API.Engines.Providers.Domain
                 _logger.LogWarning(ex, "FetchSingleAsync failed for: {Url}", url);
                 return null;
             }
+        }
+
+        public async Task<CMarketScope> DetectScopeForUrlAsync(string url, CancellationToken ct = default)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                return CMarketScope.Domestic; // không parse được url → an toàn mặc định trong nước
+
+            var host = uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+                ? uri.Host[4..]
+                : uri.Host;
+
+            // 1. Ưu tiên tra trong bảng NewsSource đã cấu hình sẵn region cho từng domain
+            var allSources = await _sourceRegistry.GetActiveSourcesAsync(CMarketScope.International, ct);
+            allSources = allSources.Concat(await _sourceRegistry.GetActiveSourcesAsync(CMarketScope.Domestic, ct)).ToList();
+
+            var matched = allSources.FirstOrDefault(s =>
+                host.Equals(s.Domain, StringComparison.OrdinalIgnoreCase) ||
+                host.EndsWith("." + s.Domain, StringComparison.OrdinalIgnoreCase));
+
+            if (matched != null)
+            {
+                _logger.LogInformation("DetectScopeForUrlAsync: {Host} khớp nguồn '{Source}' → {Scope}",
+                    host, matched.Name, matched.Region);
+                return matched.Region;
+            }
+
+            // 2. Fallback heuristic theo TLD khi domain chưa có trong danh sách cấu hình
+            var isLikelyVietnamese = host.EndsWith(".vn", StringComparison.OrdinalIgnoreCase);
+
+            var scope = isLikelyVietnamese ? CMarketScope.Domestic : CMarketScope.International;
+            _logger.LogInformation(
+                "DetectScopeForUrlAsync: {Host} không có trong registry — fallback theo TLD → {Scope}",
+                host, scope);
+            return scope;
         }
 
         // ── HTML helpers (unchanged from original) ────────────────────

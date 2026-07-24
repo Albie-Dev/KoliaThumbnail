@@ -39,6 +39,8 @@ public sealed class GlobalExceptionMiddleware
         }
         catch (FluentValidation.ValidationException ex)
         {
+            if (context.Response.HasStarted) return;
+
             var response = new ErrorResponse
             {
                 Code = "VALIDATION_ERROR",
@@ -60,9 +62,15 @@ public sealed class GlobalExceptionMiddleware
             await context.Response.WriteAsync(
                 JsonSerializer.Serialize(response, JsonOptions));
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Request cancelled by client.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
+
+            if (context.Response.HasStarted) return;
 
             await WriteResponseAsync(
                 context,
@@ -78,6 +86,8 @@ public sealed class GlobalExceptionMiddleware
         string code,
         string message)
     {
+        if (context.Response.HasStarted) return;
+
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
 

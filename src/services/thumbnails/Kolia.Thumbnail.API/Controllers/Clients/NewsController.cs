@@ -1,4 +1,8 @@
+using Kolia.Thumbnail.API.Data.Entities.News;
 using Kolia.Thumbnail.API.DTOs.News;
+using Kolia.Thumbnail.API.Engines.AI;
+using Kolia.Thumbnail.API.Engines.Social;
+using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Exceptions;
 using Kolia.Thumbnail.API.Models;
 using Kolia.Thumbnail.API.Models.Commons;
@@ -15,10 +19,12 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
     public class NewsController : ControllerBase
     {
         private readonly INewsService _newsService;
+        private readonly IArticleContentFetcher _articleFetcher;
 
-        public NewsController(INewsService newsService)
+        public NewsController(INewsService newsService, IArticleContentFetcher articleFetcher)
         {
             _newsService = newsService;
+            _articleFetcher = articleFetcher;
         }
 
         /// <summary>
@@ -98,6 +104,7 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
             var reqResult = await _newsService.SearchAsync(
                 projectId, request.MarketScope, request.TimeRange, request.CountFilter,
                 request.KeywordsRaw, request.SuggestedKeywordsSelected,
+                request.SelectedSourceIds,
                 operationId ?? Guid.Empty, ct);
 
             var dtos = reqResult.NewsItems.Select(n => new NewsItemDto(
@@ -184,6 +191,27 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         }
 
         /// <summary>
+        /// Lấy danh sách NewsSource phân trang để client chọn khi search news.
+        /// Hỗ trợ search theo tên, filter theo Region, sort theo Priority.
+        /// </summary>
+        /// <param name="projectId">Id dự án (để consistent routing)</param>
+        /// <param name="request">Tham số phân trang, search</param>
+        /// <param name="region">Filter theo Region (Domestic/International/Both) - optional</param>
+        /// <param name="ct">CancellationToken</param>
+        /// <returns>Danh sách NewsSourceSelectDto phân trang</returns>
+        [HttpGet("sources")]
+        [ProducesResponseType(typeof(PagedResponseDto<NewsSourceSelectDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponseDto<NewsSourceSelectDto>>> GetNewsSources(
+            Guid projectId,
+            [FromQuery] PagedRequestDto request,
+            [FromQuery] CMarketScope? region = null,
+            CancellationToken ct = default)
+        {
+            var result = await _newsService.GetNewsSourcesPagingAsync(request, region, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Chọn hoặc bỏ chọn một bản tin để dùng cho bước thiết kế Display Text và Video Title tiếp theo.
         /// </summary>
         /// <param name="newsItemId">Id bản tin</param>
@@ -201,6 +229,53 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         }
 
         /// <summary>
+        /// Endpoint dùng để test trích xuất full-text bài báo từ 1 URL bất kỳ (bao gồm Google News redirect URL).
+        /// </summary>
+        /// <param name="url">URL của bài báo hoặc link Google News RSS</param>
+        /// <param name="ct">CancellationToken</param>
+        [HttpGet("test-fetch-article")]
+        [ProducesResponseType(typeof(ArticleContentResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ArticleContentResult>> TestFetchArticle(
+            [FromQuery] string url,
+            CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Code = "BAD_REQUEST",
+                    Message = "URL không được để trống."
+                });
+            }
+
+            var result = await _articleFetcher.FetchFullTextAsync(url, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Lấy kết quả phân tích sâu đã lưu của một bản tin (không gọi lại AI).
+        /// </summary>
+        [HttpGet("items/{newsItemId:guid}/deep-analyze")]
+        [ProducesResponseType(typeof(NewsDeepAnalysisDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<NewsDeepAnalysisDto>> GetDeepAnalysis(
+            Guid newsItemId, CancellationToken ct = default)
+        {
+            var analysis = await _newsService.GetDeepAnalysisAsync(newsItemId, ct);
+            if (analysis == null)
+            {
+                return NotFound(new ErrorResponse
+                {
+                    Code = "NOT_FOUND",
+                    Message = "Chưa có kết quả phân tích sâu cho bản tin này."
+                });
+            }
+
+            return Ok(MapDeepAnalysisToDto(analysis));
+        }
+
+        /// <summary>
         /// Thực hiện phân tích sâu 4 tầng (vĩ mô, phản ứng thị trường, triển vọng, cảm xúc) cho bản tin được chỉ định.
         /// </summary>
         /// <param name="newsItemId">Id bản tin</param>
@@ -211,26 +286,114 @@ namespace Kolia.Thumbnail.API.Controllers.Clients
         [HttpPost("items/{newsItemId:guid}/deep-analyze")]
         [ProducesResponseType(typeof(NewsDeepAnalysisDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status502BadGateway)]
         public async Task<ActionResult<NewsDeepAnalysisDto>> DeepAnalyze(
             Guid newsItemId,
             [FromQuery] Guid? operationId = null,
             CancellationToken ct = default)
         {
             var analysis = await _newsService.DeepAnalyzeAsync(newsItemId, operationId ?? Guid.Empty, ct);
-            var dto = new NewsDeepAnalysisDto(
+            return Ok(MapDeepAnalysisToDto(analysis));
+        }
+
+        private static readonly System.Text.Json.JsonSerializerOptions JsonCaseInsensitiveOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        private static NewsDeepAnalysisDto MapDeepAnalysisToDto(NewsDeepAnalysisEntity analysis)
+        {
+            return new NewsDeepAnalysisDto(
                 analysis.Id,
                 analysis.NewsItemId,
-                System.Text.Json.JsonSerializer.Deserialize<IReadOnlyList<string>>(analysis.MacroEventSummaryJson) ?? [],
-                analysis.MarketReactionJson,
+                ParseMacroSummary(analysis.MacroEventSummaryJson),
+                ParseMarketReaction(analysis.MarketReactionJson),
                 analysis.ExpectationShortTerm,
                 analysis.ExpectationLongTerm,
-                analysis.SentimentOverviewJson,
+                ParseSentimentOverview(analysis.SentimentOverviewJson),
                 analysis.EmotionTags,
                 analysis.EmotionReason,
                 analysis.WasTranslatedFromForeign,
-                analysis.MissingDataNote);
+                analysis.MissingDataNote,
+                analysis.Status);
+        }
 
-            return Ok(dto);
+        private static IReadOnlyList<MacroEventCategoryItem> ParseMacroSummary(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return [];
+
+            try
+            {
+                var items = System.Text.Json.JsonSerializer.Deserialize<List<MacroEventCategoryItem>>(json, JsonCaseInsensitiveOptions);
+                if (items != null && items.Count > 0) return items;
+            }
+            catch
+            {
+                try
+                {
+                    var oldStrings = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json, JsonCaseInsensitiveOptions);
+                    if (oldStrings != null)
+                    {
+                        return oldStrings
+                            .Select(s => new MacroEventCategoryItem("Sự kiện", s))
+                            .ToList();
+                    }
+                }
+                catch { }
+            }
+
+            return [];
+        }
+
+        private static IReadOnlyList<MarketReactionItem> ParseMarketReaction(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return [];
+
+            try
+            {
+                var items = System.Text.Json.JsonSerializer.Deserialize<List<MarketReactionItem>>(json, JsonCaseInsensitiveOptions);
+                if (items != null && items.Count > 0) return items;
+            }
+            catch
+            {
+                try
+                {
+                    var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonCaseInsensitiveOptions);
+                    if (dict != null)
+                    {
+                        return dict.Select(kv => new MarketReactionItem(kv.Key, kv.Value)).ToList();
+                    }
+                }
+                catch
+                {
+                    try
+                    {
+                        var oldStrings = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json, JsonCaseInsensitiveOptions);
+                        if (oldStrings != null)
+                        {
+                            return oldStrings.Select(s => new MarketReactionItem("Thị trường", s)).ToList();
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            return [];
+        }
+
+        private static SentimentOverview ParseSentimentOverview(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new SentimentOverview(CMarketSentiment.Neutral, "Chưa rõ");
+
+            try
+            {
+                var item = System.Text.Json.JsonSerializer.Deserialize<SentimentOverview>(json, JsonCaseInsensitiveOptions);
+                if (item != null) return item;
+            }
+            catch { }
+
+            return new SentimentOverview(CMarketSentiment.Neutral, json);
         }
 
         /// <summary>

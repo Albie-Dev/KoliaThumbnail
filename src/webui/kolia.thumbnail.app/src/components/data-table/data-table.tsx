@@ -13,6 +13,7 @@ export interface DataTableColumn<T> {
   header: ReactNode
   sortable?: boolean
   render?: (item: T) => ReactNode
+  stickyRight?: boolean
 }
 
 interface DataTableProps<T> {
@@ -190,8 +191,9 @@ export function DataTable<T>({
                     <th
                       key={column.key}
                       className={cn(
-                        'px-4 py-3',
+                        'px-4 py-3 whitespace-nowrap',
                         column.sortable && 'cursor-pointer select-none hover:bg-slate-100 hover:dark:bg-slate-800 transition-colors',
+                        column.stickyRight && 'sticky right-0 z-10 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 before:absolute before:inset-y-0 before:-left-4 before:w-4 before:pointer-events-none before:bg-gradient-to-l before:from-slate-200/20 before:to-transparent dark:before:from-slate-900/50'
                       )}
                       onClick={() => column.sortable && onSort?.(column.key)}
                     >
@@ -211,9 +213,15 @@ export function DataTable<T>({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {data.map((item, index) => (
-                  <tr key={index} className="text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 hover:dark:bg-slate-900 transition-colors">
+                  <tr key={index} className="group text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 hover:dark:bg-slate-900 transition-colors">
                     {displayedColumns.map((column) => (
-                      <td key={column.key} className="px-4 py-3">
+                      <td 
+                        key={column.key} 
+                        className={cn(
+                          'px-4 py-3',
+                          column.stickyRight && 'sticky right-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-900 border-l border-slate-200 dark:border-slate-700 before:absolute before:inset-y-0 before:-left-4 before:w-4 before:pointer-events-none before:bg-gradient-to-l before:from-slate-200/20 before:to-transparent dark:before:from-slate-900/50 transition-colors'
+                        )}
+                      >
                         {column.render ? column.render(item) : null}
                       </td>
                     ))}

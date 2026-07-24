@@ -1,4 +1,5 @@
 using Kolia.Thumbnail.API.Data.Entities.News;
+using Kolia.Thumbnail.API.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -23,8 +24,14 @@ namespace Kolia.Thumbnail.API.Data.Configurations.News
             builder.Property(x => x.WasTranslatedFromForeign)
                 .HasDefaultValue(false);
 
-            // Unique FK: 1-1 với NewsItem
-            builder.HasIndex(x => x.NewsItemId).IsUnique();
+            builder.Property(x => x.Status)
+                .IsRequired()
+                .HasDefaultValue(CDeepAnalysisStatus.Completed);
+
+            // Unique FK: 1-1 với NewsItem (chỉ áp dụng unique cho bản ghi chưa bị xoá mềm)
+            builder.HasIndex(x => x.NewsItemId)
+                .HasFilter("\"IsDeleted\" = false")
+                .IsUnique();
         }
     }
 }

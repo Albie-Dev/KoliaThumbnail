@@ -1,3 +1,4 @@
+using Kolia.Thumbnail.API.Engines.Providers.Domain;
 using Kolia.Thumbnail.API.Enums;
 
 namespace Kolia.Thumbnail.API.Engines.Social
@@ -36,6 +37,9 @@ namespace Kolia.Thumbnail.API.Engines.Social
             int timeRangeDays,
             int maxCount,
             Guid? projectId,
+            Action<NewsSourceSearchLog>? onSourceSearched = null,
             CancellationToken ct = default);
+
+        Task<CMarketScope> DetectMarketScopeAsync(string url, CancellationToken ct = default);
     }
 }

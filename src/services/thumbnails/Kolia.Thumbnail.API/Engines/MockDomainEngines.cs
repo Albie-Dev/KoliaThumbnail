@@ -1,4 +1,5 @@
 using Kolia.Thumbnail.API.Engines.AI;
+using Kolia.Thumbnail.API.Engines.Providers.Domain;
 using Kolia.Thumbnail.API.Engines.Social;
 using Kolia.Thumbnail.API.Enums;
 
@@ -82,18 +83,25 @@ namespace Kolia.Thumbnail.API.Engines
     public class MockNewsDeepAnalysisEngine : INewsDeepAnalysisEngine
     {
         public Task<NewsDeepAnalysisResult> AnalyzeAsync(
-            string title, string sourceUrl, string sourceName, string fullContentOrSummary,
-            CancellationToken ct = default)
+            string title, string sourceUrl, string sourceName, string fullArticleText,
+            CMarketScope marketScope, CancellationToken ct = default)
         {
             var result = new NewsDeepAnalysisResult(
-                MacroEventSummary: new List<string> { "Fed hạ lãi suất", "Chỉ số DXY giảm mạnh" },
-                MarketReactionJson: "{\"reaction\": \"Tích cực\", \"volume\": \"Tăng 20%\"}",
-                ExpectationShortTerm: "Giá Bitcoin test lại đỉnh cũ.",
-                ExpectationLongTerm: "Xu hướng uptrend kéo dài suốt  năm 2026.",
-                SentimentOverviewJson: "{\"sentiment\": \"Cực kỳ hưng phấn\", \"fear_greed_index\": 75}",
+                MacroEventSummary: MacroEventCategories.Fixed
+                    .Select(cat => new MacroEventCategoryItem(cat,
+                        cat == MacroEventCategories.MonetaryPolicy ? "Fed hạ lãi suất 50 điểm cơ bản" : "Chưa rõ"))
+                    .ToList(),
+                MarketReaction: new List<MarketReactionItem>
+                {
+                    new("Thị trường Bitcoin", "Tăng 20% sau tin Fed hạ lãi suất."),
+                    new("Ý kiến nhà đầu tư / Chuyên gia", "Chưa rõ")
+                },
+                ExpectationShortTerm: "Tác động ngắn hạn (1-3 tháng tới): Giá Bitcoin có thể test lại đỉnh cũ.",
+                ExpectationLongTerm: "Tác động dài hạn (6-12 tháng tới): Xu hướng uptrend kéo dài suốt năm 2026.",
+                SentimentOverview: new SentimentOverview(CMarketSentiment.Optimistic, "Dòng tiền đầu cơ tích cực sau tin Fed."),
                 EmotionTags: CEmotionTag.Hope | CEmotionTag.Surprise,
                 EmotionReason: "Tin tức Fed kích hoạt dòng tiền đầu cơ.",
-                WasTranslatedFromForeign: false,
+                WasTranslatedFromForeign: marketScope == CMarketScope.International,
                 MissingDataNote: null
             );
             return Task.FromResult(result);
@@ -205,6 +213,16 @@ namespace Kolia.Thumbnail.API.Engines
                 )
             };
             return Task.FromResult<IReadOnlyList<CrawledNewsItem>>(list.Take(maxCount).ToList());
+        }
+
+        public Task<IReadOnlyList<CrawledNewsItem>> CrawlAsync(IEnumerable<string> keywords, CMarketScope marketScope, int timeRangeDays, int maxCount, Action<NewsSourceSearchLog>? onSourceSearched = null, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<CMarketScope> DetectScopeForUrlAsync(string url, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
         }
 
         public Task<CrawledNewsItem?> FetchSingleAsync(string url, CancellationToken ct = default)

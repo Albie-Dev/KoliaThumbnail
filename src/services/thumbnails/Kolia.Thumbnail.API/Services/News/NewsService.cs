@@ -2,6 +2,7 @@ using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Entities.News;
 using Kolia.Thumbnail.API.DTOs.News;
 using Kolia.Thumbnail.API.Engines.AI;
+using Kolia.Thumbnail.API.Engines.Providers.Domain.Fetching;
 using Kolia.Thumbnail.API.Engines.Social;
 using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Exceptions;
@@ -17,7 +18,10 @@ namespace Kolia.Thumbnail.API.Services.News
         private readonly ISocialExecutorService _socialExecutor;
         private readonly INewsScoringEngine _scoringEngine;
         private readonly INewsDeepAnalysisEngine _deepAnalysisEngine;
+        private readonly IArticleContentFetcher _articleFetcher;
         private readonly OperationProgressStore _progressStore;
+        private readonly IGoogleNewsUrlResolver _googleNewsResolver;
+
         private readonly ILogger<NewsService> _logger;
 
         public NewsService(
@@ -25,14 +29,18 @@ namespace Kolia.Thumbnail.API.Services.News
             ISocialExecutorService socialExecutor,
             INewsScoringEngine scoringEngine,
             INewsDeepAnalysisEngine deepAnalysisEngine,
+            IArticleContentFetcher articleFetcher,
             OperationProgressStore progressStore,
+            IGoogleNewsUrlResolver googleNewsResolver,
             ILogger<NewsService> logger)
         {
             _db = db;
             _socialExecutor = socialExecutor;
             _scoringEngine = scoringEngine;
             _deepAnalysisEngine = deepAnalysisEngine;
+            _articleFetcher = articleFetcher;
             _progressStore = progressStore;
+            _googleNewsResolver = googleNewsResolver;
             _logger = logger;
         }
 
@@ -61,6 +69,7 @@ namespace Kolia.Thumbnail.API.Services.News
             CNewsCountFilter countFilter,
             string keywordsRaw,
             IEnumerable<string>? suggestedKeywordsSelected,
+            IEnumerable<Guid>? selectedSourceIds = null,
             Guid operationId = default,
             CancellationToken ct = default)
         {
@@ -71,6 +80,23 @@ namespace Kolia.Thumbnail.API.Services.News
             var brief = await _db.ContentBriefs
                 .FirstOrDefaultAsync(b => b.ProjectId == projectId, ct);
             var topicContext = brief?.TopicOutput ?? keywordsRaw;
+
+            // Lấy danh sách nguồn được chọn (nếu có)
+            HashSet<string>? allowedSourceNames = null;
+            if (selectedSourceIds != null && selectedSourceIds.Any())
+            {
+                var sourceIdsList = selectedSourceIds.ToList();
+                allowedSourceNames = (await _db.NewsSources
+                    .Where(s => sourceIdsList.Contains(s.Id) && !s.IsDeleted)
+                    .Select(s => s.Name)
+                    .ToListAsync(ct))
+                    .ToHashSet();
+
+                if (allowedSourceNames.Count > 0)
+                {
+                    LogProgress(progress, $"🎯 Lọc theo {allowedSourceNames.Count} nguồn được chọn: {string.Join(", ", allowedSourceNames)}");
+                }
+            }
 
             // Tính số ngày và max count
             var timeRangeDays = timeRange switch
@@ -83,7 +109,7 @@ namespace Kolia.Thumbnail.API.Services.News
                 _ => 7
             };
 
-            const int UnlimitedCountCap = 200; // trần kỹ thuật để tránh crawl vô hạn — có thể đưa ra config sau
+            const int UnlimitedCountCap = 200;
             var maxCount = countFilter switch
             {
                 CNewsCountFilter.Top10 => 10,
@@ -102,8 +128,29 @@ namespace Kolia.Thumbnail.API.Services.News
                 .ToList();
 
             LogProgress(progress, $"📡 Crawl {maxCount} tin từ {keywords.Count} keyword...");
+
             var crawledItems = await _socialExecutor.RssCrawlAsync(
-                keywords, marketScope, timeRangeDays, maxCount, projectId, ct);
+                keywords, marketScope, timeRangeDays, maxCount, projectId,
+                onSourceSearched: log =>
+                {
+                    var msg = log.Success
+                        ? $"🔎 [{log.SourceName}] ({log.Keywords}) → {log.ResultCount} tin{(log.ServedFromCache ? " [cache]" : "")}"
+                        : $"⚠️ [{log.SourceName}] ({log.Keywords}) lỗi: {log.ErrorMessage}";
+                    LogProgress(progress, msg, isError: !log.Success);
+                },
+                ct);
+
+            // Filter theo nguồn được chọn (nếu có)
+            if (allowedSourceNames != null && allowedSourceNames.Count > 0)
+            {
+                var beforeCount = crawledItems.Count;
+                crawledItems = crawledItems
+                    .Where(item => allowedSourceNames.Contains(item.SourceName))
+                    .ToList();
+                var afterCount = crawledItems.Count;
+                LogProgress(progress, $"🔍 Lọc theo nguồn: {beforeCount} → {afterCount} tin");
+            }
+
             LogProgress(progress, $"✅ Crawl xong — {crawledItems.Count} tin được thu thập.");
 
             // Tạo NewsSearchRequest
@@ -120,12 +167,30 @@ namespace Kolia.Thumbnail.API.Services.News
             };
             _db.NewsSearchRequests.Add(searchRequest);
 
-            // Batch scoring (executed below after newsItems are built)
+            // Dedup: lấy tập hợp SourceUrl đã tồn tại trong project (kể cả soft-deleted để tránh re-insert)
+            var existingUrls = await _db.NewsItems
+                .IgnoreQueryFilters()
+                .Where(n => n.ProjectId == projectId)
+                .Select(n => n.SourceUrl)
+                .ToHashSetAsync(StringComparer.OrdinalIgnoreCase, ct);
 
-            // Map crawled items → NewsItemEntity, chấm điểm
+            // Map crawled items → NewsItemEntity, loại bỏ URL đã có trong project
             var newsItems = new List<NewsItemEntity>();
+            int skippedDuplicates = 0;
             foreach (var crawled in crawledItems)
             {
+                var resolvedUrl = await _googleNewsResolver.ResolveAsync(url: crawled.SourceUrl);
+
+                // Bỏ qua nếu URL đã tồn tại trong project
+                if (existingUrls.Contains(resolvedUrl))
+                {
+                    skippedDuplicates++;
+                    continue;
+                }
+
+                // Đánh dấu URL này để tránh trùng giữa các item trong batch hiện tại
+                existingUrls.Add(resolvedUrl);
+
                 var item = new NewsItemEntity
                 {
                     ProjectId = projectId,
@@ -134,15 +199,19 @@ namespace Kolia.Thumbnail.API.Services.News
                     MarketType = crawled.MarketType,
                     Title = crawled.Title,
                     SourceName = crawled.SourceName,
-                    SourceUrl = crawled.SourceUrl,
+                    SourceUrl = resolvedUrl,
                     PublishedTime = crawled.PublishedTime,
                     ScannedTime = DateTimeOffset.UtcNow,
                     SummaryOverview = crawled.SummaryRaw
                 };
+
                 newsItems.Add(item);
             }
+
+            if (skippedDuplicates > 0)
+                LogProgress(progress, $"🔁 Bỏ qua {skippedDuplicates} tin trùng URL đã có trong project.");
             LogProgress(progress, $"🤖 Chấm điểm AI cho {newsItems.Count} tin...");
-            // Gọi batch scoring 1 lần duy nhất (Bug #6 fix — bật lại đoạn bị comment)
+            // Gọi batch scoring 1 lần duy nhất để populate TotalScore (cần thiết cho sort mặc định)
             if (newsItems.Count > 0)
             {
                 var batchInput = newsItems
@@ -151,24 +220,24 @@ namespace Kolia.Thumbnail.API.Services.News
 
                 try
                 {
-                    var scores = await _scoringEngine.ScoreBatchAsync(batchInput, topicContext, ct);
-                    foreach (var item in newsItems)
-                    {
-                        if (scores.TryGetValue(item.Id, out var score))
-                        {
-                            item.RelevanceToTopicScore = score.RelevanceToTopicScore;
-                            item.ImportanceImpactScore = score.ImportanceImpactScore;
-                            item.EmotionPotentialScore = score.EmotionPotentialScore;
-                            item.NoveltyDataScore = score.NoveltyDataScore;
-                            item.DataQualityScore = score.DataQualityScore;
-                            item.TotalScore = score.TotalScore;
-                            item.Recommendation = score.Recommendation;
-                            item.RelevanceLevel = score.RelevanceLevel;
-                            item.SummaryOverview = score.SummaryOverview;
-                            item.SuggestedKeywordsForThumbnail = score.SuggestedKeywordsForThumbnail;
-                            item.EmotionTags = score.EmotionTags;
-                        }
-                    }
+                    // var scores = await _scoringEngine.ScoreBatchAsync(batchInput, topicContext, ct);
+                    // foreach (var item in newsItems)
+                    // {
+                    //     if (scores.TryGetValue(item.Id, out var score))
+                    //     {
+                    //         item.RelevanceToTopicScore = score.RelevanceToTopicScore;
+                    //         item.ImportanceImpactScore = score.ImportanceImpactScore;
+                    //         item.EmotionPotentialScore = score.EmotionPotentialScore;
+                    //         item.NoveltyDataScore = score.NoveltyDataScore;
+                    //         item.DataQualityScore = score.DataQualityScore;
+                    //         item.TotalScore = score.TotalScore;
+                    //         item.Recommendation = score.Recommendation;
+                    //         item.RelevanceLevel = score.RelevanceLevel;
+                    //         item.SummaryOverview = score.SummaryOverview;
+                    //         item.SuggestedKeywordsForThumbnail = score.SuggestedKeywordsForThumbnail;
+                    //         item.EmotionTags = score.EmotionTags;
+                    //     }
+                    // }
                 }
                 catch (ExternalServiceException ex)
                 {
@@ -191,21 +260,26 @@ namespace Kolia.Thumbnail.API.Services.News
         public async Task<NewsItemEntity> ImportManualLinkAsync(Guid projectId, string url,
             CancellationToken ct = default)
         {
+            url = await _googleNewsResolver.ResolveAsync(url, ct);
+
+            var marketScope = await _socialExecutor.DetectMarketScopeAsync(url, ct);
+            _logger.LogInformation("ImportManualLinkAsync: {Url} → phát hiện scope {Scope}", url, marketScope);
+
             var brief = await _db.ContentBriefs
                 .FirstOrDefaultAsync(b => b.ProjectId == projectId, ct);
             var topicContext = brief?.TopicOutput ?? url;
 
             var crawled = await _socialExecutor.RssCrawlAsync(
-                [url], CMarketScope.Domestic, 30, 1, projectId, ct);
+                [url], marketScope, 30, 1, projectId, null, ct);
 
             var fetched = crawled.FirstOrDefault()
-                ?? new CrawledNewsItem(url, "Thủ công", url, CMarketScope.Domestic, null, url);
+                ?? new CrawledNewsItem(url, "Thủ công", url, marketScope, null, url);
 
             var item = new NewsItemEntity
             {
                 ProjectId = projectId,
                 SourceType = CSourceType.ManualLink,
-                MarketType = CMarketScope.Domestic,
+                MarketType = marketScope,
                 Title = fetched.Title,
                 SourceName = fetched.SourceName,
                 SourceUrl = fetched.SourceUrl,
@@ -252,23 +326,47 @@ namespace Kolia.Thumbnail.API.Services.News
             CancellationToken ct = default)
         {
             IQueryable<NewsItemEntity> query = _db.NewsItems
+                .Include(n => n.DeepAnalysis)
                 .AsNoTracking()
-                .Where(n => n.ProjectId == projectId && !n.IsDeleted)
-                .OrderByDescending(n => n.TotalScore);
+                .Where(n => n.ProjectId == projectId && !n.IsDeleted);
 
-            int totalRecords = 0;
-            if (request.IncludeTotalCount)
-                totalRecords = await query.CountAsync(ct);
-
-            IReadOnlyList<NewsItemDto> items = [];
-            if (request.IncludeItems && request.PageSize > 0)
+            if (request.Sorts == null || request.Sorts.Count == 0)
             {
-                var paged = await query
-                    .Skip((request.PageNumber - 1) * request.PageSize)
-                    .Take(request.PageSize)
-                    .ToListAsync(ct);
+                request.Sorts ??= new List<SortRequestDto>();
+                request.Sorts.Add(new SortRequestDto
+                {
+                    Field = nameof(NewsItemEntity.TotalScore),
+                    Direction = CSortDirection.Desc
+                });
+                // Tiebreaker: khi TotalScore bằng nhau (vd: chưa được chấm điểm AI → TotalScore = 0),
+                // sắp xếp tiếp theo thời gian đăng mới nhất để đảm bảo thứ tự ổn định và có nghĩa.
+                request.Sorts.Add(new SortRequestDto
+                {
+                    Field = nameof(NewsItemEntity.PublishedTime),
+                    Direction = CSortDirection.Desc
+                });
+            }
+            else
+            {
+                var firstSortField = request.Sorts.First().Field;
+                if (firstSortField.Equals(nameof(NewsItemEntity.Recommendation), StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!request.Sorts.Any(s => s.Field.Equals(nameof(NewsItemEntity.TotalScore), StringComparison.OrdinalIgnoreCase)))
+                    {
+                        request.Sorts.Add(new SortRequestDto
+                        {
+                            Field = nameof(NewsItemEntity.TotalScore),
+                            Direction = CSortDirection.Desc
+                        });
+                    }
+                }
+            }
 
-                items = paged.Select(n => new NewsItemDto(
+            query = query.ApplyQuery(request);
+
+            return await query.ToPagedResponseAsync<NewsItemEntity, NewsItemDto>(
+                request,
+                selector: n => new NewsItemDto(
                     n.Id,
                     n.ProjectId,
                     n.NewsSearchRequestId,
@@ -289,24 +387,11 @@ namespace Kolia.Thumbnail.API.Services.News
                     n.RelevanceLevel,
                     n.IsSelectedByTeam,
                     n.SuggestedKeywordsForThumbnail,
-                    n.DeepAnalysis != null,
-                    n.NewsSearchRequestId.HasValue ? "Batch" : "Manual"
-                )).ToList();
-            }
-
-            return new PagedResponseDto<NewsItemDto>
-            {
-                Items = items,
-                PageInfo = new PageInfoDto
-                {
-                    PageNumber = request.PageNumber,
-                    PageSize = request.PageSize,
-                    TotalRecords = totalRecords,
-                    TotalPages = request.PageSize > 0 ? (int)Math.Ceiling((double)totalRecords / request.PageSize) : 0,
-                    HasPreviousPage = request.PageNumber > 1,
-                    HasNextPage = request.PageNumber * request.PageSize < totalRecords
-                }
-            };
+                    n.DeepAnalysis != null && n.DeepAnalysis.Status == CDeepAnalysisStatus.Completed,
+                    n.NewsSearchRequestId.HasValue ? "Batch" : "Manual",
+                    n.EmotionTags
+                ),
+                ct);
         }
 
         public async Task<NewsDeepAnalysisEntity> DeepAnalyzeAsync(Guid newsItemId,
@@ -317,50 +402,116 @@ namespace Kolia.Thumbnail.API.Services.News
             LogProgress(progress, "🔍 Bắt đầu phân tích sâu...");
 
             var item = await _db.NewsItems
-                .Include(n => n.DeepAnalysis)
                 .FirstOrDefaultAsync(n => n.Id == newsItemId && !n.IsDeleted, ct)
                 ?? throw new KeyNotFoundException($"NewsItem {newsItemId} không tìm thấy.");
 
-            if (item.DeepAnalysis != null)
+            // Tìm bản ghi DeepAnalysis trong DB kể cả bản ghi soft-deleted cũ (bỏ qua query filter)
+            var analysis = await _db.NewsDeepAnalyses
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(a => a.NewsItemId == newsItemId, ct);
+
+            if (analysis != null && !analysis.IsDeleted)
             {
-                LogProgress(progress, "✅ Đã có phân tích sâu từ trước.");
-                CompleteProgress(progress);
-                return item.DeepAnalysis;
+                if (analysis.Status == CDeepAnalysisStatus.Completed)
+                {
+                    LogProgress(progress, "✅ Đã có phân tích sâu từ trước.");
+                    CompleteProgress(progress);
+                    return analysis;
+                }
+
+                // Status == Failed → thử lại bằng cách cập nhật trên entity hiện tại (tránh vi phạm unique constraint)
+                LogProgress(progress, "♻️ Phân tích trước đó thất bại — thử lại...");
+            }
+
+            LogProgress(progress, "📄 Đang tải nội dung đầy đủ bài báo...");
+
+            var resolvedUrl = await _googleNewsResolver.ResolveAsync(item.SourceUrl, ct);
+            if (resolvedUrl != item.SourceUrl)
+            {
+                item.SourceUrl = resolvedUrl;
+                LogProgress(progress, "🔗 Đã giải mã url Google News sang url bài báo gốc.");
+            }
+
+            var articleContent = await _articleFetcher.FetchFullTextAsync(item.SourceUrl, ct);
+
+            string textForAnalysis;
+            if (articleContent.Success)
+            {
+                textForAnalysis = articleContent.FullText!;
+                LogProgress(progress, $"✅ Đã tải full-text ({articleContent.CharacterCount} ký tự).");
+            }
+            else
+            {
+                textForAnalysis = item.SummaryOverview;
+                LogProgress(progress,
+                    $"⚠️ Không lấy được full-text ({articleContent.FailureReason}) — dùng tóm tắt ngắn thay thế.",
+                    isError: true);
             }
 
             LogProgress(progress, "🤖 Gọi AI phân tích 4 tầng...");
-            var result = await _deepAnalysisEngine.AnalyzeAsync(
-                item.Title, item.SourceUrl, item.SourceName,
-                item.SummaryOverview, ct);
 
-            var analysis = new NewsDeepAnalysisEntity
+            bool isNew = analysis == null;
+            analysis ??= new NewsDeepAnalysisEntity { NewsItemId = newsItemId };
+            analysis.IsDeleted = false;
+            analysis.DeletionTime = null;
+
+            try
             {
-                NewsItemId = newsItemId,
-                MacroEventSummaryJson = System.Text.Json.JsonSerializer.Serialize(result.MacroEventSummary),
-                MarketReactionJson = result.MarketReactionJson,
-                ExpectationShortTerm = result.ExpectationShortTerm,
-                ExpectationLongTerm = result.ExpectationLongTerm,
-                SentimentOverviewJson = result.SentimentOverviewJson,
-                EmotionTags = result.EmotionTags,
-                EmotionReason = result.EmotionReason,
-                WasTranslatedFromForeign = result.WasTranslatedFromForeign,
-                MissingDataNote = result.MissingDataNote
-            };
+                var result = await _deepAnalysisEngine.AnalyzeAsync(
+                    item.Title, item.SourceUrl, item.SourceName, textForAnalysis, item.MarketType, ct);
 
-            _db.NewsDeepAnalyses.Add(analysis);
+                analysis.MacroEventSummaryJson = System.Text.Json.JsonSerializer.Serialize(result.MacroEventSummary);
+                analysis.MarketReactionJson = System.Text.Json.JsonSerializer.Serialize(result.MarketReaction);
+                analysis.ExpectationShortTerm = result.ExpectationShortTerm;
+                analysis.ExpectationLongTerm = result.ExpectationLongTerm;
+                analysis.SentimentOverviewJson = System.Text.Json.JsonSerializer.Serialize(result.SentimentOverview);
+                analysis.EmotionTags = result.EmotionTags;
+                analysis.EmotionReason = result.EmotionReason;
+                analysis.WasTranslatedFromForeign = result.WasTranslatedFromForeign;
+                analysis.MissingDataNote = result.MissingDataNote;
+                analysis.Status = CDeepAnalysisStatus.Completed;
+                analysis.LastModificationTime = DateTimeOffset.UtcNow;
 
-            // Cập nhật EmotionTags của NewsItem gốc từ kết quả phân tích sâu
-            // (phân tích sâu cho cảm xúc chính xác hơn scoring ban đầu)
-            if (result.EmotionTags != CEmotionTag.None)
-            {
-                item.EmotionTags = result.EmotionTags;
+                if (isNew)
+                    _db.NewsDeepAnalyses.Add(analysis);
+
+                // Cập nhật EmotionTags của NewsItem gốc từ kết quả phân tích sâu
+                if (result.EmotionTags != CEmotionTag.None)
+                    item.EmotionTags = result.EmotionTags;
+
+                await _db.SaveChangesAsync(ct);
+                LogProgress(progress, "✅ Phân tích sâu hoàn tất.");
+                CompleteProgress(progress);
+                return analysis;
             }
+            catch (ExternalServiceException ex)
+            {
+                LogProgress(progress, $"❌ Phân tích sâu thất bại: {ex.Message}", isError: true);
 
-            await _db.SaveChangesAsync(ct);
+                analysis.MacroEventSummaryJson = "[]";
+                analysis.MarketReactionJson = "[]";
+                analysis.ExpectationShortTerm = string.Empty;
+                analysis.ExpectationLongTerm = string.Empty;
+                analysis.SentimentOverviewJson = "{}";
+                analysis.EmotionReason = string.Empty;
+                analysis.MissingDataNote = "Lỗi phân tích — cần thử lại";
+                analysis.Status = CDeepAnalysisStatus.Failed;
+                analysis.LastModificationTime = DateTimeOffset.UtcNow;
 
-            LogProgress(progress, "✅ Phân tích sâu hoàn tất.");
-            CompleteProgress(progress);
-            return analysis;
+                if (isNew)
+                    _db.NewsDeepAnalyses.Add(analysis);
+
+                await _db.SaveChangesAsync(ct);
+
+                CompleteProgress(progress, ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<NewsDeepAnalysisEntity?> GetDeepAnalysisAsync(Guid newsItemId, CancellationToken ct = default)
+        {
+            return await _db.NewsDeepAnalyses
+                .FirstOrDefaultAsync(a => a.NewsItemId == newsItemId && !a.IsDeleted, ct);
         }
 
         public async Task SetSelectedAsync(Guid newsItemId, bool isSelected,
@@ -393,6 +544,57 @@ namespace Kolia.Thumbnail.API.Services.News
             item.IsDeleted = true;
             item.DeletionTime = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
+        }
+
+        public async Task<PagedResponseDto<NewsSourceSelectDto>> GetNewsSourcesPagingAsync(
+            PagedRequestDto request,
+            CMarketScope? region = null,
+            CancellationToken ct = default)
+        {
+            var query = _db.NewsSources.AsNoTracking();
+
+            // Filter theo Region (nếu có)
+            if (region.HasValue && region.Value != CMarketScope.Both)
+            {
+                query = query.Where(s => s.Region == region.Value);
+            }
+
+            // Search theo tên
+            if (!string.IsNullOrWhiteSpace(request.SearchText))
+            {
+                query = query.Where(s => s.Name.ToLower().Contains(request.SearchText.ToLower()));
+            }
+
+            // Sort theo Priority (số nhỏ = ưu tiên cao)
+            query = query.OrderBy(s => s.Priority).ThenBy(s => s.Name);
+
+            // Paging
+            var totalCount = await query.CountAsync(ct);
+            var sources = await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(s => new NewsSourceSelectDto(
+                    s.Id,
+                    s.Name,
+                    s.Region,
+                    s.Priority))
+                .ToListAsync(ct);
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
+            return new PagedResponseDto<NewsSourceSelectDto>
+            {
+                Items = sources,
+                PageInfo = new PageInfoDto
+                {
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize,
+                    TotalRecords = totalCount,
+                    TotalPages = totalPages,
+                    HasNextPage = request.PageNumber < totalPages,
+                    HasPreviousPage = request.PageNumber > 1
+                }
+            };
         }
     }
 }

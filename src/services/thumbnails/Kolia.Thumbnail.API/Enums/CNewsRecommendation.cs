@@ -18,6 +18,11 @@ namespace Kolia.Thumbnail.API.Enums
         /// <summary>
         /// Không ưu tiên — tin ít liên quan hoặc không khai thác được cảm xúc
         /// </summary>
-        NotPriority = 3
+        NotPriority = 3,
+
+        /// <summary>
+        /// Chưa xác định
+        /// </summary>
+        None = 4
     }
 }

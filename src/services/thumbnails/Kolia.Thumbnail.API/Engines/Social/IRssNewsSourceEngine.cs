@@ -1,3 +1,4 @@
+using Kolia.Thumbnail.API.Engines.Providers.Domain;
 using Kolia.Thumbnail.API.Enums;
 
 namespace Kolia.Thumbnail.API.Engines.Social
@@ -18,22 +19,15 @@ namespace Kolia.Thumbnail.API.Engines.Social
     /// </summary>
     public interface IRssNewsSourceEngine
     {
-        /// <summary>
-        /// Crawl tin tức từ danh sách nguồn ưu tiên + keyword.
-        /// timeRangeDays: số ngày về trước (7/30 ngày).
-        /// maxCount: giới hạn số tin trả về.
-        /// </summary>
         Task<IReadOnlyList<CrawledNewsItem>> CrawlAsync(
             IEnumerable<string> keywords,
             CMarketScope marketScope,
             int timeRangeDays,
             int maxCount,
+            Action<NewsSourceSearchLog>? onSourceSearched = null,
             CancellationToken ct = default);
 
-        /// <summary>
-        /// Fetch và parse nội dung 1 URL bài báo (dùng cho import thủ công).
-        /// Trả null nếu không thể fetch.
-        /// </summary>
         Task<CrawledNewsItem?> FetchSingleAsync(string url, CancellationToken ct = default);
+        Task<CMarketScope> DetectScopeForUrlAsync(string url, CancellationToken ct = default);
     }
 }

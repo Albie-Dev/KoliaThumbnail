@@ -3,6 +3,7 @@ using System;
 using Kolia.Thumbnail.API.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Kolia.Thumbnail.API.Data.Migrations
 {
     [DbContext(typeof(ThumbnailDbContext))]
-    partial class ThumbnailDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723074515_AddPendingModel")]
+    partial class AddPendingModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -974,11 +977,6 @@ namespace Kolia.Thumbnail.API.Data.Migrations
                     b.Property<string>("SentimentOverviewJson")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
 
                     b.Property<bool>("WasTranslatedFromForeign")
                         .ValueGeneratedOnAdd()

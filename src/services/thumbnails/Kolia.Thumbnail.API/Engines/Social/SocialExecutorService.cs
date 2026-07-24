@@ -1,5 +1,6 @@
 using Kolia.Thumbnail.API.Data.Contexts;
 using Kolia.Thumbnail.API.Data.Entities.ExternalRequests;
+using Kolia.Thumbnail.API.Engines.Providers.Domain;
 using Kolia.Thumbnail.API.Enums;
 using Kolia.Thumbnail.API.Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,7 @@ namespace Kolia.Thumbnail.API.Engines.Social
             int timeRangeDays,
             int maxCount,
             Guid? projectId,
+            Action<NewsSourceSearchLog>? onSourceSearched = null,
             CancellationToken ct = default)
         {
             var keywordList = keywords.ToList();
@@ -96,13 +98,24 @@ namespace Kolia.Thumbnail.API.Engines.Social
                 marketScope, timeRangeDays, string.Join(",", keywordList));
             try
             {
-                var items = await _rssEngine.CrawlAsync(keywordList, marketScope, timeRangeDays, maxCount, ct);
+                var items = await _rssEngine.CrawlAsync(
+                    keywordList, marketScope, timeRangeDays, maxCount,
+                    onSourceSearched: log =>
+                    {
+                        if (log.Success)
+                            _logger.LogInformation("RSS source '{Source}' [{Keywords}] → {Count} tin{Cache}",
+                                log.SourceName, log.Keywords, log.ResultCount,
+                                log.ServedFromCache ? " (cache)" : "");
+                        else
+                            _logger.LogWarning("RSS source '{Source}' [{Keywords}] lỗi: {Error}",
+                                log.SourceName, log.Keywords, log.ErrorMessage);
+
+                        onSourceSearched?.Invoke(log);
+                    },
+                    ct);
 
                 if (items.Count == 0)
                 {
-                    // All fallback tiers exhausted — log warning and enqueue for later retry.
-                    // Do NOT throw: return empty list so NewsService can still create the search request.
-                    // User sees "0 tin" rather than a 500 error — far better UX.
                     _logger.LogWarning(
                         "RssCrawlAsync: 0 results after full fallback pipeline for keywords={Keywords}",
                         string.Join(",", keywordList));
@@ -111,7 +124,7 @@ namespace Kolia.Thumbnail.API.Engines.Social
 
                 return items;
             }
-            catch (Exception ex) // safety net — pipeline should absorb all errors internally
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "RssCrawlAsync: unexpected error outside pipeline fallback.");
                 await EnqueueNewsCrawlRetryAsync(keywordList, marketScope, timeRangeDays, maxCount, projectId, ct);
@@ -141,6 +154,9 @@ namespace Kolia.Thumbnail.API.Engines.Social
             });
             await _db.SaveChangesAsync(ct);
         }
+
+        public async Task<CMarketScope> DetectMarketScopeAsync(string url, CancellationToken ct = default)
+            => await _rssEngine.DetectScopeForUrlAsync(url, ct);
 
         // ── Private Helpers ──────────────────────────────────────────
 

@@ -20,6 +20,7 @@ namespace Kolia.Thumbnail.API.Services.News
             CNewsCountFilter countFilter,
             string keywordsRaw,
             IEnumerable<string>? suggestedKeywordsSelected,
+            IEnumerable<Guid>? selectedSourceIds = null,
             Guid operationId = default,
             CancellationToken ct = default);
 
@@ -50,6 +51,11 @@ namespace Kolia.Thumbnail.API.Services.News
             CancellationToken ct = default);
 
         /// <summary>
+        /// Lấy bản ghi phân tích sâu đã lưu của 1 bản tin (không gọi lại AI).
+        /// </summary>
+        Task<NewsDeepAnalysisEntity?> GetDeepAnalysisAsync(Guid newsItemId, CancellationToken ct = default);
+
+        /// <summary>
         /// Tick/bỏ tick bản tin là "Dùng cho Phần 4 và Phần 5".
         /// </summary>
         Task SetSelectedAsync(Guid newsItemId, bool isSelected,
@@ -65,5 +71,14 @@ namespace Kolia.Thumbnail.API.Services.News
         /// Xoá 1 bản tin (xóa mềm).
         /// </summary>
         Task DeleteNewsItemAsync(Guid newsItemId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Lấy danh sách NewsSource phân trang để client chọn khi search news.
+        /// Hỗ trợ search theo tên, filter theo Region, sort theo Priority.
+        /// </summary>
+        Task<PagedResponseDto<NewsSourceSelectDto>> GetNewsSourcesPagingAsync(
+            PagedRequestDto request,
+            CMarketScope? region = null,
+            CancellationToken ct = default);
     }
 }

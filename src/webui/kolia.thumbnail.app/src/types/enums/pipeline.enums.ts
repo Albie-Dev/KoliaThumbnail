@@ -191,6 +191,8 @@ export const CNewsRecommendation = {
   CanSelect: 2,
   /// <summary>Không ưu tiên</summary>
   NotPriority: 3,
+  /// <summary>Không xác định</summary>
+  None: 4
 } as const
 
 export type CNewsRecommendation = (typeof CNewsRecommendation)[keyof typeof CNewsRecommendation]
@@ -199,6 +201,12 @@ export const NEWS_RECOMMENDATION_OPTIONS: { id: CNewsRecommendation; label: stri
   { id: CNewsRecommendation.ShouldSelect, label: 'Nên chọn', badgeClass: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' },
   { id: CNewsRecommendation.CanSelect, label: 'Có thể chọn', badgeClass: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' },
   { id: CNewsRecommendation.NotPriority, label: 'Không ưu tiên', badgeClass: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300' },
+  {
+    id: CNewsRecommendation.None,
+    label: 'Không xác định',
+    badgeClass:
+      'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+  }
 ]
 
 // ── CRelevanceLevel ────────────────────────────────────────────────────────
@@ -209,19 +217,38 @@ export const CRelevanceLevel = {
   Medium: 2,
   /// <summary>Thấp</summary>
   Low: 3,
+  /// <summary>Không xác định</summary>
+  None: 4
 } as const
 
 export type CRelevanceLevel = (typeof CRelevanceLevel)[keyof typeof CRelevanceLevel]
 
-export const RELEVANCE_LEVEL_OPTIONS: { id: CRelevanceLevel; label: string }[] = [
-  { id: CRelevanceLevel.High, label: 'Cao' },
-  { id: CRelevanceLevel.Medium, label: 'Trung bình' },
-  { id: CRelevanceLevel.Low, label: 'Thấp' },
-]
-
-export function getRelevanceLevelLabel(level: CRelevanceLevel): string {
-  return RELEVANCE_LEVEL_OPTIONS.find((o) => o.id === level)?.label ?? ''
-}
+export const RELEVANCE_LEVEL_OPTIONS = [
+  {
+    id: CRelevanceLevel.High,
+    label: 'Cao',
+    badgeClass:
+      'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300',
+  },
+  {
+    id: CRelevanceLevel.Medium,
+    label: 'Trung bình',
+    badgeClass:
+      'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+  },
+  {
+    id: CRelevanceLevel.Low,
+    label: 'Thấp',
+    badgeClass:
+      'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300',
+  },
+  {
+    id: CRelevanceLevel.None,
+    label: 'Không xác định',
+    badgeClass:
+      'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+  },
+] as const
 
 // ── CEmotionTag (flags, bitwise) ───────────────────────────────────────────
 export const CEmotionTag = {
@@ -243,6 +270,8 @@ export const CEmotionTag = {
   Anger: 64,
   /// <summary>Hy vọng</summary>
   Hope: 128,
+  /// <summary>FOMO - Sợ lỡ sóng</summary>
+  FOMO: 256,
 } as const
 
 export type CEmotionTag = (typeof CEmotionTag)[keyof typeof CEmotionTag]
@@ -256,6 +285,7 @@ export const EMOTION_TAG_LABELS: Record<number, string> = {
   [CEmotionTag.Surprise]: 'Ngạc nhiên',
   [CEmotionTag.Anger]: 'Giận dữ',
   [CEmotionTag.Hope]: 'Hy vọng',
+  [CEmotionTag.FOMO]: 'FOMO',
 }
 
 /**
@@ -272,6 +302,24 @@ export function decodeEmotionTags(tags: number): string[] {
     }
   }
   return result
+}
+
+/**
+ * Lấy CSS class cho badge cảm xúc theo loại.
+ */
+export function getEmotionBadgeClass(emotionLabel: string): string {
+  const colorMap: Record<string, string> = {
+    'Sợ hãi': 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/40',
+    'Nghi ngờ': 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40',
+    'Tò mò': 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/40',
+    'Khẩn cấp': 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/40',
+    'Áp lực quyết định': 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/40',
+    'Ngạc nhiên': 'bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/40',
+    'Giận dữ': 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40',
+    'Hy vọng': 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40',
+    'FOMO': 'bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/40',
+  }
+  return colorMap[emotionLabel] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/40'
 }
 
 // ── CSourceType ────────────────────────────────────────────────────────────

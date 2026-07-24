@@ -16,7 +16,7 @@ interface Props {
 }
 
 function resolveBaseUrl() {
-  return import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'
+  return import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5001'
 }
 
 export function OperationProgress({ open, onClose, operationId, title }: Props) {
@@ -39,7 +39,12 @@ export function OperationProgress({ open, onClose, operationId, title }: Props) 
     evtSource.onmessage = (event) => {
       if (!event.data || event.data === '') return
       try {
-        const log = JSON.parse(event.data) as ProgressLog
+        const raw = JSON.parse(event.data)
+        const log: ProgressLog = {
+          message: raw.message ?? raw.Message ?? '',
+          isError: raw.isError ?? raw.IsError ?? false,
+          timestamp: raw.timestamp ?? raw.Timestamp ?? new Date().toISOString(),
+        }
         setLogs((prev) => [...prev, log])
       } catch {
         // ignore
@@ -49,8 +54,9 @@ export function OperationProgress({ open, onClose, operationId, title }: Props) 
     evtSource.addEventListener('done', (event) => {
       try {
         const data = JSON.parse(event.data)
-        setStatus(data.status)
-        setErrorMessage(data.errorMessage ?? null)
+        const newStatus = data.status ?? data.Status ?? 'completed'
+        setStatus(newStatus)
+        setErrorMessage(data.errorMessage ?? data.ErrorMessage ?? null)
       } catch {
         setStatus('completed')
       }
